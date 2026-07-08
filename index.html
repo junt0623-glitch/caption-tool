@@ -234,9 +234,13 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 .bg-cat{grid-column:1/-1;font-size:11px;color:var(--sub);letter-spacing:.12em;margin:8px 0 2px;border-bottom:1px solid var(--line);padding-bottom:2px}
 .bg-cat:first-child{margin-top:0}
 
-/* ルビ（よみがな連動） */
-.cap-item ruby{ruby-position:over}
-.cap-item ruby>rt{font-size:46%;letter-spacing:.04em;font-weight:400;opacity:.92}
+/* ルビ（Word風・注釈ベース） */
+.cap-item ruby{ruby-position:over;ruby-align:var(--ruby-align,space-around)}
+.cap-item ruby>rt{font-size:var(--ruby-size,50%);letter-spacing:var(--ruby-ls,0em);font-family:var(--ruby-font,inherit);
+  font-weight:400;opacity:.95;transform:translateY(calc(-1 * var(--ruby-offset,2pt)))}
+.cs-ruby{display:flex;align-items:center;gap:8px;margin-top:9px}
+.cs-ruby label{font-size:11px;color:var(--sub);flex:none}
+.cs-ruby input{flex:1;font-size:12.5px;padding:4px 6px}
 .bg-seigaiha::after{content:"";position:absolute;left:0;right:0;bottom:0;height:10mm;opacity:calc(0.4 * var(--bg-opacity,1));background:
   radial-gradient(circle at 50% 100%, transparent 34%, var(--bg-accent,#cdd8e2) 35%, var(--bg-accent,#cdd8e2) 40%, transparent 41%),
   radial-gradient(circle at 0 100%, transparent 34%, var(--bg-accent,#cdd8e2) 35%, var(--bg-accent,#cdd8e2) 40%, transparent 41%),
@@ -316,6 +320,10 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 .cs-foot{display:flex;justify-content:space-between;gap:6px;margin-top:9px}
 .cs-foot button{font-size:11.5px;padding:4px 7px}
 .cap-item .cf,.cap-item .cf-preview{display:inline}
+/* 画像レイヤーの直接操作 */
+.cap-img.sel-img{outline:2px dashed var(--shu);outline-offset:-2px}
+.img-handle{position:absolute;background:var(--shu);border:1.5px solid #fff;border-radius:50%;
+  box-shadow:0 0 0 1px rgba(0,0,0,.25);cursor:nwse-resize;z-index:6}
 
 #print-root{display:none}
 @page{size:A4 portrait;margin:0}
@@ -472,18 +480,26 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
         </div>
         <div>
           <fieldset class="grp"><legend>画像（表示項目の下のレイヤー）</legend>
+            <div class="ctl">
+              <div class="row" style="flex-wrap:wrap;gap:6px;align-items:center">
+                <button type="button" class="btn small" id="btnImgImport">画像を取り込む（PNG・JPEG）</button>
+                <button type="button" class="btn small" id="btnImgRemoveLayout">画像を外す</button>
+              </div>
+              <output id="imgStatus" class="note" style="display:block;margin-top:4px"></output>
+              <input type="file" id="layoutImageInput" accept="image/png,image/jpeg,image/gif,image/webp,image/*" hidden>
+            </div>
             <div class="ctl"><label class="lbl">画像の合わせ方</label><div class="row" style="flex-wrap:wrap">
               <label class="chk"><input type="radio" name="imgFit" value="contain">全体を収める</label>
               <label class="chk"><input type="radio" name="imgFit" value="cover">枠いっぱい</label>
               <label class="chk"><input type="radio" name="imgFit" value="custom">自由（大きさ・位置を指定）</label></div></div>
             <div id="imgCustomRows">
               <div class="ctl row-ctl"><label class="lbl">画像の大きさ（拡大・縮小）</label><div class="row"><input type="range" id="imgScale" min="10" max="300" step="1"><output id="oImgScale"></output></div></div>
-              <div class="ctl row-ctl"><label class="lbl">位置（横）</label><div class="row"><input type="range" id="imgPosX" min="0" max="100" step="1"><output id="oImgPosX"></output></div></div>
-              <div class="ctl row-ctl"><label class="lbl">位置（縦）</label><div class="row"><input type="range" id="imgPosY" min="0" max="100" step="1"><output id="oImgPosY"></output></div></div>
+              <div class="ctl row-ctl"><label class="lbl">位置ずらし（横）</label><div class="row"><input type="range" id="imgOffX" min="-150" max="150" step="1"><output id="oImgOffX"></output></div></div>
+              <div class="ctl row-ctl"><label class="lbl">位置ずらし（縦）</label><div class="row"><input type="range" id="imgOffY" min="-150" max="150" step="1"><output id="oImgOffY"></output></div></div>
             </div>
             <div class="ctl"><label class="lbl">画像の濃さ（透明度）</label><div class="row"><input type="range" id="imgOpacity" min="0" max="100" step="1"><output id="oImgOp"></output></div></div>
             <label class="chk"><input type="checkbox" id="textScrim">文字の下に白い敷きを入れる</label>
-            <p class="note" style="margin-top:6px">画像は各作品の「編集」画面から登録します。</p>
+            <p class="note" style="margin-top:6px">画像は「見本にする作品」に登録されます（作品台帳の「編集」画面からも登録できます）。「自由」を選ぶと、<b>キャンバス上の画像を直接ドラッグで移動、右下の橙のハンドルで拡大・縮小</b>できます（Escで選択解除）。</p>
           </fieldset>
           <fieldset class="grp"><legend>表示する項目（作品名は常に表示）</legend>
             <div class="show-grid">
@@ -499,10 +515,21 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
               <label class="chk"><input type="checkbox" id="shCollEn">所蔵（英訳）</label>
               <label class="chk"><input type="checkbox" id="shDesc">解説文</label>
             </div>
-            <div class="ctl" style="margin-top:8px"><label class="lbl">よみがなの表示方法</label>
-              <label class="chk"><input type="radio" name="yomiMode" value="ruby">作品名のルビとして連動（漢字の真上・字間に追従）</label>
-              <label class="chk"><input type="radio" name="yomiMode" value="item">独立した項目として自由配置</label>
-            </div>
+          </fieldset>
+          <fieldset class="grp"><legend>ルビの体裁（作品名・キャッチコピー・解説文）</legend>
+            <p class="note" style="margin-bottom:6px">ルビの付け方：キャンバスで項目をダブルクリック→文字を選択→パネルの「ルビ」欄によみを入力。<b>文字ごとに振るときはスペース区切り</b>（例：東 海 道）、区切らなければ選択範囲全体に均等割付。</p>
+            <div class="ctl"><label class="lbl">ルビのオフセット（本文との間隔）</label><div class="row"><input type="range" id="rubyOffset" min="-2" max="10" step="0.5"><output id="oRubyOffset"></output></div></div>
+            <div class="ctl"><label class="lbl">ルビのサイズ</label><div class="row"><input type="number" id="rubySizePt" min="3" max="30" step="0.5" placeholder="自動（本文の50%）" style="width:130px"><span style="font-size:11px;color:var(--sub)">pt（空欄で自動）</span></div></div>
+            <div class="ctl"><label class="lbl">ルビのフォント</label>
+              <select id="rubyFont"><option value="inherit">本文に従う</option><option value="mincho">明朝体</option><option value="gothic">ゴシック体</option></select></div>
+            <div class="ctl"><label class="lbl">ルビの文字間</label><div class="row"><input type="range" id="rubyLs" min="-0.05" max="0.5" step="0.01"><output id="oRubyLs"></output></div></div>
+            <div class="ctl"><label class="lbl">ルビの割付</label>
+              <select id="rubyAlign">
+                <option value="space-around">均等割付（推奨）</option>
+                <option value="space-between">両端割付</option>
+                <option value="center">中央</option>
+                <option value="start">行頭寄せ</option>
+              </select></div>
           </fieldset>
         </div>
       </div>
@@ -679,6 +706,11 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 <div id="charSpacingPopover">
   <div class="cs-head"><span>選択文字の字間</span><output id="csVal">+0.00em</output></div>
   <div class="cs-track" id="csTrack"><div class="cs-fill" id="csFill"></div><div class="cs-handle" id="csHandle"></div></div>
+  <div class="cs-ruby" id="csRubyRow"><label>ルビ</label><input type="text" id="rubyText" placeholder="よみ（文字ごと＝スペース区切り）"></div>
+  <div class="cs-foot" id="csRubyBtns">
+    <button class="btn small" id="rubyRemove">ルビ解除</button>
+    <button class="btn small primary" id="rubyApply">ルビを適用</button>
+  </div>
   <div class="cs-foot">
     <button class="btn small" id="csReset">選択範囲を既定に戻す</button>
     <button class="btn small primary" id="csClose">閉じる</button>
@@ -802,9 +834,10 @@ const PRESET_FILL={white:[255,255,255],cream:[251,247,238],hairline:[255,255,255
 /* ===== 既定値 ===== */
 function defaultStyle(){
   return {font:"mincho",align:"left",lh:1.45,pad:8,bracket:true,
-    bg:"white",imgFit:"contain",imgOpacity:1,imgScale:100,imgPosX:50,imgPosY:50,textScrim:true,
-    textColor:null,bgFill:null,bgAccent:null,bgOpacity:1,yomiRuby:true,
-    show:{no:true,yomigana:true,origin:true,period:true,collection:true,catch:true,titleEn:true,originEn:true,periodEn:true,collectionEn:true,desc:false},
+    bg:"white",imgFit:"contain",imgOpacity:1,imgScale:100,imgOffX:0,imgOffY:0,textScrim:false,
+    textColor:null,bgFill:null,bgAccent:null,bgOpacity:1,
+    rubyOffset:2,rubySizePt:null,rubyLs:0,rubyFont:"inherit",rubyAlign:"space-around",
+    show:{no:true,yomigana:false,origin:true,period:true,collection:true,catch:true,titleEn:true,originEn:true,periodEn:true,collectionEn:true,desc:false},
     layout:null};
 }
 function defaultLayout(size,style){
@@ -827,10 +860,40 @@ function ensureLayout(p){
   if(p.style.bgFill===undefined)p.style.bgFill=null;
   if(p.style.bgAccent===undefined)p.style.bgAccent=null;
   if(p.style.bgOpacity==null)p.style.bgOpacity=1;
-  if(p.style.yomiRuby===undefined)p.style.yomiRuby=true;
+  if(p.style.rubyOffset==null)p.style.rubyOffset=2;
+  if(p.style.rubySizePt===undefined)p.style.rubySizePt=null;
+  if(p.style.rubyLs==null)p.style.rubyLs=0;
+  if(p.style.rubyFont==null)p.style.rubyFont="inherit";
+  if(p.style.rubyAlign==null)p.style.rubyAlign="space-around";
+  /* 旧「よみがな連動」からルビ注釈への一度きりの移行 */
+  if(!p.rubyMigrated){
+    const linked=(p.style.yomiRuby!==false);
+    (p.works||[]).forEach(w=>{
+      if(!w.ruby||typeof w.ruby!=="object")w.ruby={};
+      if(linked&&(w.yomigana||"").trim()&&!(w.ruby.title&&w.ruby.title.length)){
+        const t=w.title||"";
+        const tParts=t.split(/[\s\u3000]+/).filter(Boolean);
+        const yParts=w.yomigana.trim().split(/[\s\u3000]+/).filter(Boolean);
+        const anns=[];
+        if(tParts.length===yParts.length&&tParts.length>0){
+          let idx=0;
+          t.split(/([\s\u3000]+)/).forEach(tok=>{
+            if(!tok)return;
+            if(/^[\s\u3000]+$/.test(tok)){idx+=tok.length;return;}
+            anns.push({start:idx,end:idx+tok.length,text:yParts[anns.length]||""});idx+=tok.length;
+          });
+        }else if(t.length){anns.push({start:0,end:t.length,text:w.yomigana.trim()});}
+        w.ruby.title=anns;
+      }
+    });
+    if(p.style.yomiRuby!==undefined&&p.style.yomiRuby!==false)p.style.show.yomigana=false;
+    delete p.style.yomiRuby;
+    p.rubyMigrated=true;
+  }
   if(p.style.imgScale==null)p.style.imgScale=100;
-  if(p.style.imgPosX==null)p.style.imgPosX=50;
-  if(p.style.imgPosY==null)p.style.imgPosY=50;
+  if(p.style.imgOffX==null)p.style.imgOffX=0;
+  if(p.style.imgOffY==null)p.style.imgOffY=0;
+  if(!p.scrimV2){p.style.textScrim=false;p.scrimV2=true;} /* 文字背景は透明が既定 */
   if(!p.descSize)p.descSize={w:140,h:100};
   if(!p.style.descLayout)p.style.descLayout=defaultDescLayout();
   DESC_KEYS.forEach(k=>{const d=defaultDescLayout()[k];const L=p.style.descLayout[k];
@@ -859,7 +922,6 @@ function curLayout(){return modeLayout(proj().style,editMode);}
 function curSize(){return (editMode==="desc")?proj().descSize:proj().size;}
 function visIn(st,key,mode){
   if(mode==="desc")return true;
-  if(key==="yomigana"&&st.yomiRuby!==false)return false; // ルビ連動時は独立項目を出さない
   return isVisibleRaw(st,key);
 }
 function defaultDescLayout(){return {
@@ -878,6 +940,7 @@ function migrateWork(w){
   if((w.period==null||w.period==="")&&w.year)w.period=w.year;
   FIELDS.forEach(f=>{if(w[f.key]==null)w[f.key]="";});if(w.image==null)w.image="";
   if(!w.charFmt||typeof w.charFmt!=="object")w.charFmt={};
+  if(!w.ruby||typeof w.ruby!=="object")w.ruby={};
   return w;
 }
 
@@ -1061,48 +1124,48 @@ function appendRunsWithOverrides(parentEl,text,startIndex,ranges){
     i=j;
   }
 }
-/* 作品名＋よみがなのルビ連動描画（スペース区切りでブロック対応、文字単位で漢字に追従） */
-function buildTitleWithRuby(el,title,yomi,ranges,bracket){
-  ranges=ranges||[];
-  if(bracket)el.appendChild(document.createTextNode("《"));
-  const t=String(title);
-  const tParts=t.split(/[\s\u3000]+/).filter(x=>x!=="");
-  const yParts=String(yomi).split(/[\s\u3000]+/).filter(x=>x!=="");
-  const matched=tParts.length===yParts.length&&tParts.length>0;
-  function emitSep(tok,idx){
-    // 区切り（スペース・改行）をそのまま出す。改行は<br>に。
-    const pieces=tok.split("\n");
-    pieces.forEach((p2,i)=>{
-      if(i>0)el.appendChild(document.createElement("br"));
-      if(p2)el.appendChild(document.createTextNode(p2));
+/* ===== ルビ注釈（Word風）：文字範囲ごとに任意のルビを振る ===== */
+const RUBY_KEYS=["title","catchcopy","description"];
+function rubyRangesFor(work,key){return (work&&work.ruby&&work.ruby[key])||[];}
+/* text全体を、cf字間runs＋ルビ注釈込みで el に描画する（改行は<br>） */
+function buildAnnotated(el,text,cfRanges,rubyRanges){
+  const s=String(text);
+  const rr=(rubyRanges||[]).filter(r=>r&&r.end>r.start&&r.start<s.length).slice().sort((a,b)=>a.start-b.start);
+  cfRanges=cfRanges||[];
+  function emitPlain(from,to){
+    if(to<=from)return;
+    const chunk=s.slice(from,to);
+    let idx=from;
+    chunk.split("\n").forEach((line,li)=>{
+      if(li>0){el.appendChild(document.createElement("br"));idx+=1;}
+      appendRunsWithOverrides(el,line,idx,cfRanges);idx+=line.length;
     });
   }
-  if(!matched){
-    const ruby=document.createElement("ruby");
-    let idx=0;
-    t.split(/([\s\u3000]+)/).forEach(tok=>{
-      if(tok==="")return;
-      if(/^[\s\u3000]+$/.test(tok)){
-        const pieces=tok.split("\n");
-        pieces.forEach((p2,i)=>{if(i>0)ruby.appendChild(document.createElement("br"));if(p2)ruby.appendChild(document.createTextNode(p2));});
-        idx+=tok.length;return;
+  let pos=0;
+  rr.forEach(r=>{
+    const st=Math.max(pos,r.start),en=Math.min(s.length,r.end);
+    if(st>=en)return;
+    if(st>pos)emitPlain(pos,st);
+    const base=s.slice(st,en).replace(/\n/g," ");
+    const parts=String(r.text||"").trim().split(/[\s\u3000]+/).filter(Boolean);
+    if(parts.length===base.length&&base.length>1){
+      /* モノルビ：1文字ずつ対応 */
+      for(let i=0;i<base.length;i++){
+        const ruby=document.createElement("ruby");ruby.className="ann";
+        appendRunsWithOverrides(ruby,base[i],st+i,cfRanges);
+        const rt=document.createElement("rt");rt.textContent=parts[i];ruby.appendChild(rt);
+        el.appendChild(ruby);
       }
-      appendRunsWithOverrides(ruby,tok,idx,ranges);idx+=tok.length;
-    });
-    const rt=document.createElement("rt");rt.textContent=String(yomi).trim();ruby.appendChild(rt);
-    el.appendChild(ruby);
-  }else{
-    let idx=0,pi=0;
-    t.split(/([\s\u3000]+)/).forEach(tok=>{
-      if(tok==="")return;
-      if(/^[\s\u3000]+$/.test(tok)){emitSep(tok,idx);idx+=tok.length;return;}
-      const ruby=document.createElement("ruby");
-      appendRunsWithOverrides(ruby,tok,idx,ranges);
-      const rt=document.createElement("rt");rt.textContent=yParts[pi++]||"";ruby.appendChild(rt);
-      el.appendChild(ruby);idx+=tok.length;
-    });
-  }
-  if(bracket)el.appendChild(document.createTextNode("》"));
+    }else{
+      /* グループルビ（割付は全体設定に従う。既定：均等割付） */
+      const ruby=document.createElement("ruby");ruby.className="ann";
+      appendRunsWithOverrides(ruby,base,st,cfRanges);
+      const rt=document.createElement("rt");rt.textContent=String(r.text||"").trim();ruby.appendChild(rt);
+      el.appendChild(ruby);
+    }
+    pos=en;
+  });
+  emitPlain(pos,s.length);
 }
 /* 通常項目：改行対応＋字間オーバーライド対応のリッチテキスト描画（追加のみ、クリアはしない） */
 function buildRichText(el,text,ranges){
@@ -1157,11 +1220,17 @@ function buildCard(work,st,size,opts){
   card.style.setProperty("--bg-opacity",String(bgOpacity));
   if(st.bgAccent){const [r,g,b]=cmykToRgb(st.bgAccent.c,st.bgAccent.m,st.bgAccent.y,st.bgAccent.k);card.style.setProperty("--bg-accent",`rgb(${r},${g},${b})`);}
   if(st.textColor){const [r,g,b]=cmykToRgb(st.textColor.c,st.textColor.m,st.textColor.y,st.textColor.k);card.style.color=`rgb(${r},${g},${b})`;}
+  card.style.setProperty("--ruby-offset",((st.rubyOffset==null?2:st.rubyOffset))+"pt");
+  if(st.rubySizePt)card.style.setProperty("--ruby-size",st.rubySizePt+"pt");
+  card.style.setProperty("--ruby-ls",((st.rubyLs||0))+"em");
+  if(st.rubyFont==="gothic")card.style.setProperty("--ruby-font",GOTHIC);
+  else if(st.rubyFont==="mincho")card.style.setProperty("--ruby-font",MINCHO);
+  card.style.setProperty("--ruby-align",st.rubyAlign||"space-around");
   if(mode!=="desc"&&work.image){const im=document.createElement("div");im.className="cap-img";
     im.style.backgroundImage=`url("${work.image}")`;
     if(st.imgFit==="custom"){
       im.style.backgroundSize=(st.imgScale||100)+"% auto";
-      im.style.backgroundPosition=(st.imgPosX==null?50:st.imgPosX)+"% "+(st.imgPosY==null?50:st.imgPosY)+"%";
+      im.style.backgroundPosition=`calc(50% + ${st.imgOffX||0}mm) calc(50% + ${st.imgOffY||0}mm)`;
     }else{
       im.style.backgroundSize=(st.imgFit==="cover")?"cover":"contain";
     }
@@ -1184,20 +1253,19 @@ function buildCard(work,st,size,opts){
     el.style.textAlign=(L.align==="inherit")?st.align:L.align;
     if(L.color){const [r,g,b]=cmykToRgb(L.color.c,L.color.m,L.color.y,L.color.k);el.style.color=`rgb(${r},${g},${b})`;}
     const ranges=(work.charFmt&&work.charFmt[it.key])||[];
+    const rubyR=RUBY_KEYS.includes(it.key)?rubyRangesFor(work,it.key):[];
     if(!val){
       el.textContent="（"+it.label+"）";
     }else if(it.key==="title"){
-      const useRuby = mode!=="desc" && st.yomiRuby!==false && st.show.yomigana!==false && (work.yomigana||"").trim()!=="";
-      if(useRuby){
-        buildTitleWithRuby(el,work.title||"",work.yomigana,ranges,st.bracket);
-      }else{
-        if(st.bracket)el.appendChild(document.createTextNode("《"));
-        buildRichText(el,work.title||"",ranges);
-        if(st.bracket)el.appendChild(document.createTextNode("》"));
-      }
+      if(st.bracket)el.appendChild(document.createTextNode("《"));
+      buildAnnotated(el,work.title||"",ranges,rubyR);
+      if(st.bracket)el.appendChild(document.createTextNode("》"));
     }else if(mode==="desc"&&it.key==="description"){
-      buildDescContent(el,val,ranges);
+      if(rubyR.length){buildAnnotated(el,val,ranges,rubyR);}
+      else{buildDescContent(el,val,ranges);}
       if(L.h!=null){el.classList.add("fit-desc");el.dataset.basels=String(L.ls||0);el.dataset.wmm=String(L.w);}
+    }else if(rubyR.length){
+      buildAnnotated(el,val,ranges,rubyR);
     }else{
       buildRichText(el,val,ranges);
     }
@@ -1353,8 +1421,8 @@ function refreshLayoutControls(){const p=proj();ensureLayout(p);const st=p.style
   $$('input[name=imgFit]').forEach(r=>r.checked=(r.value===st.imgFit));
   setRange("imgOpacity","oImgOp",Math.round((st.imgOpacity==null?1:st.imgOpacity)*100),"%");
   setRange("imgScale","oImgScale",st.imgScale==null?100:st.imgScale,"%");
-  setRange("imgPosX","oImgPosX",st.imgPosX==null?50:st.imgPosX,"%");
-  setRange("imgPosY","oImgPosY",st.imgPosY==null?50:st.imgPosY,"%");
+  setRange("imgOffX","oImgOffX",st.imgOffX==null?0:st.imgOffX,"mm");
+  setRange("imgOffY","oImgOffY",st.imgOffY==null?0:st.imgOffY,"mm");
   refreshImgCustomRow();
   setRange("bgOpacity","oBgOp",Math.round((st.bgOpacity==null?1:st.bgOpacity)*100),"%");
   $("#textScrim").checked=st.textScrim;
@@ -1365,7 +1433,11 @@ function refreshLayoutControls(){const p=proj();ensureLayout(p);const st=p.style
   $("#shColl").checked=st.show.collection;$("#shCatch").checked=st.show.catch;$("#shTitleEn").checked=st.show.titleEn;
   $("#shOriginEn").checked=st.show.originEn;$("#shPeriodEn").checked=st.show.periodEn;$("#shCollEn").checked=st.show.collectionEn;$("#shDesc").checked=st.show.desc;
   $("#shYomigana").checked=st.show.yomigana;
-  $$('input[name=yomiMode]').forEach(r=>r.checked=(r.value===(st.yomiRuby!==false?"ruby":"item")));
+  setRange("rubyOffset","oRubyOffset",st.rubyOffset==null?2:st.rubyOffset,"pt");
+  $("#rubySizePt").value=st.rubySizePt||"";
+  $("#rubyFont").value=st.rubyFont||"inherit";
+  setRange("rubyLs","oRubyLs",st.rubyLs||0,"em");
+  $("#rubyAlign").value=st.rubyAlign||"space-around";
   updateColorSwatches();
   renderPreviewSelect();}
 function updateColorSwatches(){
@@ -1401,17 +1473,41 @@ $("#sizePreset").addEventListener("change",e=>{const p=proj(),preset=SIZE_PRESET
   if(editMode!=="desc"){p.size.preset="custom";$("#sizePreset").value="custom";$("#customSizeRow").style.display="";}
   userZoom=null;save();renderEditor();}));
 $$('input[name=imgFit]').forEach(r=>r.addEventListener("change",()=>{proj().style.imgFit=r.value;refreshImgCustomRow();save();renderEditor();}));
-$$('input[name=yomiMode]').forEach(r=>r.addEventListener("change",()=>{proj().style.yomiRuby=(r.value==="ruby");save();renderEditor();}));
+bindRange("rubyOffset","oRubyOffset",v=>proj().style.rubyOffset=v,"pt");
+$("#rubySizePt").addEventListener("input",e=>{const v=parseFloat(e.target.value);proj().style.rubySizePt=isNaN(v)?null:v;save();renderEditor();});
+$("#rubyFont").addEventListener("change",e=>{proj().style.rubyFont=e.target.value;save();renderEditor();});
+bindRange("rubyLs","oRubyLs",v=>proj().style.rubyLs=v,"em");
+$("#rubyAlign").addEventListener("change",e=>{proj().style.rubyAlign=e.target.value;save();renderEditor();});
 $("#textScrim").addEventListener("change",e=>{proj().style.textScrim=e.target.checked;save();renderEditor();});
 $$('input[name=fontKind]').forEach(r=>r.addEventListener("change",()=>{proj().style.font=r.value;save();renderEditor();}));
 function bindRange(id,out,setter,unit){$("#"+id).addEventListener("input",e=>{const v=+e.target.value;setter(v);$("#"+out).textContent=v+(unit?" "+unit:"");save();renderEditor();});}
 $("#imgOpacity").addEventListener("input",e=>{const v=+e.target.value;proj().style.imgOpacity=v/100;$("#oImgOp").textContent=v+"%";save();renderEditor();});
 $("#bgOpacity").addEventListener("input",e=>{const v=+e.target.value;proj().style.bgOpacity=v/100;$("#oBgOp").textContent=v+"%";save();renderEditor();});
 function refreshImgCustomRow(){const custom=(proj().style.imgFit==="custom");$$("#imgCustomRows .row-ctl").forEach(el=>el.style.opacity=custom?1:.4);
-  ["imgScale","imgPosX","imgPosY"].forEach(id=>{$("#"+id).disabled=!custom;});}
+  ["imgScale","imgOffX","imgOffY"].forEach(id=>{$("#"+id).disabled=!custom;});}
+function updateImgStatus(){
+  const w=currentWork();const st=$("#imgStatus");if(!st)return;
+  $("#btnImgImport").disabled=!w;$("#btnImgRemoveLayout").disabled=!(w&&w.image);
+  if(!w){st.textContent="（作品がありません）";return;}
+  const nm=oneLine(w.title||w.no||"（無題）");
+  st.textContent=w.image?`「${nm}」に画像が登録されています`:`「${nm}」：画像は未登録です`;
+}
+$("#btnImgImport").addEventListener("click",()=>{if(currentWork())$("#layoutImageInput").click();});
+$("#layoutImageInput").addEventListener("change",e=>{
+  const file=e.target.files[0];e.target.value="";if(!file)return;
+  const w=currentWork();if(!w)return;
+  loadImageScaled(file,1400,url=>{
+    if(!url){alert("画像を読み込めませんでした。PNG・JPEGなどの画像ファイルをお選びください。");return;}
+    w.image=url;save();renderEditor();renderList();updateImgStatus();
+  });
+});
+$("#btnImgRemoveLayout").addEventListener("click",()=>{
+  const w=currentWork();if(!w||!w.image)return;
+  w.image="";save();renderEditor();renderList();updateImgStatus();
+});
 bindRange("imgScale","oImgScale",v=>proj().style.imgScale=v,"%");
-bindRange("imgPosX","oImgPosX",v=>proj().style.imgPosX=v,"%");
-bindRange("imgPosY","oImgPosY",v=>proj().style.imgPosY=v,"%");
+bindRange("imgOffX","oImgOffX",v=>proj().style.imgOffX=v,"mm");
+bindRange("imgOffY","oImgOffY",v=>proj().style.imgOffY=v,"mm");
 bindRange("stLh","oLh",v=>proj().style.lh=v,"");
 bindRange("stPad","oPad",v=>proj().style.pad=v,"mm");
 [["shNo","no"],["shOrigin","origin"],["shPeriod","period"],["shColl","collection"],["shCatch","catch"],
@@ -1470,6 +1566,8 @@ function renderEditor(){
   holder.style.width=(size.w*MM2PX*z)+"px";holder.style.height=(size.h*MM2PX*z)+"px";
   holder.appendChild(cardEl);
   if(editMode==="desc")fitDescIn(cardEl);
+  updateImgStatus();
+  if(imgSel){const w2=currentWork();if(w2&&w2.image&&st.imgFit==="custom"&&editMode!=="desc")renderImgSel();else imgSel=false;}
   cardEl.addEventListener("pointerdown",onCanvasPointerDown);
   cardEl.addEventListener("dblclick",onCanvasDblClick);
   updateSelUI();checkOverflow();
@@ -1493,11 +1591,16 @@ function startInlineEdit(key){
   el.focus();
   const r=document.createRange();r.selectNodeContents(el);r.collapse(false);
   const sn=getSelection();sn.removeAllRanges();sn.addRange(r);
-  el.addEventListener("blur",finishInlineEdit,{once:true});
+  el.addEventListener("blur",inlineBlur);
   el.addEventListener("keydown",inlineKeys);
   document.addEventListener("selectionchange",onInlineSelectionChange);
 }
 function inlineKeys(e){ if(e.key==="Escape"){e.preventDefault();e.currentTarget.blur();} e.stopPropagation(); }
+function inlineBlur(e){
+  const pop=document.getElementById("charSpacingPopover");
+  if(e.relatedTarget&&pop&&pop.contains(e.relatedTarget))return; // ルビ入力欄などへ移っただけなら編集継続
+  finishInlineEdit();
+}
 function finishInlineEdit(){
   if(!inlineEditKey)return;
   const key=inlineEditKey;inlineEditKey=null;
@@ -1505,6 +1608,7 @@ function finishInlineEdit(){
   hideCharSpacingPopover();
   const el=itemEl(key);const w=currentWork();
   if(el&&w){
+    el.removeEventListener("blur",inlineBlur);
     let text=(el.innerText||"").replace(/\u00a0/g," ").replace(/\n+$/,"");
     w[key]=text;save();
   }
@@ -1536,6 +1640,8 @@ function resolveTextOffset(root,container,offset){
 let charSel=null; // {key,start,end,previewSpan}
 function onInlineSelectionChange(){
   if(!inlineEditKey)return;
+  const pop=$("#charSpacingPopover");
+  if(pop.classList.contains("show")&&pop.contains(document.activeElement))return; // ルビ欄など操作中は選択解除扱いにしない
   const el=itemEl(inlineEditKey);if(!el)return;
   const sel=getSelection();
   if(!sel||sel.rangeCount===0||sel.isCollapsed){hideCharSpacingPopover();return;}
@@ -1546,6 +1652,14 @@ function onInlineSelectionChange(){
   if(end<=start){hideCharSpacingPopover();return;}
   const w=currentWork();const existing=w&&w.charFmt&&w.charFmt[inlineEditKey]?w.charFmt[inlineEditKey].find(r=>r.start===start&&r.end===end):null;
   charSel={key:inlineEditKey,start,end,previewSpan:null};
+  const rubyRow=$("#csRubyRow"),rubyBtns=$("#csRubyBtns");
+  const rubyOK=RUBY_KEYS.includes(inlineEditKey);
+  rubyRow.style.display=rubyOK?"":"none";rubyBtns.style.display=rubyOK?"":"none";
+  if(rubyOK){
+    const anns=rubyRangesFor(w,inlineEditKey);
+    const hit=anns.find(r=>r.start<end&&r.end>start);
+    $("#rubyText").value=hit?hit.text:"";
+  }
   showCharSpacingPopover(range,existing?existing.ls:0);
 }
 function showCharSpacingPopover(range,initialLs){
@@ -1621,13 +1735,82 @@ $("#csReset").addEventListener("click",()=>{
   hideCharSpacingPopover();
 });
 $("#csClose").addEventListener("click",hideCharSpacingPopover);
+$("#rubyApply").addEventListener("mousedown",e=>e.preventDefault());
+$("#rubyRemove").addEventListener("mousedown",e=>e.preventDefault());
+function applyRubyFromPopover(){
+  if(!charSel)return;
+  const w=currentWork();if(!w)return;
+  const key=charSel.key;if(!RUBY_KEYS.includes(key))return;
+  if(!w.ruby)w.ruby={};if(!w.ruby[key])w.ruby[key]=[];
+  const text=$("#rubyText").value.trim();
+  w.ruby[key]=w.ruby[key].filter(r=>r.end<=charSel.start||r.start>=charSel.end);
+  if(text)w.ruby[key].push({start:charSel.start,end:charSel.end,text});
+  save();
+  finishInlineEdit(); // 確定して再描画（ルビ付きで表示）
+  hideCharSpacingPopover();
+}
+$("#rubyApply").addEventListener("click",applyRubyFromPopover);
+$("#rubyText").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();applyRubyFromPopover();}e.stopPropagation();});
+$("#rubyRemove").addEventListener("click",()=>{
+  if(!charSel)return;
+  const w=currentWork();if(!w)return;
+  const key=charSel.key;
+  if(w.ruby&&w.ruby[key]){
+    w.ruby[key]=w.ruby[key].filter(r=>r.end<=charSel.start||r.start>=charSel.end);
+    save();
+  }
+  finishInlineEdit();hideCharSpacingPopover();
+});
 
 let drag=null, marq=null;
+/* ===== 画像レイヤーの直接操作（自由モード時） ===== */
+let imgSel=false,imgDrag=null;
+function imgEl(){return cardEl?cardEl.querySelector(".cap-img"):null;}
+function renderImgSel(){
+  const im=imgEl();
+  if(cardEl)$$(".img-handle",cardEl).forEach(h=>h.remove());
+  if(!im)return;
+  im.classList.toggle("sel-img",imgSel);
+  if(!imgSel)return;
+  const size=curSize();const hs=3.4;
+  const d=document.createElement("div");d.className="img-handle";
+  d.style.left=(size.w-hs-1)+"mm";d.style.top=(size.h-hs-1)+"mm";d.style.width=hs+"mm";d.style.height=hs+"mm";
+  d.title="ドラッグで拡大・縮小";
+  d.addEventListener("pointerdown",onImgScaleDown);
+  cardEl.appendChild(d);
+}
+function clearImgSel(){if(imgSel){imgSel=false;renderImgSel();}}
+function onImgScaleDown(e){
+  e.stopPropagation();e.preventDefault();
+  const st=proj().style,size=curSize();const z=userZoom||editZoom;
+  const s0=st.imgScale||100,sx=e.clientX;
+  function move(ev){
+    const dxmm=(ev.clientX-sx)/(MM2PX*z);
+    st.imgScale=Math.max(10,Math.min(300,round1(s0+dxmm/size.w*100)));
+    const im=imgEl();if(im)im.style.backgroundSize=st.imgScale+"% auto";
+    setRange("imgScale","oImgScale",st.imgScale,"%");
+  }
+  function up(){window.removeEventListener("pointermove",move);save();}
+  window.addEventListener("pointermove",move);
+  window.addEventListener("pointerup",up,{once:true});
+}
+function onImgMove(e){
+  if(!imgDrag)return;
+  const st=proj().style;
+  st.imgOffX=round1(imgDrag.x0+(e.clientX-imgDrag.sx)/(MM2PX*imgDrag.z));
+  st.imgOffY=round1(imgDrag.y0+(e.clientY-imgDrag.sy)/(MM2PX*imgDrag.z));
+  const im=imgEl();
+  if(im)im.style.backgroundPosition=`calc(50% + ${st.imgOffX}mm) calc(50% + ${st.imgOffY}mm)`;
+  setRange("imgOffX","oImgOffX",st.imgOffX,"mm");
+  setRange("imgOffY","oImgOffY",st.imgOffY,"mm");
+}
+function onImgUp(){window.removeEventListener("pointermove",onImgMove);if(imgDrag){imgDrag=null;save();}}
 function onCanvasPointerDown(e){
   if(e.target.isContentEditable||e.target.closest('.editing-text'))return;
   const p=proj(),z=userZoom||editZoom;const holder=$("#editHolder");const rect=holder.getBoundingClientRect();
   const hit=e.target.closest(".cap-item");
   if(hit){
+    clearImgSel();
     const key=hit.dataset.item;
     if(e.shiftKey){ if(sel.has(key))sel.delete(key); else sel.add(key); }
     else if(!sel.has(key)){ sel.clear(); sel.add(key); }
@@ -1635,6 +1818,17 @@ function onCanvasPointerDown(e){
     drag={sx:e.clientX,sy:e.clientY,moved:false,z,pressedKey:key,shift:e.shiftKey,
       items:[...sel].map(k=>({k,x:curLayout()[k].x,y:curLayout()[k].y}))};
   }else{
+    const w0=currentWork(),st0=p.style;
+    if(w0&&w0.image&&st0.imgFit==="custom"&&editMode!=="desc"){
+      e.preventDefault();
+      sel.clear();updateSelUI();hidePanel();
+      imgSel=true;renderImgSel();
+      imgDrag={sx:e.clientX,sy:e.clientY,x0:st0.imgOffX||0,y0:st0.imgOffY||0,z};
+      window.addEventListener("pointermove",onImgMove);
+      window.addEventListener("pointerup",onImgUp,{once:true});
+      return;
+    }
+    clearImgSel();
     if(!e.shiftKey){sel.clear();updateSelUI();hidePanel();}
     marq={x0:e.clientX-rect.left,y0:e.clientY-rect.top,rect};
     const m=$("#marquee");m.style.display="block";m.style.left=marq.x0+"px";m.style.top=marq.y0+"px";m.style.width="0px";m.style.height="0px";
@@ -1672,8 +1866,9 @@ function onCanvasUp(){window.removeEventListener("pointermove",onCanvasMove);con
     marq=null;updateSelUI();if(sel.size)showPanel();else hidePanel();}
 }
 window.addEventListener("keydown",e=>{
-  if(e.key==="Escape"&&$("#tab-layout").classList.contains("active")&&sel.size){
-    sel.clear();updateSelUI();hidePanel();
+  if(e.key==="Escape"&&$("#tab-layout").classList.contains("active")){
+    if(sel.size){sel.clear();updateSelUI();hidePanel();}
+    clearImgSel();
   }
 });
 function updateSelUI(){
