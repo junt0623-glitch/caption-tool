@@ -320,6 +320,11 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 .cs-foot{display:flex;justify-content:space-between;gap:6px;margin-top:9px}
 .cs-foot button{font-size:11.5px;padding:4px 7px}
 .cap-item .cf,.cap-item .cf-preview{display:inline}
+/* 確認ダイアログ */
+.confirm-dlg{border:none;border-radius:8px;padding:20px 22px;max-width:400px;
+  box-shadow:0 16px 40px rgba(30,26,20,.32);font-size:13.5px;line-height:1.7}
+.confirm-dlg::backdrop{background:rgba(30,26,20,.35)}
+.confirm-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
 /* 画像レイヤーの直接操作 */
 .cap-img.sel-img{outline:2px dashed var(--shu);outline-offset:-2px}
 .img-handle{position:absolute;background:var(--shu);border:1.5px solid #fff;border-radius:50%;
@@ -661,6 +666,14 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 </dialog>
 
 <!-- ヘルプ -->
+<dialog id="confirmDialog" class="confirm-dlg">
+  <p id="confirmMsg" style="white-space:pre-wrap"></p>
+  <div class="confirm-foot">
+    <button type="button" class="btn small" onclick="document.getElementById('confirmDialog').close()">キャンセル</button>
+    <button type="button" class="btn small shu" id="confirmOk">実行する</button>
+  </div>
+</dialog>
+
 <dialog id="helpDialog">
   <div class="dlg-head"><h3>使い方</h3><button class="btn ghost small" data-close="helpDialog">✕ 閉じる</button></div>
   <div class="dlg-body help-body">
@@ -1026,6 +1039,26 @@ window.addEventListener("beforeunload",flushSave);
 window.addEventListener("pagehide",flushSave);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")flushSave();});
 function proj(){return store.projects.find(p=>p.id===store.currentId);}
+/* ===== 確認ダイアログ（ブラウザ標準confirm()は抑制・非表示になることがあるため使わない） ===== */
+function askConfirm(message,okLabel){
+  return new Promise(resolve=>{
+    const dlg=document.getElementById("confirmDialog");
+    document.getElementById("confirmMsg").textContent=message;
+    const okBtn=document.getElementById("confirmOk");
+    okBtn.textContent=okLabel||"実行する";
+    let done=false;
+    function finish(v){ if(done)return; done=true;
+      okBtn.removeEventListener("click",onOk);
+      dlg.removeEventListener("close",onClose);
+      dlg.close(); resolve(v);
+    }
+    function onOk(){finish(true);}
+    function onClose(){finish(false);}
+    okBtn.addEventListener("click",onOk);
+    dlg.addEventListener("close",onClose);
+    dlg.showModal();
+  });
+}
 
 function sampleWorks(){
   const a=newWork();Object.assign(a,{no:"1-01",section:"第一章　名所の景",title:"東海道五十三次之内　庄野　白雨",
@@ -1289,8 +1322,9 @@ $("#projectSelect").addEventListener("change",e=>{store.currentId=e.target.value
 $("#btnNewProject").addEventListener("click",()=>{const name=prompt("新しい展覧会の名称","新しい展覧会");if(name===null)return;
   const p=newProject(name.trim()||"新しい展覧会");store.projects.push(p);store.currentId=p.id;save();renderAll();});
 $("#btnRenameProject").addEventListener("click",()=>{const p=proj();const name=prompt("展覧会の名称",p.name);if(name===null)return;p.name=name.trim()||p.name;save();renderProjectSelect();});
-$("#btnDeleteProject").addEventListener("click",()=>{const p=proj();
-  if(!confirm(`展覧会「${p.name}」を削除します。登録した${p.works.length}件の作品も消えます。よろしいですか？\n（心配な場合は先に「書き出し」でバックアップしてください）`))return;
+$("#btnDeleteProject").addEventListener("click",async()=>{const p=proj();
+  const ok=await askConfirm(`展覧会「${p.name}」を削除します。登録した${p.works.length}件の作品も消えます。よろしいですか？\n（心配な場合は先に「書き出し」でバックアップしてください）`,"削除する");
+  if(!ok)return;
   store.projects=store.projects.filter(x=>x.id!==p.id);if(!store.projects.length)store.projects.push(newProject());
   store.currentId=store.projects[0].id;save();renderAll();});
 
@@ -1347,8 +1381,9 @@ $("#btnRemoveImage").addEventListener("click",()=>{editImage="";setThumb();});
 $("#btnSaveWork").addEventListener("click",()=>{const p=proj();const w=editingIndex>=0?p.works[editingIndex]:newWork();
   FIELDS.forEach(f=>{w[f.key]=$("#f_"+f.key).value.trim();});w.image=editImage;if(editingIndex<0)p.works.push(w);
   save();$("#workDialog").close();renderSectionFilter();renderList();renderPreviewSelect();renderEditor();});
-$("#btnDeleteWork").addEventListener("click",()=>{if(editingIndex<0)return;const w=proj().works[editingIndex];
-  if(!confirm(`作品「${w.title||w.no||"（無題）"}」を削除します。よろしいですか？`))return;
+$("#btnDeleteWork").addEventListener("click",async()=>{if(editingIndex<0)return;const w=proj().works[editingIndex];
+  const ok=await askConfirm(`作品「${w.title||w.no||"（無題）"}」を削除します。よろしいですか？`,"削除する");
+  if(!ok)return;
   proj().works.splice(editingIndex,1);save();$("#workDialog").close();renderSectionFilter();renderList();renderPreviewSelect();renderEditor();});
 
 /* ===== 取り込み ===== */
@@ -1394,10 +1429,13 @@ function buildMapping(){impRows=parsePaste($("#importText").value);const area=$(
   html+="</table>";area.innerHTML=html;
   $$("select[data-col]",area).forEach(s=>s.addEventListener("change",()=>{impMap[+s.dataset.col]=s.value;updateImpCount();}));updateImpCount();}
 function updateImpCount(){const useHeader=$("#impHeader").checked;const n=Math.max(0,impRows.length-(useHeader?1:0));$("#impCount").textContent=n?`${n}件の作品を取り込みます`:"";}
-function doImport(replace){if(!impRows.length){alert("先にデータを貼り付けてください。");return;}
+async function doImport(replace){if(!impRows.length){alert("先にデータを貼り付けてください。");return;}
   if(!impMap.some(m=>m)){alert("少なくとも1列は取り込み先を選んでください。");return;}
   const useHeader=$("#impHeader").checked;const rows=impRows.slice(useHeader?1:0);if(!rows.length){alert("取り込める行がありません。");return;}
-  if(replace&&proj().works.length){if(!confirm(`現在の${proj().works.length}件をすべて消して、貼り付けた${rows.length}件に置き換えます。よろしいですか？`))return;}
+  if(replace&&proj().works.length){
+    const ok=await askConfirm(`現在の${proj().works.length}件をすべて消して、貼り付けた${rows.length}件に置き換えます。よろしいですか？`,"置き換える");
+    if(!ok)return;
+  }
   const works=rows.map(cols=>{const w=newWork();impMap.forEach((key,c)=>{if(key&&cols[c]!=null)w[key]=String(cols[c]).trim();});return w;});
   if(replace)proj().works=works;else proj().works.push(...works);
   save();$("#importDialog").close();renderSectionFilter();renderList();renderPreviewSelect();renderEditor();alert(`${works.length}件を取り込みました。`);}
@@ -1517,9 +1555,10 @@ bindRange("stPad","oPad",v=>proj().style.pad=v,"mm");
     if(!e.target.checked){const it=ITEMS.find(x=>x.show===key);if(it)sel.delete(it.key);}
     save();renderEditor();});});
 $("#stBracket").addEventListener("change",e=>{proj().style.bracket=e.target.checked;save();renderEditor();});
-$("#btnResetLayout").addEventListener("click",()=>{
+$("#btnResetLayout").addEventListener("click",async()=>{
   const nm=(editMode==="desc")?"解説":"キャプション";
-  if(!confirm(nm+"面の配置・項目ごとのサイズを初期状態に戻します。よろしいですか？"))return;
+  const ok=await askConfirm(nm+"面の配置・項目ごとのサイズを初期状態に戻します。よろしいですか？","初期状態に戻す");
+  if(!ok)return;
   if(editMode==="desc")proj().style.descLayout=defaultDescLayout();
   else proj().style.layout=defaultLayout(proj().size,proj().style);
   sel.clear();save();renderEditor();});
