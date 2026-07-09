@@ -1,0 +1,13 @@
+{
+  "name": "caption-tool-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "展覧会キャプション工房 の回帰テスト（Playwrightでindex.htmlを直接開いて動作確認する）",
+  "scripts": {
+    "test": "node tests/run-all.js",
+    "test:one": "node"
+  },
+  "dependencies": {
+    "playwright": "^1.56.0"
+  }
+}
