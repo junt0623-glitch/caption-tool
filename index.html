@@ -31,6 +31,7 @@ header.app-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:
 .head-ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .head-ctrl select{max-width:220px}
 .btn{background:var(--white);border:1px solid var(--line);border-radius:3px;padding:6px 12px;font-size:13px;color:var(--ink)}
+.btn.on{background:var(--shu);color:#fff;border-color:var(--shu)}
 .btn:hover{border-color:var(--sub)}
 .btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .btn.primary:hover{background:#3a362e}
@@ -117,6 +118,12 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 .cap-card.plain{box-shadow:none}
 .cap-img{position:absolute;inset:0;background-position:center;background-repeat:no-repeat;z-index:0}
 .cap-item{position:absolute;z-index:2;white-space:pre-wrap;overflow-wrap:break-word;box-sizing:border-box}
+/* 縦書きモード：カード全体を縦書きにし、英字項目（作品名英訳・産地英訳など）だけは横書きのまま固定する */
+.cap-card.vertical{writing-mode:vertical-rl;text-orientation:mixed}
+.cap-card.vertical .cap-item-en{writing-mode:horizontal-tb;text-orientation:mixed}
+/* 第4段階：縦中横（数字・英字混在部分の横向き結合）。text-combine-upright:digits は環境により未対応のため、
+   数字も英字と同じ span.tcy（text-combine-upright:all）方式で描画時に自動検出して適用する。 */
+.cap-item .tcy{text-combine-upright:all;-webkit-text-combine:horizontal}
 .cap-item.scrim{background:rgba(255,255,255,.74);padding:.5mm 1mm}
 .cap-item.ph{color:#B7AF9E}
 .cap-card .it-title{font-weight:600}
@@ -137,6 +144,7 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 /* 個別編集モード：体裁コントロールを操作不可に */
 #tab-layout.one-mode .lock-layout{opacity:.4;pointer-events:none}
 #tab-layout.one-mode #alignBar{opacity:.4;pointer-events:none}
+#tab-layout.style-one-mode .lock-style{opacity:.4;pointer-events:none}
 .scope-tag{font-size:11px;font-weight:400;margin-left:8px;padding:2px 7px;border-radius:3px;vertical-align:middle}
 .scope-master{background:#F5DCA0;color:#6B4E1E}
 .scope-one{background:#E6E2D6;color:var(--sub)}
@@ -409,9 +417,11 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     <div id="bulkBar" style="display:none">
       <span id="bulkCount" class="note" style="font-weight:600;color:var(--ink)"></span>
       <button type="button" class="btn small shu" id="bulkSetImage">選択した作品に画像を一括登録</button>
+      <button type="button" class="btn small shu" id="bulkSetImageOv" title="選択した作品それぞれに画像を登録し、大きさ・位置・透明度・背景もマスターから切り離してこの作品専用にします">選択した作品に画像を個別登録（大きさ・位置・透明度・背景も上書き）</button>
       <button type="button" class="btn small" id="bulkClearImage">選択した作品の画像を外す</button>
       <button type="button" class="btn small" id="bulkDeselect">選択を解除</button>
       <input type="file" id="bulkImageInput" accept="image/png,image/jpeg,image/gif,image/webp,image/*" hidden>
+      <input type="file" id="bulkImageInputOv" accept="image/png,image/jpeg,image/gif,image/webp,image/*" hidden>
     </div>
     <div id="worksListArea"></div>
     <p class="note" style="margin-top:10px">行の「▲▼」で並べ替え、「編集」で内容と画像の修正ができます。並び順がそのまま印刷順になります。</p>
@@ -461,6 +471,10 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
         <label class="chk" style="display:inline-flex;margin-left:6px"><input type="checkbox" id="ovToggle">この作品だけ配置を上書きする</label>
         <button type="button" class="btn small" id="ovReset" style="display:none;margin-left:6px">上書きを解除してマスターに戻す</button>
         <span id="ovStatus" style="margin-left:6px"></span>
+        <br>
+        <label class="chk" style="display:inline-flex;margin-left:6px;margin-top:4px"><input type="checkbox" id="imgOvToggle">この作品だけ画像・背景を上書きする</label>
+        <button type="button" class="btn small" id="imgOvReset" style="display:none;margin-left:6px">画像・背景の上書きを解除してマスターに戻す</button>
+        <span id="imgOvStatus" style="margin-left:6px"></span>
       </div>
       <div id="editorViewport">
         <div class="edit-holder editing" id="editHolder"></div>
@@ -474,9 +488,9 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
         <div class="prow"><label>文字間</label><input type="range" id="ipLs" min="-0.05" max="0.6" step="0.01"><output id="ipLsO"></output></div>
         <div class="prow"><label>行揃え</label>
           <select id="ipAlign"><option value="inherit">全体に従う</option><option value="left">左</option><option value="center">中央</option><option value="right">右</option><option value="justify">両端揃え</option></select></div>
-        <div class="prow"><label>幅</label><input type="number" id="ipW" min="8" max="300" step="1"><span style="font-size:11px;color:var(--sub)">mm</span></div>
-        <div class="prow"><label>高さ</label><input type="number" id="ipH" min="4" max="400" step="1" disabled><span style="font-size:11px;color:var(--sub)">mm</span></div>
-        <div class="prow"><label></label><label class="chk" style="margin:0"><input type="checkbox" id="ipAutoH">高さを自動（内容に合わせる）</label></div>
+        <div class="prow"><label id="ipWLabel">幅</label><input type="number" id="ipW" min="8" max="300" step="1"><span style="font-size:11px;color:var(--sub)">mm</span></div>
+        <div class="prow"><label id="ipHLabel">高さ</label><input type="number" id="ipH" min="4" max="400" step="1" disabled><span style="font-size:11px;color:var(--sub)">mm</span></div>
+        <div class="prow"><label></label><label class="chk" style="margin:0"><input type="checkbox" id="ipAutoH"><span id="ipAutoHLabel">高さを自動（内容に合わせる）</span></label></div>
         <div class="prow"><label>文字色</label><button type="button" class="swatch-sw small" id="ipColorSw"><span class="sw-chip"></span><span class="sw-txt">全体に従う</span></button></div>
         <p class="note" style="margin-top:2px">四隅・辺のハンドルをドラッグしても拡大・縮小できます。</p>
       </div>
@@ -504,13 +518,16 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
             <div class="ctl"><label class="lbl">行間</label><div class="row"><input type="range" id="stLh" min="1.05" max="2.4" step="0.05"><output id="oLh"></output></div></div>
             <div class="ctl"><label class="lbl">初期配置の余白</label><div class="row"><input type="range" id="stPad" min="2" max="24" step="0.5"><output id="oPad"></output></div></div>
             <label class="chk"><input type="checkbox" id="stBracket">作品名を《　》で囲む</label>
+            <label class="chk" style="display:block;margin-top:6px"><input type="checkbox" id="stVertical">縦書き（試験的）</label>
+            <label class="chk" style="display:block;margin-top:4px;margin-left:18px" id="stTcyDigitsRow"><input type="checkbox" id="stTcyDigits">数字を自動で横向きに（縦中横・最大4桁）</label>
+            <p class="note" style="margin-top:4px">作品名（英訳）・産地（英訳）など英字項目は横書きのまま表示されます。項目の幅・整列は横書き用の初期値のままなので、縦書きに合わせて「幅」を個別に調整してください。</p>
           </fieldset>
         </div>
         <div>
-          <fieldset class="grp lock-layout"><legend>背景デザイン（基本ホワイト）</legend>
+          <fieldset class="grp lock-style"><legend>背景デザイン（基本ホワイト）</legend>
             <div class="bg-picker" id="bgPicker"></div>
           </fieldset>
-          <fieldset class="grp lock-layout"><legend>色と透明度（CMYK）</legend>
+          <fieldset class="grp lock-style"><legend>色と透明度（CMYK）</legend>
             <div class="ctl swatch-row">
               <label class="lbl">文字色</label>
               <button type="button" class="swatch-sw" id="swTextColor"><span class="sw-chip"></span><span class="sw-txt">既定（黒）</span></button>
@@ -532,10 +549,13 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
               <div class="row" style="flex-wrap:wrap;gap:6px;align-items:center">
                 <button type="button" class="btn small" id="btnImgImport">画像を取り込む（PNG・JPEG）</button>
                 <button type="button" class="btn small" id="btnImgRemoveLayout">画像を外す</button>
+                <button type="button" class="btn small ghost" id="btnImgSelect" title="プレビュー上で画像を選択します。文字項目の上にカーソルがあっても、選択中はホイールで拡大縮小できます">🖼 プレビューで画像を選択</button>
               </div>
               <output id="imgStatus" class="note" style="display:block;margin-top:4px"></output>
+              <div class="note" id="imgHintSelected" style="display:none;color:var(--shu);margin-top:2px">画像を選択中：プレビュー上でホイール（トラックパッドのピンチ）で拡大縮小、ドラッグで移動できます。他の項目をクリックすると選択解除されます。</div>
               <input type="file" id="layoutImageInput" accept="image/png,image/jpeg,image/gif,image/webp,image/*" hidden>
             </div>
+            <div class="lock-style">
             <div class="ctl"><label class="lbl">画像の合わせ方</label><div class="row" style="flex-wrap:wrap">
               <label class="chk"><input type="radio" name="imgFit" value="contain">全体を収める</label>
               <label class="chk"><input type="radio" name="imgFit" value="cover">枠いっぱい</label>
@@ -546,6 +566,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
               <div class="ctl row-ctl"><label class="lbl">位置ずらし（縦）</label><div class="row"><input type="range" id="imgOffY" min="-150" max="150" step="1"><output id="oImgOffY"></output></div></div>
             </div>
             <div class="ctl"><label class="lbl">画像の濃さ（透明度）</label><div class="row"><input type="range" id="imgOpacity" min="0" max="100" step="1"><output id="oImgOp"></output></div></div>
+            </div>
             <label class="chk"><input type="checkbox" id="textScrim">文字の下に白い敷きを入れる</label>
             <p class="note" style="margin-top:6px">画像は「見本にする作品」に登録されます（作品台帳の「編集」画面からも登録できます）。「自由」を選ぶと、<b>キャンバス上の画像を直接ドラッグで移動、右下の橙のハンドルで拡大・縮小</b>できます（Escで選択解除）。</p>
           </fieldset>
@@ -763,6 +784,9 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
   <div class="cs-head"><span>選択文字の字間</span><output id="csVal">+0.00em</output></div>
   <div class="cs-track" id="csTrack"><div class="cs-fill" id="csFill"></div><div class="cs-handle" id="csHandle"></div></div>
   <div class="cs-ruby" id="csRubyRow"><label>ルビ</label><input type="text" id="rubyText" placeholder="よみ（文字ごと＝スペース区切り）"></div>
+  <div class="cs-foot" id="csTcyRow" style="display:none">
+    <button class="btn small" id="csTcyToggle">縦中横にする</button>
+  </div>
   <div class="cs-foot" id="csRubyBtns">
     <button class="btn small" id="rubyRemove">ルビ解除</button>
     <button class="btn small primary" id="rubyApply">ルビを適用</button>
@@ -907,7 +931,7 @@ const PRESET_FILL={white:[255,255,255],cream:[251,247,238],hairline:[255,255,255
 
 /* ===== 既定値 ===== */
 function defaultStyle(){
-  return {font:"mincho",align:"left",lh:1.45,pad:8,bracket:false,
+  return {font:"mincho",align:"left",lh:1.45,pad:8,bracket:false,vertical:false,tcyDigits:true,
     bg:"white",imgFit:"contain",imgOpacity:1,imgScale:100,imgOffX:0,imgOffY:0,textScrim:false,
     textColor:null,bgFill:null,bgAccent:null,bgOpacity:1,
     rubyOffset:2,rubySizePt:null,rubyLs:0,rubyFont:"inherit",rubyAlign:"space-around",
@@ -929,8 +953,44 @@ function defaultLayout(size,style){
   });
   return L;
 }
+/* 縦書き用の初期配置（第3段階）。
+   設計方針：カードを左右に分割し、右側＝和文項目（英字を除く全項目、descriptionも含む）を右→左の縦列で、
+   左側＝英字4項目（常に横書き）を上→下の帯で配置する。列の位置計算は横書き版defaultLayoutのY積み上げロジックを
+   そのままX軸に転用（列の「行の長さ」＝カード使用可能高さHで統一、列幅の見積りはフォントサイズ×行間）。
+   あくまで初期配置の見積りであり、実際の文字量によるはみ出しは横書き版と同様チェック機能で警告される。 */
+function defaultLayoutVertical(size,style){
+  const pad=style.pad||8;
+  const W=Math.max(16,+(size.w-pad*2).toFixed(1));
+  const H=Math.max(16,+(size.h-pad*2).toFixed(1));
+  const lh=style.lh||1.45;
+  const L={};
+  const enW=Math.max(24,+(W*0.35).toFixed(1));
+  let y=pad;
+  ITEMS.filter(it=>it.group==="en").forEach(it=>{
+    L[it.key]={x:+pad.toFixed(1),y:+y.toFixed(1),w:enW,h:null,font:"inherit",size:it.size,ls:0,align:"inherit",color:null};
+    y += it.size*PT2MM*lh + 1.1;
+  });
+  const jpMinX=+(pad+enW+2.2).toFixed(1);
+  let xRight=size.w-pad;
+  ITEMS.filter(it=>it.group!=="en").forEach(it=>{
+    if(it.key==="catchcopy") xRight-=1.0;
+    if(it.key==="description") xRight-=2.2;
+    const pitch=it.size*PT2MM*lh+1.1;
+    const colW=Math.max(4,+pitch.toFixed(1));
+    const x=Math.max(jpMinX,+(xRight-colW).toFixed(1));
+    L[it.key]={x:x,y:+pad.toFixed(1),w:H,h:null,font:"inherit",size:it.size,ls:0,align:"inherit",color:null};
+    if(it.key==="yomigana") xRight -= (it.size*PT2MM*1.1+0.3);
+    else xRight -= pitch;
+  });
+  return L;
+}
+/* 現在のstyle.verticalに応じて横書き/縦書きどちらの初期配置関数を使うか振り分ける */
+function pickDefaultLayout(size,style){
+  return style.vertical ? defaultLayoutVertical(size,style) : defaultLayout(size,style);
+}
 function ensureLayout(p){
   if(p.style.textColor===undefined)p.style.textColor=null;
+  if(p.style.tcyDigits==null)p.style.tcyDigits=true;
   if(p.style.bgFill===undefined)p.style.bgFill=null;
   if(p.style.bgAccent===undefined)p.style.bgAccent=null;
   if(p.style.bgOpacity==null)p.style.bgOpacity=1;
@@ -976,8 +1036,8 @@ function ensureLayout(p){
     if(L.h===undefined)L.h=d.h;
     if(L.font==null)L.font="inherit";if(L.size==null)L.size=d.size;if(L.ls==null)L.ls=0;if(L.align==null)L.align=d.align;
     if(L.color===undefined)L.color=null;});
-  if(!p.style.layout){p.style.layout=defaultLayout(p.size,p.style);return;}
-  const def=defaultLayout(p.size,p.style);
+  if(!p.style.layout){p.style.layout=pickDefaultLayout(p.size,p.style);return;}
+  const def=pickDefaultLayout(p.size,p.style);
   ITEMS.forEach(it=>{
     const L=p.style.layout[it.key];
     if(!L){p.style.layout[it.key]=def[it.key];return;}
@@ -1038,6 +1098,29 @@ function ensureOverrideLayer(work,mode){
   if(!work.layoutOverride[mode])work.layoutOverride[mode]={}; // 空で開始。触れた項目だけが差分になる
   return work.layoutOverride[mode];
 }
+/* ===== 画像・背景の作品ごとの上書き（配置とは別枠） ===== */
+function hasStyleOverride(work){return !!(work&&work.styleOverride&&Object.keys(work.styleOverride).length);}
+function styleOverrideActive(work){return !!(work&&work._styleOvEditing);}
+/* 表示用の実効スタイル（画像・背景）。上書きデータがあれば常に反映（編集ON/OFFに関わらず表示は維持） */
+function effectiveStyle(work,st){
+  if(hasStyleOverride(work))return Object.assign({},st,work.styleOverride);
+  return st;
+}
+/* 表示・計算用の読み取り専用実効スタイル */
+function curStyleRead(){return effectiveStyle(currentWork(),proj().style);}
+/* 編集対象のスタイルオブジェクト。個別上書き中はその作品専用の上書き層、それ以外はマスター */
+function curStyle(){
+  const w=currentWork();
+  if(editScope==="one"&&styleOverrideActive(w))return ensureStyleOverride(w);
+  return proj().style;
+}
+function ensureStyleOverride(work){
+  if(!work.styleOverride){
+    const snap={};STYLE_OV_KEYS.forEach(k=>{snap[k]=proj().style[k];});
+    work.styleOverride=snap;
+  }
+  return work.styleOverride;
+}
 function curSize(){return (editMode==="desc")?proj().descSize:proj().size;}
 function visIn(st,key,mode){
   if(mode==="desc")return true;
@@ -1071,6 +1154,7 @@ let store=null,canPersist=true;
 function fixStyle(p){
   p.style=Object.assign(defaultStyle(),p.style||{});
   p.style.show=Object.assign(defaultStyle().show,p.style.show||{});
+  p.style.bracket=false; // 作品名の《》は常に不要（既存データも含め毎回強制OFF）
   if(!p.size)p.size={preset:"140x100",w:140,h:100};
   if(!Array.isArray(p.works))p.works=[];
   p.works.forEach(migrateWork);
@@ -1268,35 +1352,56 @@ function segmentJa(text){
 }
 /* ===== 文字単位の字間オーバーライド（charFmt） ===== */
 function findRange(ranges,absIdx){for(const r of ranges){if(absIdx>=r.start&&absIdx<r.end)return r;}return null;}
-/* text（改行を含まない一行分）を、絶対文字位置startIndexを基準にrangesを適用しつつparentElへ追加する */
-function appendRunsWithOverrides(parentEl,text,startIndex,ranges){
-  if(!ranges||!ranges.length){parentEl.appendChild(document.createTextNode(text));return;}
+/* text（改行を含まない一行分）を、絶対文字位置startIndexを基準にrangesを適用しつつparentElへ追加する。
+   tcyRangesが指定された場合、該当区間を縦中横（text-combine-upright）として同じspanにまとめて反映する。 */
+function appendRunsWithOverrides(parentEl,text,startIndex,ranges,tcyRanges){
+  ranges=ranges||[];tcyRanges=tcyRanges||[];
+  if(!ranges.length&&!tcyRanges.length){parentEl.appendChild(document.createTextNode(text));return;}
   let i=0;
   while(i<text.length){
     const r=findRange(ranges,startIndex+i);
+    const tc=findRange(tcyRanges,startIndex+i);
     let j=i+1;
-    while(j<text.length&&findRange(ranges,startIndex+j)===r)j++;
+    while(j<text.length&&findRange(ranges,startIndex+j)===r&&findRange(tcyRanges,startIndex+j)===tc)j++;
     const chunk=text.slice(i,j);
-    if(r){const sp=document.createElement("span");sp.className="cf";sp.style.letterSpacing=r.ls+"em";sp.textContent=chunk;parentEl.appendChild(sp);}
-    else{parentEl.appendChild(document.createTextNode(chunk));}
+    if(r||tc){
+      const sp=document.createElement("span");
+      if(r){sp.classList.add("cf");sp.style.letterSpacing=r.ls+"em";}
+      if(tc)sp.classList.add("tcy");
+      sp.textContent=chunk;parentEl.appendChild(sp);
+    }else{parentEl.appendChild(document.createTextNode(chunk));}
     i=j;
   }
 }
 /* ===== ルビ注釈（Word風）：文字範囲ごとに任意のルビを振る ===== */
 const RUBY_KEYS=["title","catchcopy","description"];
 function rubyRangesFor(work,key){return (work&&work.ruby&&work.ruby[key])||[];}
+/* 縦中横（手動指定分）：work.tcy[key] = [{start,end}, ...] */
+function tcyRangesFor(work,key){return (work&&work.tcy&&work.tcy[key])||[];}
+/* 数字の自動縦中横：半角数字の連続run（最大4桁まで）を自動検出してtcy範囲として返す。
+   5桁以上のrunは対象外（回転させず通常の縦書き数字のまま表示） */
+function autoDigitTcyRanges(text){
+  const ranges=[];
+  if(!text)return ranges;
+  const re=/[0-9]+/g;
+  let m;
+  while((m=re.exec(text))){
+    if(m[0].length<=4)ranges.push({start:m.index,end:m.index+m[0].length});
+  }
+  return ranges;
+}
 /* text全体を、cf字間runs＋ルビ注釈込みで el に描画する（改行は<br>） */
-function buildAnnotated(el,text,cfRanges,rubyRanges){
+function buildAnnotated(el,text,cfRanges,rubyRanges,tcyRanges){
   const s=String(text);
   const rr=(rubyRanges||[]).filter(r=>r&&r.end>r.start&&r.start<s.length).slice().sort((a,b)=>a.start-b.start);
-  cfRanges=cfRanges||[];
+  cfRanges=cfRanges||[];tcyRanges=tcyRanges||[];
   function emitPlain(from,to){
     if(to<=from)return;
     const chunk=s.slice(from,to);
     let idx=from;
     chunk.split("\n").forEach((line,li)=>{
       if(li>0){el.appendChild(document.createElement("br"));idx+=1;}
-      appendRunsWithOverrides(el,line,idx,cfRanges);idx+=line.length;
+      appendRunsWithOverrides(el,line,idx,cfRanges,tcyRanges);idx+=line.length;
     });
   }
   let pos=0;
@@ -1310,14 +1415,14 @@ function buildAnnotated(el,text,cfRanges,rubyRanges){
       /* モノルビ：1文字ずつ対応 */
       for(let i=0;i<base.length;i++){
         const ruby=document.createElement("ruby");ruby.className="ann";
-        appendRunsWithOverrides(ruby,base[i],st+i,cfRanges);
+        appendRunsWithOverrides(ruby,base[i],st+i,cfRanges,tcyRanges);
         const rt=document.createElement("rt");rt.textContent=parts[i];ruby.appendChild(rt);
         el.appendChild(ruby);
       }
     }else{
       /* グループルビ（割付は全体設定に従う。既定：均等割付） */
       const ruby=document.createElement("ruby");ruby.className="ann";
-      appendRunsWithOverrides(ruby,base,st,cfRanges);
+      appendRunsWithOverrides(ruby,base,st,cfRanges,tcyRanges);
       const rt=document.createElement("rt");rt.textContent=String(r.text||"").trim();ruby.appendChild(rt);
       el.appendChild(ruby);
     }
@@ -1326,27 +1431,27 @@ function buildAnnotated(el,text,cfRanges,rubyRanges){
   emitPlain(pos,s.length);
 }
 /* 通常項目：改行対応＋字間オーバーライド対応のリッチテキスト描画（追加のみ、クリアはしない） */
-function buildRichText(el,text,ranges){
-  ranges=ranges||[];
+function buildRichText(el,text,ranges,tcyRanges){
+  ranges=ranges||[];tcyRanges=tcyRanges||[];
   const s=String(text);const lines=s.split("\n");let idx=0;
   lines.forEach((line,li)=>{
     if(li>0){el.appendChild(document.createElement("br"));idx+=1;}
-    appendRunsWithOverrides(el,line,idx,ranges);
+    appendRunsWithOverrides(el,line,idx,ranges,tcyRanges);
     idx+=line.length;
   });
 }
 /* 解説文：単語が行末で切れないよう分かち書きスパンで組み、字間オーバーライドも反映する */
-function buildDescContent(el,text,ranges){
-  ranges=ranges||[];
+function buildDescContent(el,text,ranges,tcyRanges){
+  ranges=ranges||[];tcyRanges=tcyRanges||[];
   const s=String(text);const lines=s.split("\n");let idx=0;
   lines.forEach((line,li)=>{
     if(li>0){el.appendChild(document.createElement("br"));idx+=1;}
     const segs=segmentJa(line);
-    if(!segs){appendRunsWithOverrides(el,line,idx,ranges);idx+=line.length;return;}
+    if(!segs){appendRunsWithOverrides(el,line,idx,ranges,tcyRanges);idx+=line.length;return;}
     segs.forEach(sg=>{
-      if(/^\s+$/.test(sg)){appendRunsWithOverrides(el,sg,idx,ranges);idx+=sg.length;return;}
+      if(/^\s+$/.test(sg)){appendRunsWithOverrides(el,sg,idx,ranges,tcyRanges);idx+=sg.length;return;}
       const sp=document.createElement("span");sp.className="w";
-      appendRunsWithOverrides(sp,sg,idx,ranges);
+      appendRunsWithOverrides(sp,sg,idx,ranges,tcyRanges);
       el.appendChild(sp);idx+=sg.length;
     });
   });
@@ -1366,18 +1471,21 @@ function fitDescEl(el){
 }
 function fitDescIn(root){let ok=true;$$(".fit-desc",root).forEach(el=>{if(!fitDescEl(el))ok=false;});return ok;}
 
+/* 画像・背景の作品ごとの上書き（styleOverride）：無ければマスターの値をそのまま使う */
+const STYLE_OV_KEYS=["bg","bgFill","bgAccent","bgOpacity","textColor","imgFit","imgScale","imgOffX","imgOffY","imgOpacity"];
 function buildCard(work,st,size,opts){
   opts=opts||{};ensureLayoutStyle(st,size);
   const mode=opts.mode||"cap";
+  const est=effectiveStyle(work,st);
   const card=document.createElement("div");
-  card.className="cap-card bg-"+(st.bg||"white")+(opts.plain?" plain":"");
+  card.className="cap-card bg-"+(est.bg||"white")+(opts.plain?" plain":"")+(st.vertical?" vertical":"");
   card.style.width=size.w+"mm";card.style.height=size.h+"mm";
-  const bgOpacity=(st.bgOpacity==null)?1:st.bgOpacity;
-  const fillRGB=st.bgFill?cmykToRgb(st.bgFill.c,st.bgFill.m,st.bgFill.y,st.bgFill.k):(PRESET_FILL[st.bg||"white"]||[255,255,255]);
+  const bgOpacity=(est.bgOpacity==null)?1:est.bgOpacity;
+  const fillRGB=est.bgFill?cmykToRgb(est.bgFill.c,est.bgFill.m,est.bgFill.y,est.bgFill.k):(PRESET_FILL[est.bg||"white"]||[255,255,255]);
   card.style.backgroundColor=`rgba(${fillRGB.join(",")},${bgOpacity})`;
   card.style.setProperty("--bg-opacity",String(bgOpacity));
-  if(st.bgAccent){const [r,g,b]=cmykToRgb(st.bgAccent.c,st.bgAccent.m,st.bgAccent.y,st.bgAccent.k);card.style.setProperty("--bg-accent",`rgb(${r},${g},${b})`);}
-  if(st.textColor){const [r,g,b]=cmykToRgb(st.textColor.c,st.textColor.m,st.textColor.y,st.textColor.k);card.style.color=`rgb(${r},${g},${b})`;}
+  if(est.bgAccent){const [r,g,b]=cmykToRgb(est.bgAccent.c,est.bgAccent.m,est.bgAccent.y,est.bgAccent.k);card.style.setProperty("--bg-accent",`rgb(${r},${g},${b})`);}
+  if(est.textColor){const [r,g,b]=cmykToRgb(est.textColor.c,est.textColor.m,est.textColor.y,est.textColor.k);card.style.color=`rgb(${r},${g},${b})`;}
   card.style.setProperty("--ruby-offset",((st.rubyOffset==null?2:st.rubyOffset))+"pt");
   if(st.rubySizePt)card.style.setProperty("--ruby-size",st.rubySizePt+"pt");
   card.style.setProperty("--ruby-ls",((st.rubyLs||0))+"em");
@@ -1385,13 +1493,13 @@ function buildCard(work,st,size,opts){
   card.style.setProperty("--ruby-align",st.rubyAlign||"space-around");
   if(mode!=="desc"&&work.image){const im=document.createElement("div");im.className="cap-img";
     im.style.backgroundImage=`url("${work.image}")`;
-    if(st.imgFit==="custom"){
-      im.style.backgroundSize=(st.imgScale||100)+"% auto";
-      im.style.backgroundPosition=`calc(50% + ${st.imgOffX||0}mm) calc(50% + ${st.imgOffY||0}mm)`;
+    if(est.imgFit==="custom"){
+      im.style.backgroundSize=(est.imgScale||100)+"% auto";
+      im.style.backgroundPosition=`calc(50% + ${est.imgOffX||0}mm) calc(50% + ${est.imgOffY||0}mm)`;
     }else{
-      im.style.backgroundSize=(st.imgFit==="cover")?"cover":"contain";
+      im.style.backgroundSize=(est.imgFit==="cover")?"cover":"contain";
     }
-    im.style.opacity=st.imgOpacity;card.appendChild(im);}
+    im.style.opacity=est.imgOpacity;card.appendChild(im);}
   const defFont=fontStack(st.font);
   const LAY=effectiveLayout(work,st,mode);
   modeItems(mode).forEach(it=>{
@@ -1400,10 +1508,17 @@ function buildCard(work,st,size,opts){
     if(!val&&!opts.editor)return;
     const L=LAY[it.key];
     const el=document.createElement("div");
-    el.className="cap-item it-"+it.key+((mode!=="desc"&&work.image&&st.textScrim)?" scrim":"")+((!val&&opts.editor)?" ph":"");
+    el.className="cap-item it-"+it.key+(it.group==="en"?" cap-item-en":"")+((mode!=="desc"&&work.image&&st.textScrim)?" scrim":"")+((!val&&opts.editor)?" ph":"");
     el.dataset.item=it.key;
-    el.style.left=L.x+"mm";el.style.top=L.y+"mm";el.style.width=L.w+"mm";
-    if(L.h!=null){el.style.height=L.h+"mm";el.classList.add("fixed-h");}
+    el.style.left=L.x+"mm";el.style.top=L.y+"mm";
+    // 縦書きモードでは、和文項目に限り「幅(L.w)＝行の長さ→CSSのheight」「高さ(L.h)＝段の広さ→CSSのwidth」に入れ替える。英字項目は常に横書きのまま（従来通り）。
+    if(st.vertical&&it.group!=="en"){
+      el.style.height=L.w+"mm";
+      if(L.h!=null){el.style.width=L.h+"mm";el.classList.add("fixed-h");}
+    }else{
+      el.style.width=L.w+"mm";
+      if(L.h!=null){el.style.height=L.h+"mm";el.classList.add("fixed-h");}
+    }
     el.style.fontFamily=(L.font==="inherit")?defFont:fontStack(L.font);
     el.style.fontSize=L.size+"pt";el.style.lineHeight=st.lh;
     el.style.letterSpacing=(L.ls||0)+"em";
@@ -1411,26 +1526,29 @@ function buildCard(work,st,size,opts){
     if(L.color){const [r,g,b]=cmykToRgb(L.color.c,L.color.m,L.color.y,L.color.k);el.style.color=`rgb(${r},${g},${b})`;}
     const ranges=(work.charFmt&&work.charFmt[it.key])||[];
     const rubyR=RUBY_KEYS.includes(it.key)?rubyRangesFor(work,it.key):[];
+    const tcyAutoEnabled=st.vertical&&st.tcyDigits!==false&&it.group!=="en";
+    const tcyAutoSrc=(it.key==="title")?(work.title||""):val;
+    const tcyR=tcyRangesFor(work,it.key).concat(tcyAutoEnabled?autoDigitTcyRanges(tcyAutoSrc):[]);
     if(!val){
       el.textContent="（"+it.label+"）";
     }else if(it.key==="title"){
       if(st.bracket)el.appendChild(document.createTextNode("《"));
-      buildAnnotated(el,work.title||"",ranges,rubyR);
+      buildAnnotated(el,work.title||"",ranges,rubyR,tcyR);
       if(st.bracket)el.appendChild(document.createTextNode("》"));
     }else if(mode==="desc"&&it.key==="description"){
-      if(rubyR.length){buildAnnotated(el,val,ranges,rubyR);}
-      else{buildDescContent(el,val,ranges);}
+      if(rubyR.length){buildAnnotated(el,val,ranges,rubyR,tcyR);}
+      else{buildDescContent(el,val,ranges,tcyR);}
       if(L.h!=null){el.classList.add("fit-desc");el.dataset.basels=String(L.ls||0);el.dataset.wmm=String(L.w);}
     }else if(rubyR.length){
-      buildAnnotated(el,val,ranges,rubyR);
+      buildAnnotated(el,val,ranges,rubyR,tcyR);
     }else{
-      buildRichText(el,val,ranges);
+      buildRichText(el,val,ranges,tcyR);
     }
     card.appendChild(el);
   });
   return card;
 }
-function ensureLayoutStyle(st,size){ if(!st.layout){st.layout=defaultLayout(size,st);} if(!st.descLayout){st.descLayout=defaultDescLayout();} }
+function ensureLayoutStyle(st,size){ if(!st.layout){st.layout=pickDefaultLayout(size,st);} if(!st.descLayout){st.descLayout=defaultDescLayout();} }
 
 /* ===== タブ ===== */
 $$("nav.tabs button").forEach(btn=>{btn.addEventListener("click",()=>{
@@ -1511,6 +1629,24 @@ $("#bulkImageInput").addEventListener("change",e=>{const file=e.target.files[0];
     if(!url){alert("画像を読み込めませんでした。PNG・JPEGなどの画像ファイルをお選びください。");return;}
     const idxs=[...bulkSel];idxs.forEach(i=>{if(proj().works[i])proj().works[i].image=url;});
     save();renderList();renderPreviewSelect();renderEditor();
+  });});
+$("#bulkSetImageOv").addEventListener("click",async()=>{
+  if(!bulkSel.size)return;
+  const ok=await askConfirm(`選択した${bulkSel.size}件に画像を個別登録します。この${bulkSel.size}件は、大きさ・位置・透明度・背景もマスターの設定から切り離され、この作品専用（現在のマスターの値を初期値としてコピー）になります。よろしいですか？`,"個別登録する");
+  if(!ok)return;
+  $("#bulkImageInputOv").click();
+});
+$("#bulkImageInputOv").addEventListener("change",e=>{const file=e.target.files[0];e.target.value="";if(!file||!bulkSel.size)return;
+  loadImageScaled(file,1400,url=>{
+    if(!url){alert("画像を読み込めませんでした。PNG・JPEGなどの画像ファイルをお選びください。");return;}
+    const idxs=[...bulkSel];
+    idxs.forEach(i=>{const w=proj().works[i];if(!w)return;
+      w.image=url;w._styleOvEditing=true;
+      const snap={};STYLE_OV_KEYS.forEach(k=>{snap[k]=proj().style[k];});
+      w.styleOverride=snap;
+    });
+    save();renderList();renderPreviewSelect();renderEditor();
+    alert(`${idxs.length}件に画像を個別登録しました。大きさ・位置・透明度は、レイアウトタブの「作品ごとの編集」で作品を選び、微調整できます。`);
   });});
 $("#bulkClearImage").addEventListener("click",async()=>{
   if(!bulkSel.size)return;
@@ -1611,17 +1747,21 @@ function refreshLayoutControls(){const p=proj();ensureLayout(p);const st=p.style
     $("#sizeW").value=s.w;$("#sizeH").value=s.h;$("#customSizeRow").style.display=(s.preset==="custom")?"":"none";
   }
   renderBgPicker();
-  $$('input[name=imgFit]').forEach(r=>r.checked=(r.value===st.imgFit));
-  setRange("imgOpacity","oImgOp",Math.round((st.imgOpacity==null?1:st.imgOpacity)*100),"%");
-  setRange("imgScale","oImgScale",st.imgScale==null?100:st.imgScale,"%");
-  setRange("imgOffX","oImgOffX",st.imgOffX==null?0:st.imgOffX,"mm");
-  setRange("imgOffY","oImgOffY",st.imgOffY==null?0:st.imgOffY,"mm");
+  const cst=curStyleRead();
+  $$('input[name=imgFit]').forEach(r=>r.checked=(r.value===cst.imgFit));
+  setRange("imgOpacity","oImgOp",Math.round((cst.imgOpacity==null?1:cst.imgOpacity)*100),"%");
+  setRange("imgScale","oImgScale",cst.imgScale==null?100:cst.imgScale,"%");
+  setRange("imgOffX","oImgOffX",cst.imgOffX==null?0:cst.imgOffX,"mm");
+  setRange("imgOffY","oImgOffY",cst.imgOffY==null?0:cst.imgOffY,"mm");
   refreshImgCustomRow();
-  setRange("bgOpacity","oBgOp",Math.round((st.bgOpacity==null?1:st.bgOpacity)*100),"%");
+  setRange("bgOpacity","oBgOp",Math.round((cst.bgOpacity==null?1:cst.bgOpacity)*100),"%");
   $("#textScrim").checked=st.textScrim;
   $("#fontKind").value=st.font;
   setRange("stLh","oLh",st.lh,"");setRange("stPad","oPad",st.pad,"mm");
   $("#stBracket").checked=st.bracket;
+  $("#stVertical").checked=!!st.vertical;
+  $("#stTcyDigits").checked=st.tcyDigits!==false;
+  $("#stTcyDigitsRow").style.display=st.vertical?"":"none";
   $("#shNo").checked=st.show.no;$("#shOrigin").checked=st.show.origin;$("#shPeriod").checked=st.show.period;
   $("#shColl").checked=st.show.collection;$("#shCatch").checked=st.show.catch;$("#shTitleEn").checked=st.show.titleEn;
   $("#shOriginEn").checked=st.show.originEn;$("#shPeriodEn").checked=st.show.periodEn;$("#shCollEn").checked=st.show.collectionEn;$("#shDesc").checked=st.show.desc;
@@ -1634,10 +1774,10 @@ function refreshLayoutControls(){const p=proj();ensureLayout(p);const st=p.style
   updateColorSwatches();
   renderPreviewSelect();}
 function updateColorSwatches(){
-  const st=proj().style;
-  setSwatchUI("swTextColor",st.textColor,"既定（黒）");
-  setSwatchUI("swBgFill",st.bgFill,"既定（プリセット通り）");
-  setSwatchUI("swBgAccent",st.bgAccent,"既定（プリセット通り）");
+  const cst=curStyleRead();
+  setSwatchUI("swTextColor",cst.textColor,"既定（黒）");
+  setSwatchUI("swBgFill",cst.bgFill,"既定（プリセット通り）");
+  setSwatchUI("swBgAccent",cst.bgAccent,"既定（プリセット通り）");
 }
 function setSwatchUI(btnId,cmyk,defaultLabel){
   const btn=$("#"+btnId);if(!btn)return;
@@ -1647,7 +1787,7 @@ function setSwatchUI(btnId,cmyk,defaultLabel){
   else{chip.style.background="#fff";txt.textContent=defaultLabel;}
 }
 function setRange(id,out,val,unit){$("#"+id).value=val;$("#"+out).textContent=val+(unit?" "+unit:"");}
-function renderBgPicker(){const cur=proj().style.bg;
+function renderBgPicker(){const cur=curStyleRead().bg;
   $("#bgPicker").innerHTML=BG_CATS.map(cat=>{
     const items=BACKGROUNDS.filter(b=>b.cat===cat.id);
     if(!items.length)return "";
@@ -1655,7 +1795,7 @@ function renderBgPicker(){const cur=proj().style.bg;
       <button type="button" class="swatch-btn"><span class="swatch bg-${b.id}"><span class="s1">作品名</span><span class="s2">産地／時代</span></span></button>
       <span class="nm">${b.label}</span></div>`).join("");
   }).join("");
-  $$("#bgPicker .bg-item").forEach(it=>it.addEventListener("click",()=>{proj().style.bg=it.dataset.bg;save();renderBgPicker();renderEditor();}));}
+  $$("#bgPicker .bg-item").forEach(it=>it.addEventListener("click",()=>{curStyle().bg=it.dataset.bg;save();renderBgPicker();renderEditor();}));}
 $("#sizePreset").addEventListener("change",e=>{const p=proj(),preset=SIZE_PRESETS.find(x=>x.id===e.target.value);
   p.size.preset=preset.id;if(preset.id!=="custom"){p.size.w=preset.w;p.size.h=preset.h;}
   $("#sizeW").value=p.size.w;$("#sizeH").value=p.size.h;$("#customSizeRow").style.display=(preset.id==="custom")?"":"none";
@@ -1665,7 +1805,7 @@ $("#sizePreset").addEventListener("change",e=>{const p=proj(),preset=SIZE_PRESET
   tgt.w=Math.min(300,Math.max(30,+$("#sizeW").value||140));tgt.h=Math.min(420,Math.max(20,+$("#sizeH").value||100));
   if(editMode!=="desc"){p.size.preset="custom";$("#sizePreset").value="custom";$("#customSizeRow").style.display="";}
   userZoom=null;save();renderEditor();}));
-$$('input[name=imgFit]').forEach(r=>r.addEventListener("change",()=>{proj().style.imgFit=r.value;refreshImgCustomRow();save();renderEditor();}));
+$$('input[name=imgFit]').forEach(r=>r.addEventListener("change",()=>{curStyle().imgFit=r.value;refreshImgCustomRow();save();renderEditor();}));
 bindRange("rubyOffset","oRubyOffset",v=>proj().style.rubyOffset=v,"pt");
 $("#rubySizePt").addEventListener("input",e=>{const v=parseFloat(e.target.value);proj().style.rubySizePt=isNaN(v)?null:v;save();renderEditor();});
 $("#rubyFont").addEventListener("change",e=>{proj().style.rubyFont=e.target.value;save();renderEditor();});
@@ -1689,23 +1829,29 @@ $("#gfontToggle").addEventListener("change",e=>{
   applyGoogleFonts(e.target.checked);renderEditor();
 });
 function bindRange(id,out,setter,unit){$("#"+id).addEventListener("input",e=>{const v=+e.target.value;setter(v);$("#"+out).textContent=v+(unit?" "+unit:"");save();renderEditor();});}
-$("#imgOpacity").addEventListener("input",e=>{const v=+e.target.value;proj().style.imgOpacity=v/100;$("#oImgOp").textContent=v+"%";save();renderEditor();});
-$("#bgOpacity").addEventListener("input",e=>{const v=+e.target.value;proj().style.bgOpacity=v/100;$("#oBgOp").textContent=v+"%";save();renderEditor();});
-function refreshImgCustomRow(){const custom=(proj().style.imgFit==="custom");$$("#imgCustomRows .row-ctl").forEach(el=>el.style.opacity=custom?1:.4);
+$("#imgOpacity").addEventListener("input",e=>{const v=+e.target.value;curStyle().imgOpacity=v/100;$("#oImgOp").textContent=v+"%";save();renderEditor();});
+$("#bgOpacity").addEventListener("input",e=>{const v=+e.target.value;curStyle().bgOpacity=v/100;$("#oBgOp").textContent=v+"%";save();renderEditor();});
+function refreshImgCustomRow(){const custom=(curStyleRead().imgFit==="custom");$$("#imgCustomRows .row-ctl").forEach(el=>el.style.opacity=custom?1:.4);
   ["imgScale","imgOffX","imgOffY"].forEach(id=>{$("#"+id).disabled=!custom;});}
 function updateImgStatus(){
   const w=currentWork();const st=$("#imgStatus");if(!st)return;
   if(isMaster()){
-    $("#btnImgImport").disabled=false;$("#btnImgRemoveLayout").disabled=false;
+    $("#btnImgImport").disabled=false;$("#btnImgRemoveLayout").disabled=false;$("#btnImgSelect").disabled=!(w&&w.image);
     st.textContent=w.image?"マスター見本を表示中：登録済み作品の画像を例に表示しています（ここで取り込むと全作品に一括登録）":"マスター見本を表示中：ここで取り込んだ画像は全作品に一括登録されます（画像未登録のため見本なし）";
     return;
   }
-  $("#btnImgImport").disabled=!w;$("#btnImgRemoveLayout").disabled=!(w&&w.image);
+  $("#btnImgImport").disabled=!w;$("#btnImgRemoveLayout").disabled=!(w&&w.image);$("#btnImgSelect").disabled=!(w&&w.image);
   if(!w){st.textContent="（作品がありません）";return;}
   const nm=oneLine(w.title||w.no||"（無題）");
   st.textContent=w.image?`「${nm}」に画像が登録されています`:`「${nm}」：画像は未登録です`;
 }
 $("#btnImgImport").addEventListener("click",()=>{$("#layoutImageInput").click();});
+$("#btnImgSelect").addEventListener("click",()=>{
+  const w=currentWork();if(!w||!w.image||editMode==="desc")return;
+  if(!styleEditable()){alert("この作品の画像・背景を個別に調整するには、「この作品だけ画像・背景を上書きする」にチェックを入れてください。");return;}
+  sel.clear();updateSelUI();hidePanel();
+  imgSel=true;renderImgSel();
+});
 $("#layoutImageInput").addEventListener("change",e=>{
   const file=e.target.files[0];e.target.value="";if(!file)return;
   loadImageScaled(file,1400,url=>{
@@ -1736,9 +1882,9 @@ $("#btnImgRemoveLayout").addEventListener("click",()=>{
   const w=currentWork();if(!w||!w.image)return;
   w.image="";save();renderEditor();renderList();updateImgStatus();
 });
-bindRange("imgScale","oImgScale",v=>proj().style.imgScale=v,"%");
-bindRange("imgOffX","oImgOffX",v=>proj().style.imgOffX=v,"mm");
-bindRange("imgOffY","oImgOffY",v=>proj().style.imgOffY=v,"mm");
+bindRange("imgScale","oImgScale",v=>curStyle().imgScale=v,"%");
+bindRange("imgOffX","oImgOffX",v=>curStyle().imgOffX=v,"mm");
+bindRange("imgOffY","oImgOffY",v=>curStyle().imgOffY=v,"mm");
 bindRange("stLh","oLh",v=>proj().style.lh=v,"");
 bindRange("stPad","oPad",v=>proj().style.pad=v,"mm");
 [["shNo","no"],["shOrigin","origin"],["shPeriod","period"],["shColl","collection"],["shCatch","catch"],
@@ -1748,12 +1894,28 @@ bindRange("stPad","oPad",v=>proj().style.pad=v,"mm");
     if(!e.target.checked){const it=ITEMS.find(x=>x.show===key);if(it)sel.delete(it.key);}
     save();renderEditor();});});
 $("#stBracket").addEventListener("change",e=>{proj().style.bracket=e.target.checked;save();renderEditor();});
+/* 縦書きON/OFF切り替え：切り替え前の配置を横書き用(layoutH)／縦書き用(layoutV)としてそれぞれバックアップし、
+   切り替え先に対応するバックアップがあれば復元、なければ初期配置を新規生成する（既存の手動調整を失わないため） */
+$("#stVertical").addEventListener("change",e=>{
+  const p=proj(),st=p.style,next=e.target.checked;
+  if(next===!!st.vertical){return;}
+  if(next){
+    st.layoutH=st.layout;
+    st.layout=st.layoutV||defaultLayoutVertical(p.size,st);
+  }else{
+    st.layoutV=st.layout;
+    st.layout=st.layoutH||defaultLayout(p.size,st);
+  }
+  st.vertical=next;
+  save();refreshLayoutControls();renderEditor();
+});
+$("#stTcyDigits").addEventListener("change",e=>{proj().style.tcyDigits=e.target.checked;save();renderEditor();});
 $("#btnResetLayout").addEventListener("click",async()=>{
   const nm=(editMode==="desc")?"解説":"キャプション";
   const ok=await askConfirm(nm+"面の配置・項目ごとのサイズを初期状態に戻します。よろしいですか？","初期状態に戻す");
   if(!ok)return;
   if(editMode==="desc")proj().style.descLayout=defaultDescLayout();
-  else proj().style.layout=defaultLayout(proj().size,proj().style);
+  else proj().style.layout=pickDefaultLayout(proj().size,proj().style);
   sel.clear();save();renderEditor();});
 $("#btnCopyStyle").addEventListener("click",async()=>{const text=JSON.stringify({app:"caption-koubou-style",style:proj().style,size:proj().size,descSize:proj().descSize});
   try{await navigator.clipboard.writeText(text);alert("体裁をコピーしました。別の展覧会を開いて「体裁を貼り付け」を押してください。");}catch(e){prompt("この文字列をコピーしてください",text);}});
@@ -1775,7 +1937,10 @@ const MASTER_DUMMY={
 let editScope="master"; // "master" | "one"
 function renderPreviewSelect(){const p=proj(),sel2=$("#previewWorkSelect");
   if(previewIndex<0||previewIndex>=p.works.length)previewIndex=p.works.length?0:0;
-  sel2.innerHTML=p.works.length?p.works.map((w,i)=>`<option value="${i}" ${i===previewIndex?"selected":""}>${esc((w.no?w.no+"　":"")+oneLine(w.title||w.origin||"（無題）"))}${hasOverride(w,"cap")||hasOverride(w,"desc")?" ◆":""}</option>`).join(""):`<option value="0">（作品がありません）</option>`;}
+  sel2.innerHTML=p.works.length?p.works.map((w,i)=>{
+    const marks=(hasOverride(w,"cap")||hasOverride(w,"desc")?" ◆":"")+(hasStyleOverride(w)?" 🖼":"");
+    return `<option value="${i}" ${i===previewIndex?"selected":""}>${esc((w.no?w.no+"　":"")+oneLine(w.title||w.origin||"（無題）"))}${marks}</option>`;
+  }).join(""):`<option value="0">（作品がありません）</option>`;}
 function applyEditScope(){
   const one=(editScope==="one");
   $("#emodeMaster").classList.toggle("on",!one);
@@ -1783,15 +1948,21 @@ function applyEditScope(){
   const w=currentWork();
   // 既に独自配置が保存されている作品は、個別モードに入った時点で編集を有効化
   if(one&&w&&!w._ovEditing&&(hasOverride(w,"cap")||hasOverride(w,"desc")))w._ovEditing=true;
+  if(one&&w&&!w._styleOvEditing&&hasStyleOverride(w))w._styleOvEditing=true;
   const ovOn=one&&overrideActive(w);
+  const styleOn=one&&styleOverrideActive(w);
   // 個別モードかつ上書きONのときは体裁ロックを外す（この作品専用の配置編集）
   $("#tab-layout").classList.toggle("one-mode",one&&!ovOn);
+  $("#tab-layout").classList.toggle("style-one-mode",one&&!styleOn);
   $("#oneWorkLabel").style.display=one?"":"none";
   $("#previewWorkSelect").style.display=one?"":"none";
   if(one){
     $("#ovToggle").checked=ovOn;
     $("#ovReset").style.display=((w&&(hasOverride(w,"cap")||hasOverride(w,"desc")))?"":"none");
     updateOvStatus();
+    $("#imgOvToggle").checked=styleOn;
+    $("#imgOvReset").style.display=(w&&hasStyleOverride(w))?"":"none";
+    updateImgOvStatus();
   }
   const scope=$("#settingsScope");
   if(scope){
@@ -1808,11 +1979,18 @@ function updateOvStatus(){
   s.textContent=has?"（この作品は独自配置です）":"";
   s.className="scope-tag "+(has?"scope-master":"");
 }
+function updateImgOvStatus(){
+  const s=$("#imgOvStatus");if(!s)return;const w=currentWork();
+  if(editScope!=="one"||!w){s.textContent="";return;}
+  const has=hasStyleOverride(w);
+  s.textContent=has?"（この作品は独自の画像・背景です）":"";
+  s.className="scope-tag "+(has?"scope-master":"");
+}
 function switchEditScope(next){
   if(editScope===next)return;
   finishInlineEdit();clearImgSel();sel.clear();
   // マスターへ戻るときは全作品の一時編集フラグを解除
-  if(next==="master")proj().works.forEach(w=>{delete w._ovEditing;});
+  if(next==="master")proj().works.forEach(w=>{delete w._ovEditing;delete w._styleOvEditing;});
   editScope=next;
   if(next==="one"&&previewIndex<0)previewIndex=0;
   applyEditScope();refreshLayoutControls();renderEditor();
@@ -1839,6 +2017,19 @@ $("#ovReset").addEventListener("click",async()=>{
   if(!ok)return;
   delete w.layoutOverride;delete w._ovEditing;
   sel.clear();save();applyEditScope();refreshLayoutControls();renderEditor();
+});
+$("#imgOvToggle").addEventListener("change",e=>{
+  const w=currentWork();if(!w)return;
+  if(e.target.checked){w._styleOvEditing=true;ensureStyleOverride(w);}
+  else{delete w._styleOvEditing;}
+  clearImgSel();save();applyEditScope();refreshLayoutControls();renderEditor();
+});
+$("#imgOvReset").addEventListener("click",async()=>{
+  const w=currentWork();if(!w)return;
+  const ok=await askConfirm("この作品の画像・背景の独自設定をすべて解除し、マスターの設定に戻します。よろしいですか？","マスターに戻す");
+  if(!ok)return;
+  delete w.styleOverride;delete w._styleOvEditing;
+  clearImgSel();save();applyEditScope();refreshLayoutControls();renderEditor();
 });
 function updateMasterHint(){const m=$("#masterHint"),o=$("#oneHint");
   if(m)m.style.display=(editScope==="master")?"":"none";
@@ -1903,7 +2094,7 @@ function startInlineEdit(key){
   inlineEditKey=key;
   el.classList.remove("ph");
   el.innerHTML="";
-  buildRichText(el,w[key]||"",(w.charFmt&&w.charFmt[key])||[]); // 文字単位の字間を保持したまま編集
+  buildRichText(el,w[key]||"",(w.charFmt&&w.charFmt[key])||[],tcyRangesFor(w,key)); // 文字単位の字間・縦中横を保持したまま編集
   el.style.transform="";
   try{el.contentEditable="plaintext-only";}catch(_){el.contentEditable="true";}
   el.classList.add("editing-text");
@@ -1935,7 +2126,13 @@ function finishInlineEdit(){
 }
 function itemEl(key){return cardEl?cardEl.querySelector('.cap-item[data-item="'+key+'"]'):null;}
 function heightMM(key){const el=itemEl(key);return el?el.offsetHeight/MM2PX:6;}
-function widthMM(key){return curLayoutRead()[key].w;}
+function widthMM(key){const el=itemEl(key);return el?el.offsetWidth/MM2PX:curLayoutRead()[key].w;}
+/* この項目が「縦書き」として描画されているか（英字項目は縦書きモードでも常に横書き扱い） */
+function isItemVertical(key){
+  if(!proj().style.vertical)return false;
+  const it=ITEM_BY_KEY[key];
+  return !(it&&it.group==="en");
+}
 
 /* ===== 文字単位の字間調整（編集中に選択した範囲だけに適用） ===== */
 function resolveTextOffset(root,container,offset){
@@ -1978,6 +2175,15 @@ function onInlineSelectionChange(){
     const anns=rubyRangesFor(w,inlineEditKey);
     const hit=anns.find(r=>r.start<end&&r.end>start);
     $("#rubyText").value=hit?hit.text:"";
+  }
+  const tcyRow=$("#csTcyRow");
+  const tcyOK=isItemVertical(inlineEditKey);
+  tcyRow.style.display=tcyOK?"":"none";
+  if(tcyOK){
+    const isOn=tcyRangesFor(w,inlineEditKey).some(r=>r.start===start&&r.end===end);
+    const btn=$("#csTcyToggle");
+    btn.textContent=isOn?"縦中横を解除":"縦中横にする";
+    btn.classList.toggle("primary",!isOn);
   }
   showCharSpacingPopover(range,existing?existing.ls:0);
 }
@@ -2080,13 +2286,30 @@ $("#rubyRemove").addEventListener("click",()=>{
   }
   finishInlineEdit();hideCharSpacingPopover();
 });
+$("#csTcyToggle").addEventListener("mousedown",e=>e.preventDefault());
+$("#csTcyToggle").addEventListener("click",()=>{
+  if(!charSel)return;
+  const w=currentWork();if(!w)return;
+  const key=charSel.key;
+  if(!isItemVertical(key))return;
+  if(!w.tcy)w.tcy={};if(!w.tcy[key])w.tcy[key]=[];
+  const exists=w.tcy[key].some(r=>r.start===charSel.start&&r.end===charSel.end);
+  if(exists){
+    w.tcy[key]=w.tcy[key].filter(r=>!(r.start===charSel.start&&r.end===charSel.end));
+  }else{
+    w.tcy[key]=w.tcy[key].filter(r=>r.end<=charSel.start||r.start>=charSel.end);
+    w.tcy[key].push({start:charSel.start,end:charSel.end});
+  }
+  save();
+  finishInlineEdit();hideCharSpacingPopover();
+});
 
 let drag=null, marq=null;
 /* ===== 画像レイヤーの直接操作（自由モード時） ===== */
 let imgSel=false,imgDrag=null;
 /* 「収める／枠いっぱい」表示中に画像を直接ドラッグ・ホイール操作した場合、自動的に「自由」配置へ切り替えて操作を反映する */
 function switchToCustomFit(){
-  const st=proj().style;
+  const st=curStyle();
   if(st.imgFit==="custom")return;
   st.imgFit="custom";
   $$('input[name=imgFit]').forEach(r=>r.checked=(r.value==="custom"));
@@ -2096,8 +2319,11 @@ function imgEl(){return cardEl?cardEl.querySelector(".cap-img"):null;}
 function renderImgSel(){
   const im=imgEl();
   if(cardEl)$$(".img-handle",cardEl).forEach(h=>h.remove());
-  if(!im)return;
+  const hint=$("#imgHintSelected"),btn=$("#btnImgSelect");
+  if(!im){if(hint)hint.style.display="none";if(btn)btn.classList.remove("on");return;}
   im.classList.toggle("sel-img",imgSel);
+  if(hint)hint.style.display=imgSel?"":"none";
+  if(btn)btn.classList.toggle("on",imgSel);
   if(!imgSel)return;
   const size=curSize();const hs=3.4;
   const d=document.createElement("div");d.className="img-handle";
@@ -2107,10 +2333,12 @@ function renderImgSel(){
   cardEl.appendChild(d);
 }
 function clearImgSel(){if(imgSel){imgSel=false;renderImgSel();}}
+function styleEditable(){return (editScope!=="one")||styleOverrideActive(currentWork());}
 function onImgScaleDown(e){
+  if(!styleEditable())return;
   e.stopPropagation();e.preventDefault();
   switchToCustomFit();
-  const st=proj().style,size=curSize();const z=userZoom||editZoom;
+  const st=curStyle(),size=curSize();const z=userZoom||editZoom;
   const s0=st.imgScale||100,sx=e.clientX;
   function move(ev){
     const dxmm=(ev.clientX-sx)/(MM2PX*z);
@@ -2127,10 +2355,11 @@ function onImgWheel(e){
   if(editMode==="desc")return;
   const w0=currentWork();
   if(!w0||!w0.image)return;
-  if(!e.target.closest(".cap-img"))return;
+  if(!styleEditable())return;
+  if(!imgSel&&!e.target.closest(".cap-img"))return; // 未選択時は画像の余白上のみ／選択中は項目の上でも反応
   e.preventDefault();e.stopPropagation();
   switchToCustomFit();
-  const st=proj().style;
+  const st=curStyle();
   const step=(e.deltaY<0)?5:-5;
   st.imgScale=Math.max(10,Math.min(300,round1((st.imgScale||100)+step)));
   const im=imgEl();if(im)im.style.backgroundSize=st.imgScale+"% auto";
@@ -2140,7 +2369,7 @@ function onImgWheel(e){
 }
 function onImgMove(e){
   if(!imgDrag)return;
-  const st=proj().style;
+  const st=curStyle();
   st.imgOffX=round1(imgDrag.x0+(e.clientX-imgDrag.sx)/(MM2PX*imgDrag.z));
   st.imgOffY=round1(imgDrag.y0+(e.clientY-imgDrag.sy)/(MM2PX*imgDrag.z));
   const im=imgEl();
@@ -2164,13 +2393,14 @@ function onCanvasPointerDown(e){
     drag={sx:e.clientX,sy:e.clientY,moved:false,z,pressedKey:key,shift:e.shiftKey,
       items:[...sel].map(k=>({k,x:curLayoutRead()[k].x,y:curLayoutRead()[k].y}))};
   }else{
-    const w0=currentWork(),st0=p.style;
-    if(w0&&w0.image&&editMode!=="desc"&&e.target.closest(".cap-img")){
+    const w0=currentWork();
+    if(w0&&w0.image&&editMode!=="desc"&&e.target.closest(".cap-img")&&styleEditable()){
       e.preventDefault();
       switchToCustomFit();
       sel.clear();updateSelUI();hidePanel();
       imgSel=true;renderImgSel();
-      imgDrag={sx:e.clientX,sy:e.clientY,x0:st0.imgOffX||0,y0:st0.imgOffY||0,z};
+      const st0r=curStyleRead();
+      imgDrag={sx:e.clientX,sy:e.clientY,x0:st0r.imgOffX||0,y0:st0r.imgOffY||0,z};
       window.addEventListener("pointermove",onImgMove);
       window.addEventListener("pointerup",onImgUp,{once:true});
       return;
@@ -2236,30 +2466,43 @@ function renderHandles(){
   if(!cardEl||sel.size!==1)return;
   const key=[...sel][0];const L=curLayout()[key];
   const el=itemEl(key);if(!el)return;
-  const hmm=L.h!=null?L.h:el.offsetHeight/MM2PX;
+  const wmm=widthMM(key), hmm=heightMM(key);
   const hs=2.8;
   function mk(cls,cx,cy,mode){
     const d=document.createElement("div");d.className="resize-handle "+cls;
     d.style.left=(cx-hs/2)+"mm";d.style.top=(cy-hs/2)+"mm";d.style.width=hs+"mm";d.style.height=hs+"mm";
     d.dataset.mode=mode;d.addEventListener("pointerdown",onHandleDown);cardEl.appendChild(d);
   }
-  mk("h-e",L.x+L.w,L.y+hmm/2,"e");
-  mk("h-s",L.x+L.w/2,L.y+hmm,"s");
-  mk("h-se",L.x+L.w,L.y+hmm,"se");
+  mk("h-e",L.x+wmm,L.y+hmm/2,"e");
+  mk("h-s",L.x+wmm/2,L.y+hmm,"s");
+  mk("h-se",L.x+wmm,L.y+hmm,"se");
 }
+/* リサイズハンドルのドラッグ：横書き項目は「東＝行の長さ(L.w)／南＝段の広さ(L.h)」、
+   縦書き項目（英字項目を除く）はこれが90度回転するため「南＝行の長さ(L.w)／東＝段の広さ(L.h)」に入れ替える */
 function onHandleDown(e){
   e.stopPropagation();e.preventDefault();
   const key=[...sel][0];if(!key)return;
   const L=curLayout()[key];const z=userZoom||editZoom;
-  const startW=L.w, startH=(L.h!=null?L.h:heightMM(key));
+  const vert=isItemVertical(key);
+  const startW=L.w, startH=(L.h!=null?L.h:(vert?widthMM(key):heightMM(key)));
   const mode=e.currentTarget.dataset.mode;
+  const lineLenHandle=vert?"s":"e", blockHandle=vert?"e":"s";
   const sx=e.clientX, sy=e.clientY;
   function move(ev){
     const dx=(ev.clientX-sx)/(MM2PX*z), dy=(ev.clientY-sy)/(MM2PX*z);
-    if(mode==="e"||mode==="se")L.w=Math.max(8,round1(startW+dx));
-    if(mode==="s"||mode==="se")L.h=Math.max(4,round1(startH+dy));
+    const dLineLen=vert?dy:dx, dBlock=vert?dx:dy;
+    if(mode===lineLenHandle||mode==="se")L.w=Math.max(8,round1(startW+dLineLen));
+    if(mode===blockHandle||mode==="se")L.h=Math.max(4,round1(startH+dBlock));
     const el=itemEl(key);
-    if(el){el.style.width=L.w+"mm";if(L.h!=null){el.style.height=L.h+"mm";el.classList.add("fixed-h");}}
+    if(el){
+      if(vert){
+        el.style.height=L.w+"mm";
+        if(L.h!=null){el.style.width=L.h+"mm";el.classList.add("fixed-h");}
+      }else{
+        el.style.width=L.w+"mm";
+        if(L.h!=null){el.style.height=L.h+"mm";el.classList.add("fixed-h");}
+      }
+    }
     renderHandles();checkOverflow();
   }
   function up(){window.removeEventListener("pointermove",move);save();if(sel.size)showPanel();}
@@ -2268,7 +2511,7 @@ function onHandleDown(e){
 }
 
 /* 整列 */
-function boxOf(key){const L=curLayoutRead()[key];return {key,x:L.x,y:L.y,w:L.w,h:heightMM(key)};}
+function boxOf(key){const L=curLayoutRead()[key];return {key,x:L.x,y:L.y,w:widthMM(key),h:heightMM(key)};}
 $$("#alignBar .ab").forEach(b=>b.addEventListener("click",()=>doAlign(b.dataset.align)));
 function doAlign(mode){const p=proj();if(!sel.size)return;const keys=[...sel];const boxes=keys.map(boxOf);
   const size=curSize();const single=boxes.length<2;
@@ -2295,6 +2538,7 @@ function doAlign(mode){const p=proj();if(!sel.size)return;const keys=[...sel];co
 function commonVal(getter){const keys=[...sel];const first=getter(keys[0]);return keys.every(k=>getter(k)===first)?first:null;}
 function showPanel(){const p=proj();if(!sel.size){hidePanel();return;}const keys=[...sel];
   $("#ipTitle").textContent = keys.length===1?ITEM_BY_KEY[keys[0]].label:keys.length+"項目を編集";
+  updateItemPanelLabels(keys.length===1?isItemVertical(keys[0]):(proj().style.vertical&&keys.every(k=>isItemVertical(k))));
   const font=commonVal(k=>curLayoutRead()[k].font); $("#ipFont").value=font==null?"inherit":font;
   const size=commonVal(k=>curLayoutRead()[k].size); $("#ipSize").value=size==null?"":size;
   const ls=commonVal(k=>curLayoutRead()[k].ls); $("#ipLs").value=ls==null?0:ls; $("#ipLsO").textContent=(ls==null?"—":(ls.toFixed(2)+"em"));
@@ -2315,6 +2559,12 @@ function showPanel(){const p=proj();if(!sel.size){hidePanel();return;}const keys
   $("#itemPanel").classList.add("show");
 }
 function hidePanel(){$("#itemPanel").classList.remove("show");}
+/* 縦書き項目のときは「幅」→「行の長さ（高さ）」「高さ」→「段の広さ（幅）」に表示だけ入れ替える（データ自体はL.w/L.hのまま） */
+function updateItemPanelLabels(vertical){
+  $("#ipWLabel").textContent=vertical?"行の長さ（高さ）":"幅";
+  $("#ipHLabel").textContent=vertical?"段の広さ（幅）":"高さ";
+  $("#ipAutoHLabel").textContent=vertical?"段の広さを自動（内容に合わせる）":"高さを自動（内容に合わせる）";
+}
 $("#ipClose").addEventListener("click",()=>{sel.clear();updateSelUI();hidePanel();});
 function applyToSel(fn){sel.forEach(k=>fn(curLayout()[k]));save();renderEditor();}
 $("#ipFont").addEventListener("change",e=>applyToSel(L=>L.font=e.target.value));
@@ -2326,18 +2576,21 @@ $("#ipH").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!is
 $("#ipAutoH").addEventListener("change",e=>{
   const auto=e.target.checked;
   applyToSel(L=>{ if(auto){L.h=null;} else if(L.h==null){ /* 現在の自動高さを固定値として採用 */ } });
-  if(!auto){ // 自動→固定に切り替えた直後、現在の見た目の高さを採用する
-    sel.forEach(k=>{ if(curLayout()[k].h==null){ const el=itemEl(k); if(el)curLayout()[k].h=round1(el.offsetHeight/MM2PX); } });
+  if(!auto){ // 自動→固定に切り替えた直後、現在の見た目の寸法を採用する（縦書き項目は幅、横書き項目は高さ）
+    sel.forEach(k=>{ if(curLayout()[k].h==null){ const el=itemEl(k); if(el)curLayout()[k].h=round1((isItemVertical(k)?el.offsetWidth:el.offsetHeight)/MM2PX); } });
     save();renderEditor();
   }
   showPanel();
 });
 
 function checkOverflow(){const p=proj(),st=p.style,size=curSize();let over=false;
-  modeItems(editMode).forEach(it=>{if(!visIn(st,it.key,editMode))return;const L=curLayoutRead()[it.key];const h=heightMM(it.key);
-    if(L.x<-0.5||L.y<-0.5||L.x+L.w>size.w+0.5||L.y+h>size.h+0.5)over=true;
+  modeItems(editMode).forEach(it=>{if(!visIn(st,it.key,editMode))return;const L=curLayoutRead()[it.key];const h=heightMM(it.key);const w=widthMM(it.key);
+    if(L.x<-0.5||L.y<-0.5||L.x+w>size.w+0.5||L.y+h>size.h+0.5)over=true;
     const el=itemEl(it.key);
-    if(el&&L.h!=null&&el.scrollHeight>el.clientHeight+1)over=true;
+    if(el&&L.h!=null){
+      const overflowed=isItemVertical(it.key)?(el.scrollWidth>el.clientWidth+1):(el.scrollHeight>el.clientHeight+1);
+      if(overflowed)over=true;
+    }
   });
   $("#overflowWarn").classList.toggle("show",over);}
 
@@ -2469,9 +2722,9 @@ function wireGlobalSwatch(btnId,getVal,setVal,resetVal,title,defaultCmyk){
       ()=>{resetVal();save();renderEditor();updateColorSwatches();});
   });
 }
-wireGlobalSwatch("swTextColor",()=>proj().style.textColor,v=>proj().style.textColor=v,()=>proj().style.textColor=null,"文字色",{c:0,m:0,y:0,k:100});
-wireGlobalSwatch("swBgFill",()=>proj().style.bgFill,v=>proj().style.bgFill=v,()=>proj().style.bgFill=null,"背景の地色",{c:0,m:0,y:0,k:0});
-wireGlobalSwatch("swBgAccent",()=>proj().style.bgAccent,v=>proj().style.bgAccent=v,()=>proj().style.bgAccent=null,"背景の柄色",{c:0,m:0,y:0,k:80});
+wireGlobalSwatch("swTextColor",()=>curStyleRead().textColor,v=>curStyle().textColor=v,()=>curStyle().textColor=null,"文字色",{c:0,m:0,y:0,k:100});
+wireGlobalSwatch("swBgFill",()=>curStyleRead().bgFill,v=>curStyle().bgFill=v,()=>curStyle().bgFill=null,"背景の地色",{c:0,m:0,y:0,k:0});
+wireGlobalSwatch("swBgAccent",()=>curStyleRead().bgAccent,v=>curStyle().bgAccent=v,()=>curStyle().bgAccent=null,"背景の柄色",{c:0,m:0,y:0,k:80});
 
 $("#ipColorSw").addEventListener("click",e=>{
   if(!sel.size)return;
