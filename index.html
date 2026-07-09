@@ -384,6 +384,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     <button class="btn small" id="btnDeleteProject">削除</button>
     <span style="width:6px"></span>
     <button class="btn small" id="btnExport">書き出し</button>
+    <span id="backupBadge" class="note" style="display:none;color:var(--shu);font-weight:600;margin-left:2px;cursor:help"></span>
     <button class="btn small" id="btnImportJson">読み込み</button>
     <input type="file" id="jsonFileInput" accept=".json,application/json" hidden>
     <button class="btn small ghost" id="btnHelp">？ 使い方</button>
@@ -435,7 +436,8 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <button class="btn small" data-zoom="-">縮小 −</button>
       <output id="zoomLabel" style="font-size:12px;min-width:44px;text-align:center">—</output>
       <button class="btn small" data-zoom="+">拡大 ＋</button>
-      <button class="btn small ghost" id="btnZoomFit">全体表示</button>
+      <button class="btn small ghost" id="btnZoom100">実寸100%</button>
+      <button class="btn small ghost" id="btnZoomFit">画面に収める</button>
     </div>
 
     <div id="alignBar">
@@ -905,7 +907,7 @@ const PRESET_FILL={white:[255,255,255],cream:[251,247,238],hairline:[255,255,255
 
 /* ===== 既定値 ===== */
 function defaultStyle(){
-  return {font:"mincho",align:"left",lh:1.45,pad:8,bracket:true,
+  return {font:"mincho",align:"left",lh:1.45,pad:8,bracket:false,
     bg:"white",imgFit:"contain",imgOpacity:1,imgScale:100,imgOffX:0,imgOffY:0,textScrim:false,
     textColor:null,bgFill:null,bgAccent:null,bgOpacity:1,
     rubyOffset:2,rubySizePt:null,rubyLs:0,rubyFont:"inherit",rubyAlign:"space-around",
@@ -1081,7 +1083,22 @@ function loadStore(){
   }
   if(!store.projects.find(p=>p.id===store.currentId))store.currentId=store.projects[0].id;
   store.projects.forEach(fixStyle);
+  if(!store.backupMeta)store.backupMeta={editsSinceExport:0};
   if(!canPersist)document.getElementById("storageWarn").classList.add("show");
+}
+/* 作品ごとの配置上書きを多用している場合、書き出し（JSON）でのバックアップを促す */
+function countOverrides(){const p=proj();if(!p)return 0;return (p.works||[]).filter(w=>hasOverride(w,"cap")||hasOverride(w,"desc")).length;}
+function updateBackupBadge(){
+  const badge=$("#backupBadge");if(!badge)return;
+  const n=countOverrides();
+  const edits=(store.backupMeta&&store.backupMeta.editsSinceExport)||0;
+  if(n>=3&&edits>=15){
+    badge.style.display="";
+    badge.textContent=`⚠ 配置上書き${n}件：JSON書き出しを推奨`;
+    badge.title="作品ごとの配置上書きを複数の作品で使っています。ブラウザのデータ消失に備え、「書き出し」でJSONバックアップを取ることをおすすめします。";
+  }else{
+    badge.style.display="none";
+  }
 }
 let saveTimer=null,saveDirty=false;
 let undoStack=[],redoStack=[],lastSnapshot=null;
@@ -1098,6 +1115,8 @@ function flushSave(){
   lastSnapshot=cur;
   saveDirty=false;
   updateUndoButtons();
+  if(store.backupMeta){store.backupMeta.editsSinceExport=(store.backupMeta.editsSinceExport||0)+1;}
+  updateBackupBadge();
   if(!canPersist)return;
   try{localStorage.setItem(LS_KEY,cur);}
   catch(e){canPersist=false;document.getElementById("storageWarn").classList.add("show");}
@@ -1436,7 +1455,10 @@ $("#btnDeleteProject").addEventListener("click",async()=>{const p=proj();
 /* ===== JSON ===== */
 $("#btnExport").addEventListener("click",()=>{const d=new Date(),pad=n=>String(n).padStart(2,"0");
   download(`キャプション工房_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`,
-    JSON.stringify({app:"caption-koubou",version:1,projects:store.projects},null,1));});
+    JSON.stringify({app:"caption-koubou",version:1,projects:store.projects},null,1));
+  if(!store.backupMeta)store.backupMeta={};
+  store.backupMeta.editsSinceExport=0;store.backupMeta.lastExportAt=Date.now();
+  updateBackupBadge();});
 $("#btnImportJson").addEventListener("click",()=>$("#jsonFileInput").click());
 $("#jsonFileInput").addEventListener("change",e=>{const file=e.target.files[0];e.target.value="";if(!file)return;
   const reader=new FileReader();reader.onload=()=>{try{
@@ -1675,7 +1697,7 @@ function updateImgStatus(){
   const w=currentWork();const st=$("#imgStatus");if(!st)return;
   if(isMaster()){
     $("#btnImgImport").disabled=false;$("#btnImgRemoveLayout").disabled=false;
-    st.textContent="マスター見本を表示中：ここで取り込んだ画像は全作品に一括登録されます";
+    st.textContent=w.image?"マスター見本を表示中：登録済み作品の画像を例に表示しています（ここで取り込むと全作品に一括登録）":"マスター見本を表示中：ここで取り込んだ画像は全作品に一括登録されます（画像未登録のため見本なし）";
     return;
   }
   $("#btnImgImport").disabled=!w;$("#btnImgRemoveLayout").disabled=!(w&&w.image);
@@ -1822,7 +1844,8 @@ function updateMasterHint(){const m=$("#masterHint"),o=$("#oneHint");
   if(m)m.style.display=(editScope==="master")?"":"none";
   if(o)o.style.display=(editScope==="one")?"":"none";}
 $$("button[data-zoom]").forEach(b=>b.addEventListener("click",()=>{const base=userZoom||editZoom;userZoom=Math.min(2.2,Math.max(.3,base+(b.dataset.zoom==="+"?.15:-.15)));renderEditor();}));
-$("#btnZoomFit").addEventListener("click",()=>{userZoom=null;renderEditor();});
+$("#btnZoomFit").addEventListener("click",()=>{userZoom=fitZoom(curSize());renderEditor();});
+$("#btnZoom100").addEventListener("click",()=>{userZoom=1;renderEditor();});
 $("#btnUndo").addEventListener("click",doUndo);
 $("#btnRedo").addEventListener("click",doRedo);
 $$(".mode-sw button").forEach(b=>b.addEventListener("click",()=>{
@@ -1835,7 +1858,9 @@ $$(".mode-sw button").forEach(b=>b.addEventListener("click",()=>{
 
 /* ===== レイアウト：キャンバス編集 ===== */
 let holderEl=null, cardEl=null;
-function currentWork(){const p=proj();if(editScope==="master")return MASTER_DUMMY;return p.works[previewIndex]||null;}
+/* マスター編集中に画像設定（合わせ方・拡縮・位置）を目視確認できるよう、登録済み作品から見本画像を借用して表示する */
+function getMasterSampleImage(){const w=(proj().works||[]).find(x=>x.image);return w?w.image:"";}
+function currentWork(){const p=proj();if(editScope==="master"){MASTER_DUMMY.image=getMasterSampleImage();return MASTER_DUMMY;}return p.works[previewIndex]||null;}
 function isMaster(){return editScope==="master";}
 function fitZoom(size){const vp=$("#editorViewport");const avail=Math.max(120,(vp.clientWidth||600)-284);
   return Math.min(1.6,Math.max(.3,avail/(size.w*MM2PX)));}
@@ -1846,7 +1871,7 @@ function renderEditor(){
   const w=currentWork();
   if(!w){holder.innerHTML=`<div class="note" style="padding:40px">作品台帳に作品を登録すると、ここで配置できます。</div>`;
     hidePanel();updateSelUI();$("#overflowWarn").classList.remove("show");$("#zoomLabel").textContent="—";return;}
-  editZoom=fitZoom(size);const z=userZoom||editZoom;
+  editZoom=1;const z=userZoom||editZoom;
   $("#zoomLabel").textContent=Math.round(z*100)+"%";
   cardEl=buildCard(w,st,size,{editor:true,mode:editMode});
   cardEl.style.transform=`scale(${z})`;cardEl.style.transformOrigin="top left";
@@ -1854,9 +1879,10 @@ function renderEditor(){
   holder.appendChild(cardEl);
   if(editMode==="desc")fitDescIn(cardEl);
   updateImgStatus();
-  if(imgSel){const w2=currentWork();if(w2&&w2.image&&st.imgFit==="custom"&&editMode!=="desc")renderImgSel();else imgSel=false;}
+  if(imgSel){const w2=currentWork();if(w2&&w2.image&&editMode!=="desc")renderImgSel();else imgSel=false;}
   cardEl.addEventListener("pointerdown",onCanvasPointerDown);
   cardEl.addEventListener("dblclick",onCanvasDblClick);
+  cardEl.addEventListener("wheel",onImgWheel,{passive:false});
   updateSelUI();checkOverflow();
   if(sel.size)showPanel();else hidePanel();
   updateMasterHint();
@@ -2058,6 +2084,14 @@ $("#rubyRemove").addEventListener("click",()=>{
 let drag=null, marq=null;
 /* ===== 画像レイヤーの直接操作（自由モード時） ===== */
 let imgSel=false,imgDrag=null;
+/* 「収める／枠いっぱい」表示中に画像を直接ドラッグ・ホイール操作した場合、自動的に「自由」配置へ切り替えて操作を反映する */
+function switchToCustomFit(){
+  const st=proj().style;
+  if(st.imgFit==="custom")return;
+  st.imgFit="custom";
+  $$('input[name=imgFit]').forEach(r=>r.checked=(r.value==="custom"));
+  refreshImgCustomRow();
+}
 function imgEl(){return cardEl?cardEl.querySelector(".cap-img"):null;}
 function renderImgSel(){
   const im=imgEl();
@@ -2075,6 +2109,7 @@ function renderImgSel(){
 function clearImgSel(){if(imgSel){imgSel=false;renderImgSel();}}
 function onImgScaleDown(e){
   e.stopPropagation();e.preventDefault();
+  switchToCustomFit();
   const st=proj().style,size=curSize();const z=userZoom||editZoom;
   const s0=st.imgScale||100,sx=e.clientX;
   function move(ev){
@@ -2086,6 +2121,22 @@ function onImgScaleDown(e){
   function up(){window.removeEventListener("pointermove",move);save();}
   window.addEventListener("pointermove",move);
   window.addEventListener("pointerup",up,{once:true});
+}
+/* 画像上でマウスホイール／トラックパッドのピンチ操作をすると、その場で拡大・縮小できる（自動的に「自由」配置に切替） */
+function onImgWheel(e){
+  if(editMode==="desc")return;
+  const w0=currentWork();
+  if(!w0||!w0.image)return;
+  if(!e.target.closest(".cap-img"))return;
+  e.preventDefault();e.stopPropagation();
+  switchToCustomFit();
+  const st=proj().style;
+  const step=(e.deltaY<0)?5:-5;
+  st.imgScale=Math.max(10,Math.min(300,round1((st.imgScale||100)+step)));
+  const im=imgEl();if(im)im.style.backgroundSize=st.imgScale+"% auto";
+  setRange("imgScale","oImgScale",st.imgScale,"%");
+  if(!imgSel){imgSel=true;renderImgSel();}
+  save();
 }
 function onImgMove(e){
   if(!imgDrag)return;
@@ -2114,8 +2165,9 @@ function onCanvasPointerDown(e){
       items:[...sel].map(k=>({k,x:curLayoutRead()[k].x,y:curLayoutRead()[k].y}))};
   }else{
     const w0=currentWork(),st0=p.style;
-    if(w0&&w0.image&&st0.imgFit==="custom"&&editMode!=="desc"){
+    if(w0&&w0.image&&editMode!=="desc"&&e.target.closest(".cap-img")){
       e.preventDefault();
+      switchToCustomFit();
       sel.clear();updateSelUI();hidePanel();
       imgSel=true;renderImgSel();
       imgDrag={sx:e.clientX,sy:e.clientY,x0:st0.imgOffX||0,y0:st0.imgOffY||0,z};
@@ -2432,7 +2484,8 @@ $("#ipColorSw").addEventListener("click",e=>{
 
 function renderAll(){renderProjectSelect();renderSectionFilter();renderList();renderPreviewSelect();
   if($("#tab-layout").classList.contains("active")){refreshLayoutControls();renderEditor();}
-  if($("#tab-print").classList.contains("active")){refreshPrintControls();renderSheets();}}
+  if($("#tab-print").classList.contains("active")){refreshPrintControls();renderSheets();}
+  updateBackupBadge();}
 window.addEventListener("resize",()=>{if($("#tab-layout").classList.contains("active")&&!userZoom)renderEditor();});
 /* フォント選択肢を各セレクトに流し込む */
 $("#fontKind").innerHTML=fontOptionsHTML(null,null);
