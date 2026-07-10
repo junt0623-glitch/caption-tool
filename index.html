@@ -285,7 +285,11 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 /* ルビ（Word風・注釈ベース） */
 .cap-item ruby{ruby-position:over;ruby-align:var(--ruby-align,space-around)}
 .cap-item ruby>rt{font-size:var(--ruby-size,50%);letter-spacing:var(--ruby-ls,0em);font-family:var(--ruby-font,inherit);
-  font-weight:400;opacity:.95;transform:translateY(calc(-1 * var(--ruby-offset,2pt)))}
+  font-weight:400;opacity:.95;margin-block-end:var(--ruby-offset,2pt)}
+/* 補足：以前はtransform:translateYで位置調整していたが、主要ブラウザは<ruby>内の<rt>要素に対して
+   transformによる移動を描画に反映しないため、margin-block-endに変更した（2026-07-10 修正）。
+   論理プロパティにしているのは、縦書きモードでも書字方向に応じて自動的に正しい辺（本文との間隔）に
+   適用されるようにするため。 */
 .cs-ruby{display:flex;align-items:center;gap:8px;margin-top:9px}
 .cs-ruby label{font-size:11px;color:var(--sub);flex:none}
 .cs-ruby input{flex:1;font-size:12.5px;padding:4px 6px}
