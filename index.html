@@ -14,6 +14,31 @@
   --ud-gothic:"BIZ UDPGothic","BIZ UDGothic","UD デジタル教科書体 NP-R","Hiragino Sans","Yu Gothic Medium","Noto Sans JP",sans-serif;
   --en-sans:"Verdana","Segoe UI","Helvetica Neue","Arial","Noto Sans","Liberation Sans",sans-serif;
   --en-serif:"Georgia","Times New Roman","Noto Serif","Liberation Serif",serif;
+  --biz-mincho:"BIZ UDPMincho","BIZ UDMincho",serif;
+  --biz-gothic:"BIZ UDPGothic","BIZ UDGothic",sans-serif;
+  --ud-kyokasho:"UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPMincho","BIZ UDMincho",serif;
+  --yu-mincho:"Yu Mincho","YuMincho","Hiragino Mincho ProN","MS PMincho",serif;
+  --hiragino-mincho:"Hiragino Mincho ProN","YuMincho","Yu Mincho",serif;
+  --ms-mincho:"MS PMincho","MS Mincho","Hiragino Mincho ProN",serif;
+  --yu-gothic:"Yu Gothic","YuGothic","Hiragino Kaku Gothic ProN","Meiryo",sans-serif;
+  --hiragino-gothic:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic",sans-serif;
+  --meiryo:"Meiryo","Yu Gothic","Hiragino Kaku Gothic ProN",sans-serif;
+  --ms-gothic:"MS PGothic","MS Gothic","Meiryo",sans-serif;
+  --noto-serif-jp:"Noto Serif JP","BIZ UDPMincho","BIZ UDMincho",serif;
+  --noto-sans-jp:"Noto Sans JP","BIZ UDPGothic","BIZ UDGothic",sans-serif;
+  --georgia:"Georgia","Times New Roman",serif;
+  --times:"Times New Roman","Georgia",serif;
+  --helvetica:"Helvetica Neue","Arial","Segoe UI",sans-serif;
+  --segoe:"Segoe UI","Helvetica Neue","Arial",sans-serif;
+}
+/* Googleフォント（Noto系）のオンライン読み込みON時：既存のシステムフォント（YuMincho／YuGothic等）は
+   ほとんどのWindows機に標準搭載されており、スタックの後方にNotoを置くだけでは常にシステムフォントが
+   優先されてしまい「読み込んでも見た目が変わらない」状態になる。ONの間はNotoを最優先にして必ず反映させる。 */
+html.gfonts-on{
+  --mincho:"Noto Serif JP","BIZ UDPMincho","BIZ UDMincho","Hiragino Mincho ProN","YuMincho","Yu Mincho","MS PMincho",serif;
+  --gothic:"Noto Sans JP","BIZ UDPGothic","BIZ UDGothic","Hiragino Kaku Gothic ProN","Yu Gothic Medium","YuGothic","Yu Gothic","Meiryo",sans-serif;
+  --ud-mincho:"Noto Serif JP","BIZ UDPMincho","BIZ UDMincho","UD デジタル教科書体 NP-R","Hiragino Mincho ProN",serif;
+  --ud-gothic:"Noto Sans JP","BIZ UDPGothic","BIZ UDGothic","UD デジタル教科書体 NP-R","Hiragino Sans","Yu Gothic Medium",sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
@@ -891,21 +916,50 @@ const BACKGROUNDS=[
 function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
 /* フォント登録簿：キー→CSSフォントスタック。端末に入っているものが自動採用される */
 const FONTS={
-  mincho:{label:"明朝体（UD対応）",stack:cssVar("--mincho")},
-  gothic:{label:"ゴシック体（UD対応）",stack:cssVar("--gothic")},
-  kaisho:{label:"楷書体",stack:cssVar("--kaisho")},
-  udmincho:{label:"UD明朝（視認性）",stack:cssVar("--ud-mincho")},
-  udgothic:{label:"UDゴシック（視認性）",stack:cssVar("--ud-gothic")},
-  ensans:{label:"英字ゴシック（視認性）",stack:cssVar("--en-sans")},
-  enserif:{label:"英字セリフ",stack:cssVar("--en-serif")}
+  /* UD・視認性重視（最上位に表示） */
+  mincho:{label:"明朝体（UD対応・自動選択）",stack:cssVar("--mincho"),group:"UD・視認性重視"},
+  gothic:{label:"ゴシック体（UD対応・自動選択）",stack:cssVar("--gothic"),group:"UD・視認性重視"},
+  udmincho:{label:"UD明朝（自動選択）",stack:cssVar("--ud-mincho"),group:"UD・視認性重視"},
+  udgothic:{label:"UDゴシック（自動選択）",stack:cssVar("--ud-gothic"),group:"UD・視認性重視"},
+  bizmincho:{label:"BIZ UDP明朝",stack:cssVar("--biz-mincho"),group:"UD・視認性重視"},
+  bizgothic:{label:"BIZ UDPゴシック",stack:cssVar("--biz-gothic"),group:"UD・視認性重視"},
+  udkyokasho:{label:"UDデジタル教科書体",stack:cssVar("--ud-kyokasho"),group:"UD・視認性重視"},
+  /* 明朝体 */
+  kaisho:{label:"楷書体",stack:cssVar("--kaisho"),group:"明朝体"},
+  yumincho:{label:"游明朝",stack:cssVar("--yu-mincho"),group:"明朝体"},
+  hiraginomincho:{label:"ヒラギノ明朝 ProN",stack:cssVar("--hiragino-mincho"),group:"明朝体"},
+  msmincho:{label:"MS明朝",stack:cssVar("--ms-mincho"),group:"明朝体"},
+  /* ゴシック体 */
+  yugothic:{label:"游ゴシック",stack:cssVar("--yu-gothic"),group:"ゴシック体"},
+  hiraginogothic:{label:"ヒラギノ角ゴ ProN",stack:cssVar("--hiragino-gothic"),group:"ゴシック体"},
+  meiryo:{label:"メイリオ",stack:cssVar("--meiryo"),group:"ゴシック体"},
+  msgothic:{label:"MSゴシック",stack:cssVar("--ms-gothic"),group:"ゴシック体"},
+  /* オンラインフォント（「Googleフォントをオンラインで読み込む」ON時のみ有効） */
+  notoserif:{label:"Noto Serif JP（要オンライン）",stack:cssVar("--noto-serif-jp"),group:"オンラインフォント"},
+  notosans:{label:"Noto Sans JP（要オンライン）",stack:cssVar("--noto-sans-jp"),group:"オンラインフォント"},
+  /* 英字 */
+  ensans:{label:"英字ゴシック（視認性）",stack:cssVar("--en-sans"),group:"英字"},
+  enserif:{label:"英字セリフ",stack:cssVar("--en-serif"),group:"英字"},
+  georgia:{label:"Georgia",stack:cssVar("--georgia"),group:"英字"},
+  times:{label:"Times New Roman",stack:cssVar("--times"),group:"英字"},
+  helvetica:{label:"Helvetica Neue",stack:cssVar("--helvetica"),group:"英字"},
+  segoe:{label:"Segoe UI",stack:cssVar("--segoe"),group:"英字"}
 };
+const FONT_GROUP_ORDER=["UD・視認性重視","明朝体","ゴシック体","オンラインフォント","英字"];
 function fontStack(key){return (FONTS[key]&&FONTS[key].stack)||FONTS.mincho.stack;}
 const MINCHO=FONTS.mincho.stack;
 const GOTHIC=FONTS.gothic.stack;
-/* フォント選択肢のHTMLを生成（inheritラベルは呼び出し側で付与） */
+/* フォント選択肢のHTMLを生成（inheritラベルは呼び出し側で付与）。UD・視認性重視グループを先頭に、
+   グループごとにoptgroupでまとめて表示する */
 function fontOptionsHTML(selected,inheritLabel){
   let h=inheritLabel?`<option value="inherit">${inheritLabel}</option>`:"";
-  for(const k in FONTS){h+=`<option value="${k}" ${k===selected?"selected":""}>${FONTS[k].label}</option>`;}
+  FONT_GROUP_ORDER.forEach(group=>{
+    const keys=Object.keys(FONTS).filter(k=>FONTS[k].group===group);
+    if(!keys.length)return;
+    h+=`<optgroup label="${esc(group)}">`;
+    keys.forEach(k=>{h+=`<option value="${k}" ${k===selected?"selected":""}>${FONTS[k].label}</option>`;});
+    h+="</optgroup>";
+  });
   return h;
 }
 const MM2PX=96/25.4, PT2MM=25.4/72;
@@ -1821,6 +1875,7 @@ function applyGoogleFonts(on){
       link.href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&display=swap";
       document.head.appendChild(link);}
   }else if(link){link.remove();}
+  document.documentElement.classList.toggle("gfonts-on",on);
   const note=document.getElementById("gfontNote");if(note)note.style.display=on?"":"none";
 }
 $("#gfontToggle").addEventListener("change",e=>{
@@ -1932,7 +1987,7 @@ const MASTER_DUMMY={
   catchcopy:"ここにキャッチコピーが入ります",
   titleEn:"Title of the Work",originEn:"Origin / Artist",periodEn:"Period, c. 0000",collectionEn:"Collection Name",
   description:"ここに解説文のダミーテキストが入ります。実際の作品ごとの文章はこの体裁に沿って流し込まれます。This is dummy body text used to design the master layout. Individual entries follow this master.",
-  image:"",charFmt:{},ruby:{}
+  image:"",charFmt:{},ruby:{title:[{start:0,end:3,text:"さくひんめい"}]}
 };
 let editScope="master"; // "master" | "one"
 function renderPreviewSelect(){const p=proj(),sel2=$("#previewWorkSelect");
