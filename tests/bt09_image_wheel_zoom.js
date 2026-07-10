@@ -19,39 +19,38 @@ async function run() {
 
     await page.click('#emodeOne');
     await page.waitForTimeout(200);
+    await page.click('#imgOvToggle');
+    await page.waitForTimeout(200);
     await page.click('#btnImgImport');
     await page.setInputFiles('#layoutImageInput', FIXTURE);
     await page.waitForTimeout(400);
 
-    const fitBefore = await page.evaluate(() => proj().style.imgFit);
+    const fitBefore = await page.evaluate(() => curStyleRead().imgFit);
     t.eq(fitBefore, 'contain', '既定の画像合わせ方は「全体を収める」');
 
-    // 項目が無い余白部分にカーソルを合わせてホイールで拡大
     await page.locator('#editHolder .cap-img').scrollIntoViewIfNeeded();
     const box = await page.locator('#editHolder .cap-img').boundingBox();
-    const x = box.x + box.width - 5, y = box.y + box.height - 5; // 右下の余白
+    const x = box.x + box.width - 5, y = box.y + box.height - 5;
     await page.mouse.move(x, y);
     await page.waitForTimeout(100);
     await page.mouse.wheel(0, -100);
     await page.waitForTimeout(200);
 
-    const afterUp = await page.evaluate(() => ({ fit: proj().style.imgFit, scale: proj().style.imgScale }));
+    const afterUp = await page.evaluate(() => ({ fit: curStyleRead().imgFit, scale: curStyleRead().imgScale }));
     t.eq(afterUp.fit, 'custom', '画像上でホイール操作すると自動的に「自由」配置へ切り替わる');
     t.ok(afterUp.scale > 100, 'ホイールを上に回すと拡大率が増える');
 
     await page.mouse.wheel(0, 300);
     await page.waitForTimeout(200);
-    const afterDown = await page.evaluate(() => proj().style.imgScale);
+    const afterDown = await page.evaluate(() => curStyleRead().imgScale);
     t.ok(afterDown < afterUp.scale, 'ホイールを下に回すと拡大率が減る');
 
-    // クランプ（10〜300%）の確認
-    await page.evaluate(() => { proj().style.imgScale = 298; renderEditor(); });
+    await page.evaluate(() => { curStyle().imgScale = 298; renderEditor(); });
     await page.waitForTimeout(100);
     for (let i = 0; i < 5; i++) { await page.mouse.wheel(0, -100); await page.waitForTimeout(30); }
-    const clampedHigh = await page.evaluate(() => proj().style.imgScale);
+    const clampedHigh = await page.evaluate(() => curStyleRead().imgScale);
     t.ok(clampedHigh <= 300, '拡大率の上限は300%でクランプされる');
 
-    // ラジオボタンのUIも追従して更新される
     const radioChecked = await page.evaluate(() => document.querySelector('input[name=imgFit][value=custom]').checked);
     t.eq(radioChecked, true, '「自由」ラジオボタンがUI上でもチェックされる');
 

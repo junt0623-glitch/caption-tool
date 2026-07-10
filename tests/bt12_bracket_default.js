@@ -1,4 +1,5 @@
-// bt12【新機能】作品名の《》は新規展覧会で既定OFF。既存データには影響しない
+// bt12《》は常に既定OFF。新規展覧会だけでなく、bracket:trueとして保存されていた既存データも
+// 読み込み時に強制的にfalseへ上書きされる（fixStyle()による「既存データも含め毎回強制OFF」仕様）
 const { openApp, mkRunner, chromium } = require('./helpers');
 
 async function run() {
@@ -16,7 +17,7 @@ async function run() {
     await page.waitForTimeout(300);
     t.eq(await page.evaluate(() => proj().style.bracket), false, '新規作成した展覧会でも《》は既定OFF');
 
-    // 既存プロジェクト（bracket:trueとして保存されたもの）を模擬的に読み込み、影響を受けないことを確認
+    // 既存プロジェクト（bracket:trueとして保存されたもの）を模擬的に読み込むと、強制的にfalseへ上書きされることを確認
     await page.evaluate(() => {
       const legacy = { app: 'caption-koubou', version: 1, projects: [{
         id: 'legacy1', name: '旧データの展覧会',
@@ -29,7 +30,7 @@ async function run() {
       save(); renderAll();
     });
     await page.waitForTimeout(300);
-    t.eq(await page.evaluate(() => proj().style.bracket), true, '既存データでbracket:trueが保存されていた場合はそのまま維持される（新規既定値の変更で上書きされない）');
+    t.eq(await page.evaluate(() => proj().style.bracket), false, '既存データでbracket:trueが保存されていた場合でも、読み込み時に強制的にfalseへ上書きされる');
 
     t.noErrors(errors);
     const r = t.finish();

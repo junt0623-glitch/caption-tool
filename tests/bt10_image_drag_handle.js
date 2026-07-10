@@ -18,12 +18,13 @@ async function run() {
     await page.waitForTimeout(200);
     await page.click('#emodeOne');
     await page.waitForTimeout(200);
+    await page.click('#imgOvToggle');
+    await page.waitForTimeout(200);
     await page.click('#btnImgImport');
     await page.setInputFiles('#layoutImageInput', FIXTURE);
     await page.waitForTimeout(300);
 
-    // 自由配置に切り替えて画像を選択 → ハンドルが表示される
-    await page.evaluate(() => { proj().style.imgFit = 'custom'; save(); renderEditor(); });
+    await page.evaluate(() => { curStyle().imgFit = 'custom'; save(); renderEditor(); });
     await page.waitForTimeout(200);
     const imgBox = await page.locator('#editHolder .cap-img').boundingBox();
     await page.mouse.click(imgBox.x + imgBox.width - 5, imgBox.y + imgBox.height - 5);
@@ -31,26 +32,24 @@ async function run() {
     const handleVisible = await page.locator('#editHolder .img-handle').isVisible().catch(() => false);
     t.ok(handleVisible, '自由配置で画像をクリックすると拡縮ハンドルが表示される');
 
-    // ハンドルをドラッグして拡大
-    const scaleBefore = await page.evaluate(() => proj().style.imgScale);
+    const scaleBefore = await page.evaluate(() => curStyleRead().imgScale);
     const hbox = await page.locator('#editHolder .img-handle').boundingBox();
     await page.mouse.move(hbox.x + hbox.width / 2, hbox.y + hbox.height / 2);
     await page.mouse.down();
     await page.mouse.move(hbox.x + hbox.width / 2 + 40, hbox.y + hbox.height / 2, { steps: 5 });
     await page.mouse.up();
     await page.waitForTimeout(200);
-    const scaleAfter = await page.evaluate(() => proj().style.imgScale);
+    const scaleAfter = await page.evaluate(() => curStyleRead().imgScale);
     t.ok(scaleAfter > scaleBefore, 'ハンドルを右にドラッグすると拡大率が増える');
 
-    // 画像本体をドラッグして位置移動
-    const offXBefore = await page.evaluate(() => proj().style.imgOffX || 0);
+    const offXBefore = await page.evaluate(() => curStyleRead().imgOffX || 0);
     const box2 = await page.locator('#editHolder .cap-img').boundingBox();
     await page.mouse.move(box2.x + box2.width - 20, box2.y + box2.height - 20);
     await page.mouse.down();
     await page.mouse.move(box2.x + box2.width - 40, box2.y + box2.height - 30, { steps: 5 });
     await page.mouse.up();
     await page.waitForTimeout(200);
-    const offXAfter = await page.evaluate(() => proj().style.imgOffX || 0);
+    const offXAfter = await page.evaluate(() => curStyleRead().imgOffX || 0);
     t.ok(offXAfter !== offXBefore, '画像本体をドラッグすると位置（imgOffX）が変わる');
 
     t.noErrors(errors);
