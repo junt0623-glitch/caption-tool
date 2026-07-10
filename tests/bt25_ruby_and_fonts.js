@@ -24,15 +24,26 @@ async function run() {
     });
     t.eq(sizeAfter, '32px', 'ルビのサイズを24ptに設定するとプレビューのrt要素のfont-sizeが32pxになる（24pt→px換算）');
 
-    const offsetBefore = await page.evaluate(() => getComputedStyle(document.querySelector('#editHolder rt')).transform);
+    const offsetBefore = await page.evaluate(() => getComputedStyle(document.querySelector('#editHolder rt')).marginBlockEnd);
     await page.fill('#rubySizePt', '');
     await page.dispatchEvent('#rubySizePt', 'input');
     const oRubyOffset = page.locator('#rubyOffset');
     await oRubyOffset.fill('8');
     await oRubyOffset.dispatchEvent('input');
     await page.waitForTimeout(150);
-    const offsetAfter = await page.evaluate(() => getComputedStyle(document.querySelector('#editHolder rt')).transform);
-    t.ok(offsetAfter !== offsetBefore, 'ルビのオフセットを変更するとプレビューのrt要素のtransformが変わる');
+    const offsetAfter = await page.evaluate(() => getComputedStyle(document.querySelector('#editHolder rt')).marginBlockEnd);
+    t.ok(offsetAfter !== offsetBefore, 'ルビのオフセットを変更するとプレビューのrt要素のmargin-block-endが変わる');
+
+    // オフセットの最小値・最大値で、実際に画面上のルビと本文の間隔（項目の高さ）が変わることを確認
+    await oRubyOffset.fill('-2');
+    await oRubyOffset.dispatchEvent('input');
+    await page.waitForTimeout(150);
+    const heightMin = await page.evaluate(() => document.querySelector('#editHolder [data-item="title"]').getBoundingClientRect().height);
+    await oRubyOffset.fill('10');
+    await oRubyOffset.dispatchEvent('input');
+    await page.waitForTimeout(150);
+    const heightMax = await page.evaluate(() => document.querySelector('#editHolder [data-item="title"]').getBoundingClientRect().height);
+    t.ok(heightMax > heightMin + 5, `オフセットを最小(-2pt)から最大(10pt)にすると、実際に画面上のルビと本文の間隔（項目の高さ）が広がる（${heightMin.toFixed(1)}px → ${heightMax.toFixed(1)}px）`);
 
     await page.selectOption('#rubyFont', 'gothic');
     await page.waitForTimeout(150);
