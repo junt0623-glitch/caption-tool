@@ -182,24 +182,24 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 .resize-handle.h-s{cursor:ns-resize}
 .resize-handle.h-se{cursor:nwse-resize}
 
-/* 背景10種 */
+/* 背景プリセット。--bg-scale（柄の大きさ 0.3〜3, 既定1）・--bg-opacity（濃さ）・--bg-accent（柄色）で調整可能 */
 .bg-cream{background:#FBF7EE}
-.bg-hairline::before{content:"";position:absolute;inset:2.5mm;border:.3mm solid var(--bg-accent,#333);opacity:var(--bg-opacity,1)}
-.bg-double::before{content:"";position:absolute;inset:2.4mm;border:.5mm solid var(--bg-accent,#222);opacity:var(--bg-opacity,1)}
-.bg-double::after{content:"";position:absolute;inset:3.6mm;border:.2mm solid var(--bg-accent,#222);opacity:var(--bg-opacity,1)}
-.bg-band::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4mm;background:var(--bg-accent,#A63A22);opacity:var(--bg-opacity,1)}
-.bg-toprule::before{content:"";position:absolute;left:0;right:0;top:0;height:2.4mm;background:var(--bg-accent,#222);opacity:var(--bg-opacity,1)}
-.bg-bottomrule::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1.6mm;background:var(--bg-accent,#A63A22);opacity:var(--bg-opacity,1)}
+.bg-hairline::before{content:"";position:absolute;inset:calc(2.5mm*var(--bg-scale,1));border:calc(.3mm*var(--bg-scale,1)) solid var(--bg-accent,#333);opacity:var(--bg-opacity,1)}
+.bg-double::before{content:"";position:absolute;inset:calc(2.4mm*var(--bg-scale,1));border:calc(.5mm*var(--bg-scale,1)) solid var(--bg-accent,#222);opacity:var(--bg-opacity,1)}
+.bg-double::after{content:"";position:absolute;inset:calc(3.6mm*var(--bg-scale,1));border:calc(.2mm*var(--bg-scale,1)) solid var(--bg-accent,#222);opacity:var(--bg-opacity,1)}
+.bg-band::before{content:"";position:absolute;left:0;top:0;bottom:0;width:calc(4mm*var(--bg-scale,1));background:var(--bg-accent,#A63A22);opacity:var(--bg-opacity,1)}
+.bg-toprule::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(2.4mm*var(--bg-scale,1));background:var(--bg-accent,#222);opacity:var(--bg-opacity,1)}
+.bg-bottomrule::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(1.6mm*var(--bg-scale,1));background:var(--bg-accent,#A63A22);opacity:var(--bg-opacity,1)}
 .bg-corner::before{content:"";position:absolute;inset:3mm;opacity:var(--bg-opacity,1);background:
-  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) left top/9mm .35mm no-repeat,
-  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) left top/.35mm 9mm no-repeat,
-  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) right bottom/9mm .35mm no-repeat,
-  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) right bottom/.35mm 9mm no-repeat}
+  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) left top/calc(9mm*var(--bg-scale,1)) calc(.35mm*var(--bg-scale,1)) no-repeat,
+  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) left top/calc(.35mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1)) no-repeat,
+  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) right bottom/calc(9mm*var(--bg-scale,1)) calc(.35mm*var(--bg-scale,1)) no-repeat,
+  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) right bottom/calc(.35mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1)) no-repeat}
 .bg-corner::after{content:"";position:absolute;inset:3mm;opacity:var(--bg-opacity,1);background:
-  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) right top/9mm .35mm no-repeat,
-  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) right top/.35mm 9mm no-repeat,
-  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) left bottom/9mm .35mm no-repeat,
-  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) left bottom/.35mm 9mm no-repeat}
+  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) right top/calc(9mm*var(--bg-scale,1)) calc(.35mm*var(--bg-scale,1)) no-repeat,
+  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) right top/calc(.35mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1)) no-repeat,
+  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) left bottom/calc(9mm*var(--bg-scale,1)) calc(.35mm*var(--bg-scale,1)) no-repeat,
+  linear-gradient(var(--bg-accent,#333),var(--bg-accent,#333)) left bottom/calc(.35mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1)) no-repeat}
 .bg-washi{background-color:#FCFAF4;background-image:radial-gradient(rgba(120,110,85,.06) 15%,transparent 16%);background-size:3px 3px}
 
 /* ===== 釉薬の色（中国陶磁・洗練） ===== */
@@ -231,44 +231,164 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 .bg-saito::before{content:"";position:absolute;inset:0;opacity:calc(.8*var(--bg-opacity,1));background:
   repeating-radial-gradient(circle at 82% 24%,transparent 0 4mm,rgba(70,40,25,.5) 4mm 5.2mm,transparent 5.2mm 9mm),
   repeating-radial-gradient(circle at 12% 78%,transparent 0 5mm,rgba(70,40,25,.4) 5mm 6mm,transparent 6mm 11mm)}
-.bg-raimon::before{content:"";position:absolute;left:0;right:0;top:0;height:6mm;opacity:var(--bg-opacity,1);background:
+.bg-raimon::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(6mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
   var(--bg-accent,#6E5C3E);
-  -webkit-mask:repeating-linear-gradient(90deg,#000 0 1mm,transparent 1mm 2mm,#000 2mm 4mm,transparent 4mm 4.6mm,#000 4.6mm 6mm);
-  mask:repeating-linear-gradient(90deg,#000 0 1mm,transparent 1mm 2mm,#000 2mm 4mm,transparent 4mm 4.6mm,#000 4.6mm 6mm)}
-.bg-raimon::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6mm;opacity:var(--bg-opacity,1);background:var(--bg-accent,#6E5C3E);
-  -webkit-mask:repeating-linear-gradient(90deg,#000 0 1mm,transparent 1mm 2mm,#000 2mm 4mm,transparent 4mm 4.6mm,#000 4.6mm 6mm);
-  mask:repeating-linear-gradient(90deg,#000 0 1mm,transparent 1mm 2mm,#000 2mm 4mm,transparent 4mm 4.6mm,#000 4.6mm 6mm)}
-.bg-totetsu::before{content:"";position:absolute;left:0;right:0;top:0;height:9mm;opacity:var(--bg-opacity,1);background:
-  repeating-linear-gradient(45deg,transparent 0 2.2mm,rgba(240,236,225,.5) 2.2mm 2.6mm),
-  repeating-linear-gradient(-45deg,transparent 0 2.2mm,rgba(240,236,225,.5) 2.2mm 2.6mm),
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 calc(1mm*var(--bg-scale,1)),transparent calc(1mm*var(--bg-scale,1)) calc(2mm*var(--bg-scale,1)),#000 calc(2mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1)),transparent calc(4mm*var(--bg-scale,1)) calc(4.6mm*var(--bg-scale,1)),#000 calc(4.6mm*var(--bg-scale,1)) calc(6mm*var(--bg-scale,1)));
+  mask:repeating-linear-gradient(90deg,#000 0 calc(1mm*var(--bg-scale,1)),transparent calc(1mm*var(--bg-scale,1)) calc(2mm*var(--bg-scale,1)),#000 calc(2mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1)),transparent calc(4mm*var(--bg-scale,1)) calc(4.6mm*var(--bg-scale,1)),#000 calc(4.6mm*var(--bg-scale,1)) calc(6mm*var(--bg-scale,1)))}
+.bg-raimon::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(6mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:var(--bg-accent,#6E5C3E);
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 calc(1mm*var(--bg-scale,1)),transparent calc(1mm*var(--bg-scale,1)) calc(2mm*var(--bg-scale,1)),#000 calc(2mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1)),transparent calc(4mm*var(--bg-scale,1)) calc(4.6mm*var(--bg-scale,1)),#000 calc(4.6mm*var(--bg-scale,1)) calc(6mm*var(--bg-scale,1)));
+  mask:repeating-linear-gradient(90deg,#000 0 calc(1mm*var(--bg-scale,1)),transparent calc(1mm*var(--bg-scale,1)) calc(2mm*var(--bg-scale,1)),#000 calc(2mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1)),transparent calc(4mm*var(--bg-scale,1)) calc(4.6mm*var(--bg-scale,1)),#000 calc(4.6mm*var(--bg-scale,1)) calc(6mm*var(--bg-scale,1)))}
+.bg-totetsu::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(9mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  repeating-linear-gradient(45deg,transparent 0 calc(2.2mm*var(--bg-scale,1)),rgba(240,236,225,.5) calc(2.2mm*var(--bg-scale,1)) calc(2.6mm*var(--bg-scale,1))),
+  repeating-linear-gradient(-45deg,transparent 0 calc(2.2mm*var(--bg-scale,1)),rgba(240,236,225,.5) calc(2.2mm*var(--bg-scale,1)) calc(2.6mm*var(--bg-scale,1))),
   var(--bg-accent,#55604F)}
 .bg-gatou::before{content:"";position:absolute;inset:0;opacity:var(--bg-opacity,1);background:
-  radial-gradient(circle 1.4mm at 50% 15%,var(--bg-accent,#6B6353) 98%,transparent),
-  radial-gradient(circle at 50% 15%,transparent 3.4mm,var(--bg-accent,#6B6353) 3.4mm 3.9mm,transparent 3.9mm 6.4mm,var(--bg-accent,#6B6353) 6.4mm 6.8mm,transparent 6.8mm)}
-.bg-seika::before{content:"";position:absolute;inset:2.2mm;border:.7mm solid var(--bg-accent,#2B4C8C);opacity:var(--bg-opacity,1)}
-.bg-seika::after{content:"";position:absolute;inset:3.8mm;border:.25mm solid var(--bg-accent,#2B4C8C);opacity:var(--bg-opacity,1)}
-.bg-karakusa::after{content:"";position:absolute;left:0;right:0;bottom:0;height:8mm;opacity:var(--bg-opacity,1);background:
-  radial-gradient(circle 1mm at 6mm 4mm,rgba(255,255,255,.9) 98%,transparent),
-  repeating-radial-gradient(circle at 6mm 4mm,transparent 0 1.8mm,rgba(255,255,255,.75) 1.8mm 2.3mm,transparent 2.3mm 6mm),
-  var(--bg-accent,#2B4C8C);background-repeat:repeat-x;background-size:12mm 8mm}
-.bg-gosai::before{content:"";position:absolute;left:0;right:0;top:0;height:3mm;opacity:var(--bg-opacity,1);background:
-  repeating-linear-gradient(90deg,#B33A2E 0 6mm,#3A7A46 6mm 12mm,#D9A63C 12mm 18mm,#2B4C8C 18mm 24mm)}
-.bg-gosai::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3mm;opacity:var(--bg-opacity,1);background:
-  repeating-linear-gradient(90deg,#2B4C8C 0 6mm,#D9A63C 6mm 12mm,#3A7A46 12mm 18mm,#B33A2E 18mm 24mm)}
+  radial-gradient(circle calc(1.4mm*var(--bg-scale,1)) at 50% 15%,var(--bg-accent,#6B6353) 98%,transparent),
+  radial-gradient(circle at 50% 15%,transparent calc(3.4mm*var(--bg-scale,1)),var(--bg-accent,#6B6353) calc(3.4mm*var(--bg-scale,1)) calc(3.9mm*var(--bg-scale,1)),transparent calc(3.9mm*var(--bg-scale,1)) calc(6.4mm*var(--bg-scale,1)),var(--bg-accent,#6B6353) calc(6.4mm*var(--bg-scale,1)) calc(6.8mm*var(--bg-scale,1)),transparent calc(6.8mm*var(--bg-scale,1)))}
+.bg-seika::before{content:"";position:absolute;inset:calc(2.2mm*var(--bg-scale,1));border:calc(.7mm*var(--bg-scale,1)) solid var(--bg-accent,#2B4C8C);opacity:var(--bg-opacity,1)}
+.bg-seika::after{content:"";position:absolute;inset:calc(3.8mm*var(--bg-scale,1));border:calc(.25mm*var(--bg-scale,1)) solid var(--bg-accent,#2B4C8C);opacity:var(--bg-opacity,1)}
+.bg-karakusa::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(8mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  radial-gradient(circle calc(1mm*var(--bg-scale,1)) at calc(6mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1)),rgba(255,255,255,.9) 98%,transparent),
+  repeating-radial-gradient(circle at calc(6mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1)),transparent 0 calc(1.8mm*var(--bg-scale,1)),rgba(255,255,255,.75) calc(1.8mm*var(--bg-scale,1)) calc(2.3mm*var(--bg-scale,1)),transparent calc(2.3mm*var(--bg-scale,1)) calc(6mm*var(--bg-scale,1))),
+  var(--bg-accent,#2B4C8C);background-repeat:repeat-x;background-size:calc(12mm*var(--bg-scale,1)) calc(8mm*var(--bg-scale,1))}
+.bg-gosai::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(3mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  repeating-linear-gradient(90deg,#B33A2E 0 calc(6mm*var(--bg-scale,1)),#3A7A46 calc(6mm*var(--bg-scale,1)) calc(12mm*var(--bg-scale,1)),#D9A63C calc(12mm*var(--bg-scale,1)) calc(18mm*var(--bg-scale,1)),#2B4C8C calc(18mm*var(--bg-scale,1)) calc(24mm*var(--bg-scale,1)))}
+.bg-gosai::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(3mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  repeating-linear-gradient(90deg,#2B4C8C 0 calc(6mm*var(--bg-scale,1)),#D9A63C calc(6mm*var(--bg-scale,1)) calc(12mm*var(--bg-scale,1)),#3A7A46 calc(12mm*var(--bg-scale,1)) calc(18mm*var(--bg-scale,1)),#B33A2E calc(18mm*var(--bg-scale,1)) calc(24mm*var(--bg-scale,1)))}
 .bg-funsai::before{content:"";position:absolute;inset:0;opacity:var(--bg-opacity,1);background:
   radial-gradient(ellipse 45% 40% at 85% 82%,rgba(228,140,150,.45),transparent 70%),
   radial-gradient(ellipse 30% 26% at 72% 92%,rgba(210,110,125,.35),transparent 70%),
   radial-gradient(ellipse 40% 34% at 10% 8%,rgba(150,190,150,.28),transparent 70%)}
-.bg-kinsai::before{content:"";position:absolute;inset:2.4mm;border:.5mm solid var(--bg-accent,#C7A652);opacity:var(--bg-opacity,1)}
-.bg-kinsai::after{content:"";position:absolute;inset:3.7mm;border:.2mm solid var(--bg-accent,#C7A652);opacity:var(--bg-opacity,1)}
+.bg-kinsai::before{content:"";position:absolute;inset:calc(2.4mm*var(--bg-scale,1));border:calc(.5mm*var(--bg-scale,1)) solid var(--bg-accent,#C7A652);opacity:var(--bg-opacity,1)}
+.bg-kinsai::after{content:"";position:absolute;inset:calc(3.7mm*var(--bg-scale,1));border:calc(.2mm*var(--bg-scale,1)) solid var(--bg-accent,#C7A652);opacity:var(--bg-opacity,1)}
 .bg-amime::before{content:"";position:absolute;inset:0;opacity:calc(.55*var(--bg-opacity,1));background:
-  repeating-linear-gradient(45deg,transparent 0 4mm,var(--bg-accent,#39588F) 4mm calc(4mm + .3px),transparent calc(4mm + .6px) 8mm),
-  repeating-linear-gradient(-45deg,transparent 0 4mm,var(--bg-accent,#39588F) 4mm calc(4mm + .3px),transparent calc(4mm + .6px) 8mm)}
+  repeating-linear-gradient(45deg,transparent 0 calc(4mm*var(--bg-scale,1)),var(--bg-accent,#39588F) calc(4mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1) + .3px),transparent calc(4mm*var(--bg-scale,1) + .6px) calc(8mm*var(--bg-scale,1))),
+  repeating-linear-gradient(-45deg,transparent 0 calc(4mm*var(--bg-scale,1)),var(--bg-accent,#39588F) calc(4mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1) + .3px),transparent calc(4mm*var(--bg-scale,1) + .6px) calc(8mm*var(--bg-scale,1)))}
+
+/* ===== 東南アジアの美術様式 ===== */
+/* バティック更紗（ジャワ・パラン風の斜め流水） */
+.bg-batik::before{content:"";position:absolute;inset:0;opacity:calc(.5*var(--bg-opacity,1));background:
+  repeating-linear-gradient(48deg,transparent 0 calc(5mm*var(--bg-scale,1)),var(--bg-accent,#7A5C38) calc(5mm*var(--bg-scale,1)) calc(5.35mm*var(--bg-scale,1)),transparent calc(5.35mm*var(--bg-scale,1)) calc(6.4mm*var(--bg-scale,1)),var(--bg-accent,#7A5C38) calc(6.4mm*var(--bg-scale,1)) calc(6.55mm*var(--bg-scale,1)),transparent calc(6.55mm*var(--bg-scale,1)) calc(10mm*var(--bg-scale,1)))}
+/* 蓮弁帯（クメール・アンコール風の連弁） */
+.bg-khmer::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(7mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  radial-gradient(ellipse 50% 90% at 50% 100%, var(--bg-accent,#8A6B3C) 55%, transparent 57%),
+  radial-gradient(ellipse 50% 66% at 50% 100%, rgba(252,249,240,.9) 52%, transparent 54%),
+  radial-gradient(ellipse 62% 100% at 50% 100%, var(--bg-accent,#8A6B3C) 58%, transparent 60%);
+  background-size:calc(9mm*var(--bg-scale,1)) 100%;background-repeat:repeat-x}
+/* ソンケット金糸帯（マレー織物風の菱点列） */
+.bg-songket::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(5.5mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  radial-gradient(circle calc(.55mm*var(--bg-scale,1)) at 25% 50%,var(--bg-accent,#B08D3E) 96%,transparent),
+  radial-gradient(circle calc(.55mm*var(--bg-scale,1)) at 75% 50%,var(--bg-accent,#B08D3E) 96%,transparent),
+  radial-gradient(circle calc(.35mm*var(--bg-scale,1)) at 50% 22%,var(--bg-accent,#B08D3E) 96%,transparent),
+  radial-gradient(circle calc(.35mm*var(--bg-scale,1)) at 50% 78%,var(--bg-accent,#B08D3E) 96%,transparent);
+  background-size:calc(6mm*var(--bg-scale,1)) calc(5.5mm*var(--bg-scale,1))}
+
+/* ===== 西アジアの美術様式 ===== */
+/* アラベスク八芒星（ギリフ・幾何学連続文） */
+.bg-girih::before{content:"";position:absolute;inset:0;opacity:calc(.45*var(--bg-opacity,1));background:
+  repeating-linear-gradient(0deg,transparent 0 calc(7.8mm*var(--bg-scale,1)),var(--bg-accent,#3E6C8C) calc(7.8mm*var(--bg-scale,1)) calc(8mm*var(--bg-scale,1))),
+  repeating-linear-gradient(90deg,transparent 0 calc(7.8mm*var(--bg-scale,1)),var(--bg-accent,#3E6C8C) calc(7.8mm*var(--bg-scale,1)) calc(8mm*var(--bg-scale,1))),
+  repeating-linear-gradient(45deg,transparent 0 calc(5.45mm*var(--bg-scale,1)),var(--bg-accent,#3E6C8C) calc(5.45mm*var(--bg-scale,1)) calc(5.66mm*var(--bg-scale,1))),
+  repeating-linear-gradient(-45deg,transparent 0 calc(5.45mm*var(--bg-scale,1)),var(--bg-accent,#3E6C8C) calc(5.45mm*var(--bg-scale,1)) calc(5.66mm*var(--bg-scale,1)))}
+/* イズニク枠（オスマン陶器のコバルト＋トルコ石の二重枠） */
+.bg-iznik::before{content:"";position:absolute;inset:calc(2.2mm*var(--bg-scale,1));border:calc(.7mm*var(--bg-scale,1)) solid #23509E;opacity:var(--bg-opacity,1)}
+.bg-iznik::after{content:"";position:absolute;inset:calc(3.6mm*var(--bg-scale,1));border:calc(.35mm*var(--bg-scale,1)) solid #2FA3A0;opacity:var(--bg-opacity,1)}
+/* ペルシア絨毯縁（多層ボーダー） */
+.bg-qali::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(5mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  linear-gradient(180deg,var(--bg-accent,#8C2F39) 0 30%,rgba(252,247,238,1) 30% 38%,#27427A 38% 84%,rgba(252,247,238,1) 84% 90%,var(--bg-accent,#8C2F39) 90% 100%)}
+.bg-qali::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(5mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  linear-gradient(0deg,var(--bg-accent,#8C2F39) 0 30%,rgba(252,247,238,1) 30% 38%,#27427A 38% 84%,rgba(252,247,238,1) 84% 90%,var(--bg-accent,#8C2F39) 90% 100%)}
+
+/* ===== ヨーロッパの美術様式 ===== */
+/* ギリシア雷文帯（メアンダー・白地に群青） */
+.bg-meander::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(5.5mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:var(--bg-accent,#274E7A);
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 calc(.9mm*var(--bg-scale,1)),transparent calc(.9mm*var(--bg-scale,1)) calc(1.8mm*var(--bg-scale,1)),#000 calc(1.8mm*var(--bg-scale,1)) calc(3.6mm*var(--bg-scale,1)),transparent calc(3.6mm*var(--bg-scale,1)) calc(4.2mm*var(--bg-scale,1)),#000 calc(4.2mm*var(--bg-scale,1)) calc(5.4mm*var(--bg-scale,1)));
+  mask:repeating-linear-gradient(90deg,#000 0 calc(.9mm*var(--bg-scale,1)),transparent calc(.9mm*var(--bg-scale,1)) calc(1.8mm*var(--bg-scale,1)),#000 calc(1.8mm*var(--bg-scale,1)) calc(3.6mm*var(--bg-scale,1)),transparent calc(3.6mm*var(--bg-scale,1)) calc(4.2mm*var(--bg-scale,1)),#000 calc(4.2mm*var(--bg-scale,1)) calc(5.4mm*var(--bg-scale,1)))}
+/* 大理石（カッラーラ風の淡い石理） */
+.bg-marble::before{content:"";position:absolute;inset:0;opacity:var(--bg-opacity,1);background:
+  linear-gradient(112deg,transparent 0 38%,rgba(150,155,165,.14) 39% 39.6%,transparent 41% 62%,rgba(150,155,165,.10) 63% 63.4%,transparent 65%),
+  linear-gradient(78deg,transparent 0 55%,rgba(170,172,180,.10) 56% 56.5%,transparent 58%),
+  radial-gradient(ellipse 130% 90% at 25% 8%,rgba(255,255,255,.6),transparent 55%)}
+/* デルフト藍タイル（目地割りの格子） */
+.bg-delft::before{content:"";position:absolute;inset:0;opacity:calc(.55*var(--bg-opacity,1));background:
+  repeating-linear-gradient(0deg,transparent 0 calc(11.7mm*var(--bg-scale,1)),var(--bg-accent,#39588F) calc(11.7mm*var(--bg-scale,1)) calc(12mm*var(--bg-scale,1))),
+  repeating-linear-gradient(90deg,transparent 0 calc(11.7mm*var(--bg-scale,1)),var(--bg-accent,#39588F) calc(11.7mm*var(--bg-scale,1)) calc(12mm*var(--bg-scale,1)))}
+.bg-delft::after{content:"";position:absolute;inset:0;opacity:calc(.35*var(--bg-opacity,1));background:
+  radial-gradient(circle calc(.8mm*var(--bg-scale,1)) at calc(6mm*var(--bg-scale,1)) calc(6mm*var(--bg-scale,1)),var(--bg-accent,#39588F) 96%,transparent);
+  background-size:calc(12mm*var(--bg-scale,1)) calc(12mm*var(--bg-scale,1))}
+/* ロココ淡彩（貝殻色のやわらかな暈し） */
+.bg-rococo::before{content:"";position:absolute;inset:0;opacity:var(--bg-opacity,1);background:
+  radial-gradient(ellipse 55% 45% at 88% 10%,rgba(233,180,190,.35),transparent 70%),
+  radial-gradient(ellipse 48% 42% at 8% 90%,rgba(168,196,220,.30),transparent 70%),
+  radial-gradient(ellipse 42% 34% at 90% 88%,rgba(215,205,160,.24),transparent 70%)}
+
+/* ===== アメリカの美術様式 ===== */
+/* ナバホ織り帯（菱形と山形の縞） */
+.bg-navajo::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(6.5mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  linear-gradient(135deg,transparent 0 46%,var(--bg-accent,#8E3B2A) 46% 54%,transparent 54%),
+  linear-gradient(45deg,transparent 0 46%,var(--bg-accent,#8E3B2A) 46% 54%,transparent 54%),
+  linear-gradient(180deg,#3E3A34 0 12%,transparent 12% 88%,#3E3A34 88% 100%);
+  background-size:calc(8mm*var(--bg-scale,1)) 100%,calc(8mm*var(--bg-scale,1)) 100%,100% 100%;background-repeat:repeat-x}
+/* アールデコ扇形（marquee・幾何の朝日文） */
+.bg-artdeco::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(8mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  repeating-radial-gradient(circle at 50% 0%,transparent 0 calc(1.7mm*var(--bg-scale,1)),var(--bg-accent,#A9853C) calc(1.7mm*var(--bg-scale,1)) calc(2mm*var(--bg-scale,1)),transparent calc(2mm*var(--bg-scale,1)) calc(3.7mm*var(--bg-scale,1)));
+  background-size:calc(16mm*var(--bg-scale,1)) 100%;background-repeat:repeat-x}
+/* アーミッシュキルト格子（深色の大格子） */
+.bg-quilt::before{content:"";position:absolute;inset:0;opacity:calc(.5*var(--bg-opacity,1));background:
+  repeating-linear-gradient(0deg,transparent 0 calc(13.4mm*var(--bg-scale,1)),var(--bg-accent,#3A4E6E) calc(13.4mm*var(--bg-scale,1)) calc(14mm*var(--bg-scale,1))),
+  repeating-linear-gradient(90deg,transparent 0 calc(13.4mm*var(--bg-scale,1)),var(--bg-accent,#3A4E6E) calc(13.4mm*var(--bg-scale,1)) calc(14mm*var(--bg-scale,1)))}
+
+/* ===== 中南米の美術様式 ===== */
+/* アンデス階段文帯（インカ・チャカナ風） */
+.bg-andes::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(6mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:var(--bg-accent,#8A4A2B);
+  -webkit-mask:
+    repeating-linear-gradient(90deg,#000 0 calc(2mm*var(--bg-scale,1)),transparent calc(2mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1))),
+    repeating-linear-gradient(0deg,#000 0 calc(2mm*var(--bg-scale,1)),transparent calc(2mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1)));
+  -webkit-mask-composite:xor;
+  mask:
+    repeating-linear-gradient(90deg,#000 0 calc(2mm*var(--bg-scale,1)),transparent calc(2mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1))),
+    repeating-linear-gradient(0deg,#000 0 calc(2mm*var(--bg-scale,1)),transparent calc(2mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1)));
+  mask-composite:exclude}
+/* タラベラ彩陶（メキシコタイルの点花文） */
+.bg-talavera::before{content:"";position:absolute;inset:0;opacity:calc(.6*var(--bg-opacity,1));background:
+  radial-gradient(circle calc(1mm*var(--bg-scale,1)) at 50% 50%,var(--bg-accent,#2B5F9E) 96%,transparent),
+  radial-gradient(circle calc(.5mm*var(--bg-scale,1)) at 50% 18%,#C98A2D 96%,transparent),
+  radial-gradient(circle calc(.5mm*var(--bg-scale,1)) at 50% 82%,#C98A2D 96%,transparent),
+  radial-gradient(circle calc(.5mm*var(--bg-scale,1)) at 18% 50%,#C98A2D 96%,transparent),
+  radial-gradient(circle calc(.5mm*var(--bg-scale,1)) at 82% 50%,#C98A2D 96%,transparent);
+  background-size:calc(13mm*var(--bg-scale,1)) calc(13mm*var(--bg-scale,1))}
+/* アステカ日輪（放射光背・下辺中央） */
+.bg-azteca::after{content:"";position:absolute;inset:0;opacity:calc(.5*var(--bg-opacity,1));background:
+  repeating-conic-gradient(from 0deg at 50% 118%,var(--bg-accent,#A3652C) 0deg 4deg,transparent 4deg 12deg),
+  radial-gradient(circle at 50% 118%,rgba(252,246,232,0) 0 30%,rgba(252,246,232,1) 42%)}
+
+/* ===== アフリカの美術様式 ===== */
+/* ボゴラン泥染め（マリの白抜き幾何文） */
+.bg-mudcloth::before{content:"";position:absolute;inset:0;opacity:var(--bg-opacity,1);background:
+  repeating-linear-gradient(0deg,transparent 0 calc(9.4mm*var(--bg-scale,1)),rgba(240,234,220,.85) calc(9.4mm*var(--bg-scale,1)) calc(9.8mm*var(--bg-scale,1))),
+  repeating-linear-gradient(90deg,transparent 0 calc(4.5mm*var(--bg-scale,1)),rgba(240,234,220,.5) calc(4.5mm*var(--bg-scale,1)) calc(4.75mm*var(--bg-scale,1)),transparent calc(4.75mm*var(--bg-scale,1)) calc(9.4mm*var(--bg-scale,1)))}
+/* ケンテ織り帯（ガーナの金黄と深緑の織段） */
+.bg-kente::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(4.5mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  repeating-linear-gradient(90deg,#C9962E 0 calc(7mm*var(--bg-scale,1)),#1E5631 calc(7mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1)),#B03A2E calc(9mm*var(--bg-scale,1)) calc(11mm*var(--bg-scale,1)),#C9962E calc(11mm*var(--bg-scale,1)) calc(13mm*var(--bg-scale,1)),#22303E calc(13mm*var(--bg-scale,1)) calc(15mm*var(--bg-scale,1)))}
+.bg-kente::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(4.5mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  repeating-linear-gradient(90deg,#22303E 0 calc(7mm*var(--bg-scale,1)),#C9962E calc(7mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1)),#1E5631 calc(9mm*var(--bg-scale,1)) calc(11mm*var(--bg-scale,1)),#B03A2E calc(11mm*var(--bg-scale,1)) calc(13mm*var(--bg-scale,1)),#C9962E calc(13mm*var(--bg-scale,1)) calc(15mm*var(--bg-scale,1)))}
+/* ロータス帯（古代エジプトの睡蓮連続文） */
+.bg-lotus::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(7mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:
+  radial-gradient(ellipse 42% 85% at 50% 100%,var(--bg-accent,#2E6B8A) 55%,transparent 57%),
+  radial-gradient(ellipse 30% 60% at 50% 100%,#C9A227 50%,transparent 52%),
+  linear-gradient(0deg,var(--bg-accent,#2E6B8A) 0 6%,transparent 6%);
+  background-size:calc(8mm*var(--bg-scale,1)) 100%,calc(8mm*var(--bg-scale,1)) 100%,100% 100%;background-repeat:repeat-x}
+/* アディンクラ点綴（ガーナの捺染小紋） */
+.bg-adinkra::before{content:"";position:absolute;inset:0;opacity:calc(.55*var(--bg-opacity,1));background:
+  radial-gradient(circle at 50% 50%,transparent calc(1.1mm*var(--bg-scale,1)),var(--bg-accent,#4A4038) calc(1.1mm*var(--bg-scale,1)) calc(1.4mm*var(--bg-scale,1)),transparent calc(1.4mm*var(--bg-scale,1))),
+  radial-gradient(circle calc(.35mm*var(--bg-scale,1)) at 50% 50%,var(--bg-accent,#4A4038) 96%,transparent);
+  background-size:calc(9mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1))}
 
 /* 暗い地のスウォッチは白文字で */
 .swatch.bg-tenmoku .s1,.swatch.bg-tenmoku .s2,.swatch.bg-rokan .s1,.swatch.bg-rokan .s2,
 .swatch.bg-ruri .s1,.swatch.bg-ruri .s2,.swatch.bg-kinsai .s1,.swatch.bg-kinsai .s2,
-.swatch.bg-kinyo .s1,.swatch.bg-kinyo .s2{color:#F2EEE6}
+.swatch.bg-kinyo .s1,.swatch.bg-kinyo .s2,
+.swatch.bg-mudcloth .s1,.swatch.bg-mudcloth .s2{color:#F2EEE6}
 /* スウォッチに地色を反映（実カードはPRESET_FILL経由） */
 .swatch.bg-seiji{background:#DFE9E3}.swatch.bg-hakuji{background:#FAF8F2}.swatch.bg-teiyo{background:#F4EDDA}
 .swatch.bg-hyoretsu{background:#F2F1EC}.swatch.bg-juyo{background:#CBD8DC}.swatch.bg-ryusen{background:#BFD3C4}
@@ -277,6 +397,13 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 .swatch.bg-raimon{background:#F6F3EA}.swatch.bg-totetsu{background:#EFEBE2}.swatch.bg-gatou{background:#E9E4D8}
 .swatch.bg-seika{background:#FBFBF7}.swatch.bg-karakusa{background:#FBFBF7}.swatch.bg-gosai{background:#FDFCF7}
 .swatch.bg-funsai{background:#F9EFEC}.swatch.bg-kinsai{background:#221D18}.swatch.bg-amime{background:#F7F6F0}
+.swatch.bg-batik{background:#F5EEDD}.swatch.bg-khmer{background:#FBF6EA}.swatch.bg-songket{background:#F7F0DF}
+.swatch.bg-girih{background:#F6F4EC}.swatch.bg-iznik{background:#FBFBF6}.swatch.bg-qali{background:#FBF6EC}
+.swatch.bg-meander{background:#FAF9F3}.swatch.bg-marble{background:#F5F4F1}.swatch.bg-delft{background:#F8F8F3}
+.swatch.bg-rococo{background:#FBF6F3}.swatch.bg-navajo{background:#F4EDE0}.swatch.bg-artdeco{background:#F7F3E8}
+.swatch.bg-quilt{background:#F2F0EA}.swatch.bg-andes{background:#F5EDDE}.swatch.bg-talavera{background:#FAF8F0}
+.swatch.bg-azteca{background:#FCF6E8}.swatch.bg-mudcloth{background:#4A3D2E}.swatch.bg-kente{background:#FAF5E6}
+.swatch.bg-lotus{background:#F8F5E9}.swatch.bg-adinkra{background:#F1EBDD}
 
 /* カテゴリ見出し */
 .bg-cat{grid-column:1/-1;font-size:11px;color:var(--sub);letter-spacing:.12em;margin:8px 0 2px;border-bottom:1px solid var(--line);padding-bottom:2px}
@@ -293,11 +420,11 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 .cs-ruby{display:flex;align-items:center;gap:8px;margin-top:9px}
 .cs-ruby label{font-size:11px;color:var(--sub);flex:none}
 .cs-ruby input{flex:1;font-size:12.5px;padding:4px 6px}
-.bg-seigaiha::after{content:"";position:absolute;left:0;right:0;bottom:0;height:10mm;opacity:calc(0.4 * var(--bg-opacity,1));background:
+.bg-seigaiha::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(10mm*var(--bg-scale,1));opacity:calc(0.4 * var(--bg-opacity,1));background:
   radial-gradient(circle at 50% 100%, transparent 34%, var(--bg-accent,#cdd8e2) 35%, var(--bg-accent,#cdd8e2) 40%, transparent 41%),
   radial-gradient(circle at 0 100%, transparent 34%, var(--bg-accent,#cdd8e2) 35%, var(--bg-accent,#cdd8e2) 40%, transparent 41%),
   radial-gradient(circle at 100% 100%, transparent 34%, var(--bg-accent,#cdd8e2) 35%, var(--bg-accent,#cdd8e2) 40%, transparent 41%);
-  background-size:12mm 10mm;background-repeat:repeat-x}
+  background-size:calc(12mm*var(--bg-scale,1)) calc(10mm*var(--bg-scale,1));background-repeat:repeat-x}
 
 .print-grid{display:grid;grid-template-columns:300px 1fr;gap:18px}
 @media(max-width:820px){.print-grid{grid-template-columns:1fr}}
@@ -570,6 +697,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
               <button type="button" class="swatch-sw" id="swBgAccent"><span class="sw-chip"></span><span class="sw-txt">既定（プリセット通り）</span></button>
             </div>
             <div class="ctl"><label class="lbl">背景の濃さ（透明度）</label><div class="row"><input type="range" id="bgOpacity" min="0" max="100" step="1"><output id="oBgOp"></output></div></div>
+            <div class="ctl"><label class="lbl">柄の大きさ（罫線・帯・文様の拡大縮小）</label><div class="row"><input type="range" id="bgScale" min="30" max="300" step="5"><output id="oBgScale"></output></div></div>
           </fieldset>
         </div>
         <div>
@@ -898,7 +1026,13 @@ const BG_CATS=[
   {id:"basic",label:"基本"},
   {id:"rule",label:"罫線・枠"},
   {id:"glaze",label:"釉薬の色（中国陶磁・洗練）"},
-  {id:"pattern",label:"文様・華飾（中国陶磁・個性派）"}
+  {id:"pattern",label:"文様・華飾（中国陶磁・個性派）"},
+  {id:"sea",label:"東南アジア"},
+  {id:"westasia",label:"西アジア"},
+  {id:"europe",label:"ヨーロッパ"},
+  {id:"america",label:"アメリカ"},
+  {id:"latin",label:"中南米"},
+  {id:"africa",label:"アフリカ"}
 ];
 const BACKGROUNDS=[
   {id:"white",label:"白（無地）",cat:"basic"},{id:"cream",label:"生成り",cat:"basic"},{id:"washi",label:"和紙風テクスチャ",cat:"basic"},
@@ -915,7 +1049,19 @@ const BACKGROUNDS=[
   {id:"seika",label:"青花枠（染付）",cat:"pattern"},{id:"karakusa",label:"青花唐草帯",cat:"pattern"},
   {id:"gosai",label:"五彩帯（万暦風）",cat:"pattern"},{id:"funsai",label:"粉彩桃霞（雍正風）",cat:"pattern"},
   {id:"kinsai",label:"黒地金彩（景徳鎮風）",cat:"pattern"},{id:"amime",label:"藍網目文",cat:"pattern"},
-  {id:"seigaiha",label:"青海波（淡）",cat:"pattern"}
+  {id:"seigaiha",label:"青海波（淡）",cat:"pattern"},
+  {id:"batik",label:"バティック更紗（ジャワ）",cat:"sea"},{id:"khmer",label:"蓮弁帯（クメール）",cat:"sea"},
+  {id:"songket",label:"ソンケット金糸帯（マレー）",cat:"sea"},
+  {id:"girih",label:"アラベスク幾何文（ギリフ）",cat:"westasia"},{id:"iznik",label:"イズニク枠（オスマン陶器）",cat:"westasia"},
+  {id:"qali",label:"ペルシア絨毯縁",cat:"westasia"},
+  {id:"meander",label:"ギリシア雷文帯（メアンダー）",cat:"europe"},{id:"marble",label:"大理石（カッラーラ風）",cat:"europe"},
+  {id:"delft",label:"デルフト藍タイル",cat:"europe"},{id:"rococo",label:"ロココ淡彩",cat:"europe"},
+  {id:"navajo",label:"ナバホ織り帯",cat:"america"},{id:"artdeco",label:"アールデコ扇形帯",cat:"america"},
+  {id:"quilt",label:"アーミッシュキルト格子",cat:"america"},
+  {id:"andes",label:"アンデス階段文帯（インカ）",cat:"latin"},{id:"talavera",label:"タラベラ彩陶点文（メキシコ）",cat:"latin"},
+  {id:"azteca",label:"アステカ日輪",cat:"latin"},
+  {id:"mudcloth",label:"ボゴラン泥染め（マリ）",cat:"africa"},{id:"kente",label:"ケンテ織り帯（ガーナ）",cat:"africa"},
+  {id:"lotus",label:"ロータス帯（エジプト）",cat:"africa"},{id:"adinkra",label:"アディンクラ小紋（ガーナ）",cat:"africa"}
 ];
 function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
 /* フォント登録簿：キー→CSSフォントスタック。端末に入っているものが自動採用される */
@@ -985,13 +1131,19 @@ const PRESET_FILL={white:[255,255,255],cream:[251,247,238],hairline:[255,255,255
   rokan:[142,43,39],ruri:[39,67,127],ouyu:[226,180,76],
   saito:[216,162,120],raimon:[246,243,234],totetsu:[239,235,226],gatou:[233,228,216],
   seika:[251,251,247],karakusa:[251,251,247],gosai:[253,252,247],funsai:[249,239,236],
-  kinsai:[34,29,24],amime:[247,246,240]};
+  kinsai:[34,29,24],amime:[247,246,240],
+  batik:[245,238,221],khmer:[251,246,234],songket:[247,240,223],
+  girih:[246,244,236],iznik:[251,251,246],qali:[251,246,236],
+  meander:[250,249,243],marble:[245,244,241],delft:[248,248,243],rococo:[251,246,243],
+  navajo:[244,237,224],artdeco:[247,243,232],quilt:[242,240,234],
+  andes:[245,237,222],talavera:[250,248,240],azteca:[252,246,232],
+  mudcloth:[74,61,46],kente:[250,245,230],lotus:[248,245,233],adinkra:[241,235,221]};
 
 /* ===== 既定値 ===== */
 function defaultStyle(){
   return {font:"mincho",align:"left",lh:1.45,pad:8,bracket:false,vertical:false,tcyDigits:true,
     bg:"white",imgFit:"contain",imgOpacity:1,imgScale:100,imgOffX:0,imgOffY:0,textScrim:false,
-    textColor:null,bgFill:null,bgAccent:null,bgOpacity:1,
+    textColor:null,bgFill:null,bgAccent:null,bgOpacity:1,bgScale:100,
     rubyOffset:2,rubySizePt:null,rubyLs:0,rubyFont:"inherit",rubyAlign:"space-around",
     show:{no:true,yomigana:false,origin:true,period:true,collection:true,catch:true,titleEn:true,originEn:true,periodEn:true,collectionEn:true,desc:false},
     layout:null};
@@ -1004,13 +1156,16 @@ function defaultLayout(size,style){
     if(it.group==="en"&&prevGroup!=="en") y+=2.2;
     if(it.key==="catchcopy") y+=1.0;
     if(it.key==="description") y+=2.2;
-    L[it.key]={x:+pad.toFixed(1),y:+y.toFixed(1),w:W,h:null,font:"inherit",size:it.size,ls:0,align:"inherit",color:null};
+    L[it.key]={x:+pad.toFixed(1),y:+y.toFixed(1),w:W,h:null,font:"inherit",size:it.size,ls:0,align:defaultAlignFor(it.key),color:null};
     if(it.key==="yomigana") y += it.size*PT2MM*1.1 + 0.3; // 作品名の真上に近接配置
     else y += it.size*PT2MM*lh + 1.1;
     prevGroup=it.group;
   });
   return L;
 }
+/* 項目キーごとの既定の文字揃え。キャッチコピー（キーワード）は既定で中央揃え、それ以外は
+   「全体の設定」の文字揃えにそのまま従う（inherit）。 */
+function defaultAlignFor(key){return key==="catchcopy"?"center":"inherit";}
 /* 縦書き用の初期配置（第3段階）。
    設計方針：カードを左右に分割し、右側＝和文項目（英字を除く全項目、descriptionも含む）を右→左の縦列で、
    左側＝英字4項目（常に横書き）を上→下の帯で配置する。列の位置計算は横書き版defaultLayoutのY積み上げロジックを
@@ -1036,7 +1191,7 @@ function defaultLayoutVertical(size,style){
     const pitch=it.size*PT2MM*lh+1.1;
     const colW=Math.max(4,+pitch.toFixed(1));
     const x=Math.max(jpMinX,+(xRight-colW).toFixed(1));
-    L[it.key]={x:x,y:+pad.toFixed(1),w:H,h:null,font:"inherit",size:it.size,ls:0,align:"inherit",color:null};
+    L[it.key]={x:x,y:+pad.toFixed(1),w:H,h:null,font:"inherit",size:it.size,ls:0,align:defaultAlignFor(it.key),color:null};
     if(it.key==="yomigana") xRight -= (it.size*PT2MM*1.1+0.3);
     else xRight -= pitch;
   });
@@ -1049,6 +1204,7 @@ function pickDefaultLayout(size,style){
 function ensureLayout(p){
   if(p.style.textColor===undefined)p.style.textColor=null;
   if(p.style.tcyDigits==null)p.style.tcyDigits=true;
+  if(p.style.bgScale==null)p.style.bgScale=100;
   if(p.style.bgFill===undefined)p.style.bgFill=null;
   if(p.style.bgAccent===undefined)p.style.bgAccent=null;
   if(p.style.bgOpacity==null)p.style.bgOpacity=1;
@@ -1101,7 +1257,7 @@ function ensureLayout(p){
     if(!L){p.style.layout[it.key]=def[it.key];return;}
     if(L.x==null)L.x=def[it.key].x; if(L.y==null)L.y=def[it.key].y; if(L.w==null)L.w=def[it.key].w;
     if(L.h===undefined)L.h=null;
-    if(L.font==null)L.font="inherit"; if(L.size==null)L.size=it.size; if(L.ls==null)L.ls=0; if(L.align==null)L.align="inherit";
+    if(L.font==null)L.font="inherit"; if(L.size==null)L.size=it.size; if(L.ls==null)L.ls=0; if(L.align==null)L.align=def[it.key].align;
     if(L.color===undefined)L.color=null;
   });
 }
@@ -1453,13 +1609,23 @@ function buildAnnotated(el,text,cfRanges,rubyRanges,tcyRanges){
   const s=String(text);
   const rr=(rubyRanges||[]).filter(r=>r&&r.end>r.start&&r.start<s.length).slice().sort((a,b)=>a.start-b.start);
   cfRanges=cfRanges||[];tcyRanges=tcyRanges||[];
+  /* ルビが付いていない区間は、解説文（buildDescContent）と同じ分かち書きspan（segmentJa）で組む。
+     以前はここが素通しのテキスト/<br>のみだったため、ルビを挿入すると単語区切りを考慮した
+     折り返し（禁則・改行の調整）が効かなくなっていた。 */
   function emitPlain(from,to){
     if(to<=from)return;
     const chunk=s.slice(from,to);
     let idx=from;
     chunk.split("\n").forEach((line,li)=>{
       if(li>0){el.appendChild(document.createElement("br"));idx+=1;}
-      appendRunsWithOverrides(el,line,idx,cfRanges,tcyRanges);idx+=line.length;
+      const segs=segmentJa(line);
+      if(!segs){appendRunsWithOverrides(el,line,idx,cfRanges,tcyRanges);idx+=line.length;return;}
+      segs.forEach(sg=>{
+        if(/^\s+$/.test(sg)){appendRunsWithOverrides(el,sg,idx,cfRanges,tcyRanges);idx+=sg.length;return;}
+        const sp=document.createElement("span");sp.className="w";
+        appendRunsWithOverrides(sp,sg,idx,cfRanges,tcyRanges);
+        el.appendChild(sp);idx+=sg.length;
+      });
     });
   }
   let pos=0;
@@ -1542,6 +1708,7 @@ function buildCard(work,st,size,opts){
   const fillRGB=est.bgFill?cmykToRgb(est.bgFill.c,est.bgFill.m,est.bgFill.y,est.bgFill.k):(PRESET_FILL[est.bg||"white"]||[255,255,255]);
   card.style.backgroundColor=`rgba(${fillRGB.join(",")},${bgOpacity})`;
   card.style.setProperty("--bg-opacity",String(bgOpacity));
+  card.style.setProperty("--bg-scale",String((est.bgScale==null?100:est.bgScale)/100));
   if(est.bgAccent){const [r,g,b]=cmykToRgb(est.bgAccent.c,est.bgAccent.m,est.bgAccent.y,est.bgAccent.k);card.style.setProperty("--bg-accent",`rgb(${r},${g},${b})`);}
   if(est.textColor){const [r,g,b]=cmykToRgb(est.textColor.c,est.textColor.m,est.textColor.y,est.textColor.k);card.style.color=`rgb(${r},${g},${b})`;}
   card.style.setProperty("--ruby-offset",((st.rubyOffset==null?2:st.rubyOffset))+"pt");
@@ -1813,6 +1980,7 @@ function refreshLayoutControls(){const p=proj();ensureLayout(p);const st=p.style
   setRange("imgOffY","oImgOffY",cst.imgOffY==null?0:cst.imgOffY,"mm");
   refreshImgCustomRow();
   setRange("bgOpacity","oBgOp",Math.round((cst.bgOpacity==null?1:cst.bgOpacity)*100),"%");
+  setRange("bgScale","oBgScale",Math.round(cst.bgScale==null?100:cst.bgScale),"%");
   $("#textScrim").checked=st.textScrim;
   $("#fontKind").value=st.font;
   setRange("stLh","oLh",st.lh,"");setRange("stPad","oPad",st.pad,"mm");
@@ -1890,6 +2058,7 @@ $("#gfontToggle").addEventListener("change",e=>{
 function bindRange(id,out,setter,unit){$("#"+id).addEventListener("input",e=>{const v=+e.target.value;setter(v);$("#"+out).textContent=v+(unit?" "+unit:"");save();renderEditor();});}
 $("#imgOpacity").addEventListener("input",e=>{const v=+e.target.value;curStyle().imgOpacity=v/100;$("#oImgOp").textContent=v+"%";save();renderEditor();});
 $("#bgOpacity").addEventListener("input",e=>{const v=+e.target.value;curStyle().bgOpacity=v/100;$("#oBgOp").textContent=v+"%";save();renderEditor();});
+$("#bgScale").addEventListener("input",e=>{const v=+e.target.value;curStyle().bgScale=v;$("#oBgScale").textContent=v+"%";save();renderEditor();});
 function refreshImgCustomRow(){const custom=(curStyleRead().imgFit==="custom");$$("#imgCustomRows .row-ctl").forEach(el=>el.style.opacity=custom?1:.4);
   ["imgScale","imgOffX","imgOffY"].forEach(id=>{$("#"+id).disabled=!custom;});}
 function updateImgStatus(){
