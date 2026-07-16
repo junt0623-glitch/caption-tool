@@ -937,7 +937,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
   <div class="dlg-body help-body">
     <h4>基本の流れ</h4>
     <ol>
-      <li><b>作品台帳</b>で作品を登録（貼り付け取り込み／手入力）。画像は「編集」画面から。</li>
+      <li><b>作品台帳</b>で作品を登録（貼り付け取り込み／手入力）。画像は「編集」画面から。▲▼で並び替えると、<b>番号は行の位置に合わせて自動で振り直されます</b>（入れ替えた作品どうしで番号が入れ替わります）。</li>
       <li><b>レイアウト</b>の上部キャンバスで、各項目をドラッグして配置。クリックで小パネルを開きフォント・サイズ・文字間を調整。複数選択して整列ツールで揃える。</li>
       <li><b>印刷・PDF</b>で配置を選び「印刷する」→ 送信先を「PDFに保存」に。</li>
     </ol>
@@ -1897,14 +1897,17 @@ function renderList(){const p=proj(),area=$("#worksListArea");const list=p.works
     if(sec!==lastSec){if(sec)html+=`<tr class="sec-row"><td colspan="6">${esc(sec)}</td></tr>`;lastSec=sec;}
     html+=`<tr class="work-row${bulkSel.has(i)?" bulk-on":""}"><td><input type="checkbox" class="bulkChk" data-i="${i}" ${bulkSel.has(i)?"checked":""}></td><td>${esc(w.no)}</td><td>${esc(oneLine(w.origin))}</td>
       <td class="t-title">${esc(oneLine(w.title))}${(w.image||(w.images||[]).length||(w.descImages||[]).length)?'<span class="imgmark">🖼</span>':""}</td><td>${esc(oneLine(w.period))}</td>
-      <td class="ops"><button data-move="-1" data-i="${i}" title="上へ">▲</button><button data-move="1" data-i="${i}" title="下へ">▼</button><button data-edit="${i}">編集</button></td></tr>`;});
+      <td class="ops"><button data-move="-1" data-i="${i}" title="上へ（番号は行の位置に合わせて自動で振り直されます）">▲</button><button data-move="1" data-i="${i}" title="下へ（番号は行の位置に合わせて自動で振り直されます）">▼</button><button data-edit="${i}">編集</button></td></tr>`;});
   html+="</tbody></table>";area.innerHTML=html;
   $$("button[data-edit]",area).forEach(b=>b.addEventListener("click",()=>openWorkDialog(+b.dataset.edit)));
   $$("button[data-move]",area).forEach(b=>b.addEventListener("click",()=>{const i=+b.dataset.i,d=+b.dataset.move,j=i+d;if(j<0||j>=p.works.length)return;
     [p.works[i],p.works[j]]=[p.works[j],p.works[i]];
+    // 番号は「行の位置」に据え置く（＝入れ替えた作品同士で番号も入れ替える）。
+    // これにより並び替えても番号の並び順が自動で保たれる（1-01, 001 など書式は問わない）
+    [p.works[i].no,p.works[j].no]=[p.works[j].no,p.works[i].no];
     // 選択も一緒に動かす
     const a=bulkSel.has(i),bb=bulkSel.has(j);bulkSel.delete(i);bulkSel.delete(j);if(a)bulkSel.add(j);if(bb)bulkSel.add(i);
-    save();renderList();}));
+    save();renderList();renderPreviewSelect();renderEditor();}));
   $$(".bulkChk",area).forEach(c=>c.addEventListener("change",()=>{const i=+c.dataset.i;if(c.checked)bulkSel.add(i);else bulkSel.delete(i);
     c.closest("tr").classList.toggle("bulk-on",c.checked);updateBulkBar();syncBulkAll();}));
   const all=$("#bulkAll");if(all)all.addEventListener("change",()=>{const on=all.checked;list.forEach(({i})=>{if(on)bulkSel.add(i);else bulkSel.delete(i);});renderList();updateBulkBar();});
