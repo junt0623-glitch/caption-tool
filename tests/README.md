@@ -55,6 +55,7 @@ node tests/bt05_layout_override_diff.js
 | bt17_print_and_inline_edit.js | 印刷タブの描画・キャンバス上でのインラインテキスト編集 |
 | bt28_extra_images_online_fonts.js | オンラインフォント拡充・選択時の即時読み込み反映／追加画像の複数貼り付け（Ctrl+V・ファイル）・移動・拡縮・削除・他作品への同位置一括コピー |
 | bt29_renumber_on_move.js | 台帳の▲▼並び替えで番号が行の位置に合わせて自動で振り直されること（空番号・Undo含む） |
+| bt30_csv_export.js | 作品リストのCSV書き出し（BOM・エスケープ）・表コピー（TSV）・書き出し→再取り込みの往復 |
 
 ## 新機能を追加した時のテスト追加手順
 
