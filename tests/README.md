@@ -53,6 +53,7 @@ node tests/bt05_layout_override_diff.js
 | bt15_json_export_import.js | JSON書き出し・読み込み |
 | bt16_bulk_operations.js | 台帳の一括選択・一括画像登録／削除 |
 | bt17_print_and_inline_edit.js | 印刷タブの描画・キャンバス上でのインラインテキスト編集 |
+| bt28_extra_images_online_fonts.js | オンラインフォント拡充・選択時の即時読み込み反映／追加画像の複数貼り付け（Ctrl+V・ファイル）・移動・拡縮・削除・他作品への同位置一括コピー |
 
 ## 新機能を追加した時のテスト追加手順
 

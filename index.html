@@ -516,6 +516,12 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 .cap-img.sel-img{outline:2px dashed var(--shu);outline-offset:-2px}
 .img-handle{position:absolute;background:var(--shu);border:1.5px solid #fff;border-radius:50%;
   box-shadow:0 0 0 1px rgba(0,0,0,.25);cursor:nwse-resize;z-index:6}
+/* 追加画像（複数貼り付け可・文字の下のレイヤー） */
+.cap-card .cap-img2{position:absolute;height:auto;z-index:0;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact;-webkit-user-select:none;user-select:none}
+.edit-holder.editing .cap-img2{pointer-events:auto;cursor:move;touch-action:none}
+.cap-img2.sel-img2{outline:2px dashed var(--shu);outline-offset:-2px;z-index:3} /* 選択中は文字項目より前面に出し、ドラッグ・ホイールを確実に受ける */
+.img2-handle{position:absolute;background:var(--shu);border:1.5px solid #fff;border-radius:50%;
+  box-shadow:0 0 0 1px rgba(0,0,0,.25);cursor:nwse-resize;z-index:6}
 
 #print-root{display:none}
 @page{size:A4 portrait;margin:0}
@@ -668,9 +674,9 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
           <fieldset class="grp lock-layout"><legend>書体・行間</legend>
             <div class="ctl"><label class="lbl">全体の書体（各項目の「全体に従う」に適用）</label>
               <select id="fontKind" style="width:100%"></select>
-              <p class="note" style="margin-top:4px">UD・BIZ系（視認性の高い書体）を優先します。楷書体・英字書体もお使いの端末に入っていれば選べます。入っていない場合は近い書体で表示されます。</p>
+              <p class="note" style="margin-top:4px">UD・BIZ系（視認性の高い書体）を優先します。楷書体・英字書体もお使いの端末に入っていれば選べます。入っていない場合は近い書体で表示されます。<b>「オンラインフォント」の書体は、選ぶと自動でネットから読み込まれ、プレビューに即時反映されます</b>（要ネット接続）。</p>
               <label class="chk" style="margin-top:4px"><input type="checkbox" id="gfontToggle">Googleフォント（Noto系）をオンラインで読み込む（要ネット接続）</label>
-              <p class="note" id="gfontNote" style="margin-top:2px;display:none">読み込み中はインターネット接続が必要です。オフラインや館内ネットワークで使う場合はOFFのままにしてください。</p></div>
+              <p class="note" id="gfontNote" style="margin-top:2px;display:none">オンラインフォントの読み込み中はインターネット接続が必要です。オフラインや館内ネットワークで使う場合は、オンラインフォントを選ばずOFFのままにしてください。</p></div>
             <div class="ctl"><label class="lbl">行間</label><div class="row"><input type="range" id="stLh" min="1.05" max="2.4" step="0.05"><output id="oLh"></output></div></div>
             <div class="ctl"><label class="lbl">初期配置の余白</label><div class="row"><input type="range" id="stPad" min="2" max="24" step="0.5"><output id="oPad"></output></div></div>
             <label class="chk"><input type="checkbox" id="stBracket">作品名を《　》で囲む</label>
@@ -711,6 +717,22 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
               <output id="imgStatus" class="note" style="display:block;margin-top:4px"></output>
               <div class="note" id="imgHintSelected" style="display:none;color:var(--shu);margin-top:2px">画像を選択中：プレビュー上でホイール（トラックパッドのピンチ）で拡大縮小、ドラッグで移動できます。他の項目をクリックすると選択解除されます。</div>
               <input type="file" id="layoutImageInput" accept="image/png,image/jpeg,image/gif,image/webp,image/*" hidden>
+            </div>
+            <div class="ctl" style="border-top:1px dashed var(--line);padding-top:8px">
+              <label class="lbl">追加画像（複数貼り付け可・キャプション面／解説面ごと）</label>
+              <div class="row" style="flex-wrap:wrap;gap:6px;align-items:center">
+                <button type="button" class="btn small" id="btnImg2Add">＋ 追加画像を取り込む（複数選択可）</button>
+              </div>
+              <input type="file" id="img2Input" accept="image/png,image/jpeg,image/gif,image/webp,image/*" multiple hidden>
+              <p class="note" style="margin-top:4px">コピーした画像を<b>プレビュー上で Ctrl＋V（Macは⌘V）で貼り付け</b>もできます。何枚でも重ねられ、ドラッグで移動・ホイールで拡大縮小・Deleteで削除。「作品ごとの編集」で使えます。</p>
+              <div id="img2Box" style="display:none;background:#FDF6E9;border:1px solid #E4C583;border-radius:4px;padding:8px;margin-top:6px">
+                <p class="note" style="color:var(--shu);margin-bottom:6px">追加画像を選択中：ドラッグで移動、ホイールか右下ハンドルで拡大縮小、Deleteで削除できます。</p>
+                <div class="row" style="align-items:center;gap:6px"><label class="lbl" style="margin:0">濃さ</label><input type="range" id="img2Opacity" min="0" max="100" step="1"><output id="oImg2Op"></output></div>
+                <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:6px">
+                  <button type="button" class="btn small shu" id="btnImg2Copy" title="この画像を、選んだ複数の作品の同じ位置・同じ大きさにコピーします">他の作品へ同位置コピー</button>
+                  <button type="button" class="btn small" id="btnImg2Del">この画像を削除</button>
+                </div>
+              </div>
             </div>
             <div class="lock-style">
             <div class="ctl"><label class="lbl">画像の合わせ方</label><div class="row" style="flex-wrap:wrap">
@@ -886,6 +908,21 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
   </div>
 </dialog>
 
+<!-- 追加画像の一括コピー -->
+<dialog id="img2CopyDialog">
+  <div class="dlg-head"><h3>追加画像を他の作品へコピー</h3><button class="btn ghost small" data-close="img2CopyDialog">✕ 閉じる</button></div>
+  <div class="dlg-body">
+    <p class="note" id="img2CopyNote" style="margin-bottom:8px"></p>
+    <label class="chk"><input type="checkbox" id="img2CopyAll">すべて選択</label>
+    <div id="img2CopyList" style="max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:6px 10px;margin-top:6px;background:var(--white)"></div>
+    <p class="note" style="margin-top:6px">コピー先に同じ画像が既にある場合は、位置・大きさを揃え直します（重複追加はしません）。</p>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" data-close="img2CopyDialog">取り消し</button>
+    <button class="btn primary" id="img2CopyOk">コピーする</button>
+  </div>
+</dialog>
+
 <!-- ヘルプ -->
 <dialog id="confirmDialog" class="confirm-dlg">
   <p id="confirmMsg" style="white-space:pre-wrap"></p>
@@ -929,7 +966,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     <h4>できないこと（制限）</h4>
     <ul>
       <li>縦書き・項目内の部分的な書式（一部だけ色替え等）には非対応。</li>
-      <li>1作品につき画像は1点、トリミングは不可。</li>
+      <li>背景画像は1作品につき1点（トリミング不可）。ほかに「追加画像」を複数貼り付けでき（Ctrl＋Vでも可）、ドラッグで位置・大きさを調整、「他の作品へ同位置コピー」で複数の作品にまとめて貼れます。</li>
       <li>Googleスプレッドシートとの自動同期はしません（貼り付け取り込みのみ）。</li>
       <li>印刷用紙はA4のみ（キャプション寸法は自由）。</li>
     </ul>
@@ -1084,9 +1121,24 @@ const FONTS={
   hiraginogothic:{label:"ヒラギノ角ゴ ProN",stack:cssVar("--hiragino-gothic"),group:"ゴシック体"},
   meiryo:{label:"メイリオ",stack:cssVar("--meiryo"),group:"ゴシック体"},
   msgothic:{label:"MSゴシック",stack:cssVar("--ms-gothic"),group:"ゴシック体"},
-  /* オンラインフォント（「Googleフォントをオンラインで読み込む」ON時のみ有効） */
-  notoserif:{label:"Noto Serif JP（要オンライン）",stack:cssVar("--noto-serif-jp"),group:"オンラインフォント"},
-  notosans:{label:"Noto Sans JP（要オンライン）",stack:cssVar("--noto-sans-jp"),group:"オンラインフォント"},
+  /* オンラインフォント（選ぶと自動でネットから読み込み、プレビューに即時反映される。gf=Google Fonts APIのfamily指定） */
+  notoserif:{label:"Noto Serif JP（オンライン）",stack:cssVar("--noto-serif-jp"),group:"オンラインフォント",gf:"Noto+Serif+JP:wght@400;700"},
+  notosans:{label:"Noto Sans JP（オンライン）",stack:cssVar("--noto-sans-jp"),group:"オンラインフォント",gf:"Noto+Sans+JP:wght@400;700"},
+  zenoldmincho:{label:"Zen Old明朝（オンライン）",stack:'"Zen Old Mincho","BIZ UDPMincho",serif',group:"オンラインフォント",gf:"Zen+Old+Mincho:wght@400;700"},
+  shipporimincho:{label:"しっぽり明朝（オンライン）",stack:'"Shippori Mincho","BIZ UDPMincho",serif',group:"オンラインフォント",gf:"Shippori+Mincho:wght@400;700"},
+  hinamincho:{label:"ひな明朝（オンライン）",stack:'"Hina Mincho","BIZ UDPMincho",serif',group:"オンラインフォント",gf:"Hina+Mincho"},
+  sawarabimincho:{label:"さわらび明朝（オンライン）",stack:'"Sawarabi Mincho","BIZ UDPMincho",serif',group:"オンラインフォント",gf:"Sawarabi+Mincho"},
+  zenkakugothic:{label:"Zen角ゴシック New（オンライン）",stack:'"Zen Kaku Gothic New","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"Zen+Kaku+Gothic+New:wght@400;700"},
+  mplus1p:{label:"M PLUS 1p（オンライン）",stack:'"M PLUS 1p","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"M+PLUS+1p:wght@400;700"},
+  sawarabigothic:{label:"さわらびゴシック（オンライン）",stack:'"Sawarabi Gothic","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"Sawarabi+Gothic"},
+  zenmarugothic:{label:"Zen丸ゴシック（オンライン）",stack:'"Zen Maru Gothic","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"Zen+Maru+Gothic:wght@400;700"},
+  kosugimaru:{label:"小杉丸ゴシック（オンライン）",stack:'"Kosugi Maru","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"Kosugi+Maru"},
+  kleeone:{label:"クレー One・手書き風（オンライン）",stack:'"Klee One","UD デジタル教科書体 NP-R",serif',group:"オンラインフォント",gf:"Klee+One:wght@400;600"},
+  yujisyuku:{label:"佑字 肅・毛筆風（オンライン）",stack:'"Yuji Syuku",serif',group:"オンラインフォント",gf:"Yuji+Syuku"},
+  kaiseidecol:{label:"Kaisei Decol・デザイン明朝（オンライン）",stack:'"Kaisei Decol",serif',group:"オンラインフォント",gf:"Kaisei+Decol:wght@400;700"},
+  yuseimagic:{label:"油性マジック風（オンライン）",stack:'"Yusei Magic",sans-serif',group:"オンラインフォント",gf:"Yusei+Magic"},
+  rocknroll:{label:"RocknRoll One・ポップ（オンライン）",stack:'"RocknRoll One",sans-serif',group:"オンラインフォント",gf:"RocknRoll+One"},
+  dotgothic:{label:"ドットゴシック16・レトロ（オンライン）",stack:'"DotGothic16",sans-serif',group:"オンラインフォント",gf:"DotGothic16"},
   /* 英字 */
   ensans:{label:"英字ゴシック（視認性）",stack:cssVar("--en-sans"),group:"英字"},
   enserif:{label:"英字セリフ",stack:cssVar("--en-serif"),group:"英字"},
@@ -1349,12 +1401,14 @@ function newProject(name){
     size:{preset:"140x100",w:140,h:100},style:defaultStyle(),works:[]};
   ensureLayout(p);return p;
 }
-function newWork(){const w={id:"w"+Date.now()+Math.random().toString(36).slice(2,7),image:"",charFmt:{}};FIELDS.forEach(f=>w[f.key]="");return w;}
+function newWork(){const w={id:"w"+Date.now()+Math.random().toString(36).slice(2,7),image:"",images:[],descImages:[],charFmt:{}};FIELDS.forEach(f=>w[f.key]="");return w;}
 function migrateWork(w){
   if((w.origin==null||w.origin==="")&&w.artist)w.origin=w.artist;
   if((w.originEn==null||w.originEn==="")&&w.artistEn)w.originEn=w.artistEn;
   if((w.period==null||w.period==="")&&w.year)w.period=w.year;
   FIELDS.forEach(f=>{if(w[f.key]==null)w[f.key]="";});if(w.image==null)w.image="";
+  if(!Array.isArray(w.images))w.images=[];       // 追加画像（キャプション面）
+  if(!Array.isArray(w.descImages))w.descImages=[]; // 追加画像（解説面）
   if(!w.charFmt||typeof w.charFmt!=="object")w.charFmt={};
   if(!w.ruby||typeof w.ruby!=="object")w.ruby={};
   if(w.layoutOverride!=null&&typeof w.layoutOverride!=="object")delete w.layoutOverride;
@@ -1510,7 +1564,7 @@ function loadImageScaled(file,maxDim,cb){
     img.onload=()=>{const iw=img.naturalWidth,ih=img.naturalHeight;const scale=Math.min(1,maxDim/Math.max(iw,ih));
       const w=Math.max(1,Math.round(iw*scale)),h=Math.max(1,Math.round(ih*scale));
       const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);
-      try{cb(c.toDataURL("image/jpeg",0.82));}catch(e){cb(null);}};
+      try{cb(c.toDataURL("image/jpeg",0.82),w,h);}catch(e){cb(null);}};
     img.onerror=()=>cb(null);img.src=reader.result;};
   reader.onerror=()=>cb(null);reader.readAsDataURL(file);
 }
@@ -1725,6 +1779,16 @@ function buildCard(work,st,size,opts){
       im.style.backgroundSize=(est.imgFit==="cover")?"cover":"contain";
     }
     im.style.opacity=est.imgOpacity;card.appendChild(im);}
+  // 追加画像（複数可）：キャプション面はwork.images、解説面はwork.descImages。文字より下のレイヤーに重なる
+  const extraImgs=((mode==="desc")?work.descImages:work.images)||[];
+  extraImgs.forEach(m=>{
+    const im2=document.createElement("img");
+    im2.className="cap-img2";im2.src=m.url;im2.draggable=false;im2.alt="";
+    im2.dataset.img2=m.id;
+    im2.style.left=m.x+"mm";im2.style.top=m.y+"mm";im2.style.width=m.w+"mm";
+    im2.style.opacity=(m.opacity==null)?1:m.opacity;
+    card.appendChild(im2);
+  });
   const defFont=fontStack(st.font);
   const LAY=effectiveLayout(work,st,mode);
   modeItems(mode).forEach(it=>{
@@ -1832,7 +1896,7 @@ function renderList(){const p=proj(),area=$("#worksListArea");const list=p.works
   list.forEach(({w,i})=>{const sec=(w.section||"").trim();
     if(sec!==lastSec){if(sec)html+=`<tr class="sec-row"><td colspan="6">${esc(sec)}</td></tr>`;lastSec=sec;}
     html+=`<tr class="work-row${bulkSel.has(i)?" bulk-on":""}"><td><input type="checkbox" class="bulkChk" data-i="${i}" ${bulkSel.has(i)?"checked":""}></td><td>${esc(w.no)}</td><td>${esc(oneLine(w.origin))}</td>
-      <td class="t-title">${esc(oneLine(w.title))}${w.image?'<span class="imgmark">🖼</span>':""}</td><td>${esc(oneLine(w.period))}</td>
+      <td class="t-title">${esc(oneLine(w.title))}${(w.image||(w.images||[]).length||(w.descImages||[]).length)?'<span class="imgmark">🖼</span>':""}</td><td>${esc(oneLine(w.period))}</td>
       <td class="ops"><button data-move="-1" data-i="${i}" title="上へ">▲</button><button data-move="1" data-i="${i}" title="下へ">▼</button><button data-edit="${i}">編集</button></td></tr>`;});
   html+="</tbody></table>";area.innerHTML=html;
   $$("button[data-edit]",area).forEach(b=>b.addEventListener("click",()=>openWorkDialog(+b.dataset.edit)));
@@ -2039,6 +2103,35 @@ bindRange("rubyLs","oRubyLs",v=>proj().style.rubyLs=v,"em");
 $("#rubyAlign").addEventListener("change",e=>{proj().style.rubyAlign=e.target.value;save();renderEditor();});
 $("#textScrim").addEventListener("change",e=>{proj().style.textScrim=e.target.checked;save();renderEditor();});
 $("#fontKind").addEventListener("change",e=>{proj().style.font=e.target.value;save();renderEditor();});
+/* ===== オンラインフォントのオンデマンド読み込み =====
+   「オンラインフォント」グループの書体が選ばれた（またはデータ中で使われている）瞬間に、
+   その書体だけをGoogle Fontsから読み込む。読み込み完了後に再描画し、プレビューへ即時反映する。
+   既定の書体はオフラインのまま：明示的にオンライン書体を選んだときだけ通信する。 */
+const gfLoaded=new Set();
+function ensureFontLoaded(key){
+  const f=FONTS[key];
+  if(!f||!f.gf||gfLoaded.has(key))return;
+  gfLoaded.add(key);
+  const link=document.createElement("link");
+  link.rel="stylesheet";
+  link.href="https://fonts.googleapis.com/css2?family="+f.gf+"&display=swap";
+  link.addEventListener("load",()=>{
+    // フォント到着後に再描画（解説文の自動縮小など、字形の寸法に依存する処理を反映し直す）
+    const rerender=()=>{renderEditor();if($("#tab-print").classList.contains("active"))renderSheets();};
+    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(rerender);else rerender();
+  });
+  document.head.appendChild(link);
+  const note=document.getElementById("gfontNote");if(note)note.style.display="";
+}
+/* プロジェクト内で使われている全フォントキー（全体・ルビ・項目ごと・作品ごとの上書き）を集めて読み込む */
+function ensureProjectFonts(){
+  const p=proj();if(!p||!p.style)return;
+  const keys=new Set([p.style.font,p.style.rubyFont]);
+  [p.style.layout,p.style.descLayout].forEach(L=>{if(L)Object.values(L).forEach(it=>{if(it&&it.font)keys.add(it.font);});});
+  (p.works||[]).forEach(w=>{const ov=w.layoutOverride;if(!ov)return;
+    ["cap","desc"].forEach(m=>{if(ov[m])Object.values(ov[m]).forEach(it=>{if(it&&it.font)keys.add(it.font);});});});
+  keys.forEach(k=>ensureFontLoaded(k));
+}
 /* Googleフォント（Noto系）の任意オンライン読み込み。既定OFF・オフライン原則を尊重 */
 function applyGoogleFonts(on){
   const id="gfontsLink";let link=document.getElementById(id);
@@ -2285,6 +2378,7 @@ function fitZoom(size){const vp=$("#editorViewport");const avail=Math.max(120,(v
   return Math.min(1.6,Math.max(.3,avail/(size.w*MM2PX)));}
 function renderEditor(){
   if(!$("#tab-layout").classList.contains("active"))return;
+  ensureProjectFonts();
   const p=proj();ensureLayout(p);const st=p.style,size=curSize();
   const holder=$("#editHolder");holder.innerHTML="";
   const w=currentWork();
@@ -2299,6 +2393,8 @@ function renderEditor(){
   if(editMode==="desc")fitDescIn(cardEl);
   updateImgStatus();
   if(imgSel){const w2=currentWork();if(w2&&w2.image&&editMode!=="desc")renderImgSel();else imgSel=false;}
+  if(img2Sel&&!curImg2())img2Sel=null; // 作品・面の切替や削除で選択対象が消えていたら解除
+  renderImg2Sel();
   cardEl.addEventListener("pointerdown",onCanvasPointerDown);
   cardEl.addEventListener("dblclick",onCanvasDblClick);
   cardEl.addEventListener("wheel",onImgWheel,{passive:false});
@@ -2533,6 +2629,150 @@ $("#csTcyToggle").addEventListener("click",()=>{
 });
 
 let drag=null, marq=null;
+
+/* ===== 追加画像（複数貼り付け可）の操作 =====
+   Ctrl+V貼り付け／「追加画像」ボタンで現在の作品に画像を足す。1作品に何枚でも重ねられる。
+   ドラッグで移動、ホイールまたは右下ハンドルで拡大縮小、Deleteで削除。
+   「他の作品へコピー」で、同じ画像を同じ位置・大きさのまま複数の作品（キャプション面／解説面）に貼れる。 */
+let img2Sel=null,img2Drag=null; // img2Sel: 選択中の追加画像id
+function img2List(w,mode){const key=((mode||editMode)==="desc")?"descImages":"images";
+  if(!Array.isArray(w[key]))w[key]=[];return w[key];}
+function img2El(id){return cardEl?cardEl.querySelector('.cap-img2[data-img2="'+id+'"]'):null;}
+function curImg2(){const w=currentWork();if(!w||isMaster()||!img2Sel)return null;
+  return img2List(w).find(m=>m.id===img2Sel)||null;}
+function img2Ar(m){ // 高さ/幅の比。旧データでarが無ければ表示中の要素から求める
+  if(m.ar)return m.ar;
+  const el=img2El(m.id);return (el&&el.offsetWidth)?el.offsetHeight/el.offsetWidth:1;
+}
+function renderImg2Sel(){
+  if(cardEl)$$(".img2-handle",cardEl).forEach(h=>h.remove());
+  if(cardEl)$$(".cap-img2",cardEl).forEach(el=>el.classList.toggle("sel-img2",el.dataset.img2===img2Sel));
+  const m=curImg2();
+  const box=$("#img2Box");if(box)box.style.display=m?"":"none";
+  if(!m)return;
+  const el=img2El(m.id);if(!el)return;
+  const op=$("#img2Opacity");if(op){op.value=Math.round(((m.opacity==null)?1:m.opacity)*100);$("#oImg2Op").textContent=op.value+"%";}
+  const hs=3.4,ar=img2Ar(m);
+  const d=document.createElement("div");d.className="img2-handle";
+  d.style.left=(m.x+m.w-hs/2)+"mm";d.style.top=(m.y+m.w*ar-hs/2)+"mm";d.style.width=hs+"mm";d.style.height=hs+"mm";
+  d.title="ドラッグで拡大・縮小";
+  d.addEventListener("pointerdown",onImg2ScaleDown);
+  cardEl.appendChild(d);
+}
+function clearImg2Sel(){if(img2Sel){img2Sel=null;renderImg2Sel();}}
+function onImg2Move(e){
+  const m=curImg2();if(!img2Drag||!m)return;
+  m.x=round1(img2Drag.x0+(e.clientX-img2Drag.sx)/(MM2PX*img2Drag.z));
+  m.y=round1(img2Drag.y0+(e.clientY-img2Drag.sy)/(MM2PX*img2Drag.z));
+  const el=img2El(m.id);if(el){el.style.left=m.x+"mm";el.style.top=m.y+"mm";}
+  renderImg2Sel();
+}
+function onImg2Up(){window.removeEventListener("pointermove",onImg2Move);if(img2Drag){img2Drag=null;save();}}
+function onImg2ScaleDown(e){
+  const m=curImg2();if(!m)return;
+  e.stopPropagation();e.preventDefault();
+  const z=userZoom||editZoom,w0=m.w,sx=e.clientX;
+  function move(ev){
+    const dxmm=(ev.clientX-sx)/(MM2PX*z);
+    m.w=Math.max(3,Math.min(curSize().w*2,round1(w0+dxmm)));
+    const el=img2El(m.id);if(el)el.style.width=m.w+"mm";
+    renderImg2Sel();
+  }
+  function up(){window.removeEventListener("pointermove",move);save();}
+  window.addEventListener("pointermove",move);
+  window.addEventListener("pointerup",up,{once:true});
+}
+function img2Zoom(m,dir){ // 中心を保ったままホイールで拡大縮小
+  const ar=img2Ar(m),f=(dir<0)?1.06:1/1.06;
+  const nw=Math.max(3,Math.min(curSize().w*2,round1(m.w*f)));
+  m.x=round1(m.x+(m.w-nw)/2);m.y=round1(m.y+(m.w-nw)*ar/2);m.w=nw;
+  const el=img2El(m.id);if(el){el.style.left=m.x+"mm";el.style.top=m.y+"mm";el.style.width=m.w+"mm";}
+  renderImg2Sel();save();
+}
+function removeImg2(){
+  const w=currentWork();const m=curImg2();if(!w||!m)return;
+  const list=img2List(w);const i=list.indexOf(m);if(i>=0)list.splice(i,1);
+  img2Sel=null;save();renderEditor();renderList();
+}
+/* 画像の追加（ファイル複数可）。貼り付け・ボタンの両方から使う */
+function addExtraImages(files){
+  const w=currentWork();if(!w)return;
+  if(isMaster()){alert("追加画像は作品ごとに登録します。「作品ごとの編集」に切り替えてから追加してください。\n（選択した複数の作品にまとめて貼るには、追加後に「他の作品へコピー」を使います）");return;}
+  files.forEach(file=>{
+    loadImageScaled(file,1400,(url,iw,ih)=>{
+      if(!url){alert("画像を読み込めませんでした。PNG・JPEGなどの画像ファイルをお選びください。");return;}
+      const size=curSize(),list=img2List(w);
+      const wmm=round1(Math.min(size.w*0.4,size.w-6));
+      const ar=Math.round(ih/iw*1000)/1000;
+      const off=(list.length%5)*4; // 重ねて追加したとき少しずつずらす
+      const m={id:"m"+Date.now()+Math.random().toString(36).slice(2,6),url,ar,
+        x:round1(Math.max(1,(size.w-wmm)/2)+off),y:round1(Math.max(1,(size.h-wmm*ar)/2)+off),w:wmm,opacity:1};
+      list.push(m);
+      img2Sel=m.id;sel.clear();clearImgSel();
+      save();renderEditor();renderList();
+    });
+  });
+}
+document.addEventListener("paste",e=>{
+  if(!$("#tab-layout").classList.contains("active"))return;
+  if(inlineEditKey)return;
+  const ae=document.activeElement;
+  if(ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"||ae.isContentEditable))return;
+  if(document.querySelector("dialog[open]"))return;
+  const files=[...((e.clipboardData&&e.clipboardData.items)||[])]
+    .filter(it=>it.kind==="file"&&it.type.indexOf("image/")===0)
+    .map(it=>it.getAsFile()).filter(Boolean);
+  if(!files.length)return;
+  e.preventDefault();
+  addExtraImages(files);
+});
+$("#btnImg2Add").addEventListener("click",()=>{
+  if(isMaster()){alert("追加画像は作品ごとに登録します。「作品ごとの編集」に切り替えてから追加してください。");return;}
+  if(!currentWork()){alert("先に作品を登録してください。");return;}
+  $("#img2Input").click();
+});
+$("#img2Input").addEventListener("change",e=>{
+  const files=[...e.target.files];e.target.value="";
+  if(files.length)addExtraImages(files);
+});
+$("#btnImg2Del").addEventListener("click",removeImg2);
+$("#img2Opacity").addEventListener("input",e=>{
+  const m=curImg2();if(!m)return;
+  m.opacity=(+e.target.value)/100;$("#oImg2Op").textContent=e.target.value+"%";
+  const el=img2El(m.id);if(el)el.style.opacity=m.opacity;
+  save();
+});
+/* 同じ画像を同じ位置・大きさで、選んだ複数の作品へコピー */
+$("#btnImg2Copy").addEventListener("click",()=>{
+  const m=curImg2();if(!m)return;
+  const p=proj();
+  $("#img2CopyNote").textContent=(editMode==="desc")
+    ?"選択中の追加画像を、チェックした作品の【解説面】の同じ位置・同じ大きさにコピーします。"
+    :"選択中の追加画像を、チェックした作品の【キャプション面】の同じ位置・同じ大きさにコピーします。";
+  $("#img2CopyList").innerHTML=p.works.map((w2,i)=>{
+    if(i===previewIndex)return "";
+    const checked=bulkSel.has(i)?"checked":""; // 作品台帳で選択済みの作品は最初からチェック
+    return `<label class="chk" style="display:block"><input type="checkbox" class="img2CopyChk" data-i="${i}" ${checked}>${esc((w2.no?w2.no+"　":"")+oneLine(w2.title||w2.origin||"（無題）"))}</label>`;
+  }).join("")||'<p class="note">コピー先にできる作品がありません（この作品しか登録されていません）。</p>';
+  $("#img2CopyAll").checked=false;
+  $("#img2CopyDialog").showModal();
+});
+$("#img2CopyAll").addEventListener("change",e=>{$$(".img2CopyChk").forEach(c=>c.checked=e.target.checked);});
+$("#img2CopyOk").addEventListener("click",()=>{
+  const m=curImg2();if(!m){$("#img2CopyDialog").close();return;}
+  const p=proj();const idxs=$$(".img2CopyChk").filter(c=>c.checked).map(c=>+c.dataset.i);
+  if(!idxs.length){alert("コピー先の作品にチェックを入れてください。");return;}
+  idxs.forEach(i=>{const w2=p.works[i];if(!w2)return;
+    const list=img2List(w2,editMode);
+    const dup=list.find(x=>x.url===m.url); // 同じ画像が既にあれば位置・大きさを揃える（重複追加しない）
+    if(dup){Object.assign(dup,{x:m.x,y:m.y,w:m.w,ar:m.ar,opacity:m.opacity});}
+    else{list.push({id:"m"+Date.now()+Math.random().toString(36).slice(2,6)+i,url:m.url,ar:m.ar,x:m.x,y:m.y,w:m.w,opacity:m.opacity});}
+  });
+  save();renderList();
+  $("#img2CopyDialog").close();
+  alert(idxs.length+"件の作品に同じ位置でコピーしました。");
+});
+
 /* ===== 画像レイヤーの直接操作（自由モード時） ===== */
 let imgSel=false,imgDrag=null;
 /* 「収める／枠いっぱい」表示中に画像を直接ドラッグ・ホイール操作した場合、自動的に「自由」配置へ切り替えて操作を反映する */
@@ -2580,6 +2820,14 @@ function onImgScaleDown(e){
 }
 /* 画像上でマウスホイール／トラックパッドのピンチ操作をすると、その場で拡大・縮小できる（自動的に「自由」配置に切替） */
 function onImgWheel(e){
+  // 追加画像の上（または追加画像を選択中）なら、その画像を拡大縮小する。解説面でも有効
+  const t2=e.target.closest(".cap-img2");
+  if(!isMaster()&&(t2||img2Sel)){
+    const w2=currentWork();if(!w2)return;
+    if(t2&&t2.dataset.img2!==img2Sel){img2Sel=t2.dataset.img2;sel.clear();updateSelUI();hidePanel();clearImgSel();renderImg2Sel();}
+    const m=curImg2();
+    if(m){e.preventDefault();e.stopPropagation();img2Zoom(m,e.deltaY);return;}
+  }
   if(editMode==="desc")return;
   const w0=currentWork();
   if(!w0||!w0.image)return;
@@ -2609,11 +2857,23 @@ function onImgUp(){window.removeEventListener("pointermove",onImgMove);if(imgDra
 function onCanvasPointerDown(e){
   if(e.target.isContentEditable||e.target.closest('.editing-text'))return;
   const p=proj(),z=userZoom||editZoom;const holder=$("#editHolder");const rect=holder.getBoundingClientRect();
+  // 追加画像：クリックで選択、そのままドラッグで移動（作品ごとのデータなのでマスター以外で常に編集可）
+  const hit2=e.target.closest(".cap-img2");
+  if(hit2&&!isMaster()){
+    e.preventDefault();
+    sel.clear();updateSelUI();hidePanel();clearImgSel();
+    img2Sel=hit2.dataset.img2;renderImg2Sel();
+    const m=curImg2();if(!m)return;
+    img2Drag={sx:e.clientX,sy:e.clientY,x0:m.x,y0:m.y,z};
+    window.addEventListener("pointermove",onImg2Move);
+    window.addEventListener("pointerup",onImg2Up,{once:true});
+    return;
+  }
   const hit=e.target.closest(".cap-item");
   // 配置編集が可能なのは「マスター編集」または「個別編集で上書きON」のとき
   const layoutEditable=(editScope!=="one")||overrideActive(currentWork());
   if(hit&&layoutEditable){
-    clearImgSel();
+    clearImgSel();clearImg2Sel();
     const key=hit.dataset.item;
     if(e.shiftKey){ if(sel.has(key))sel.delete(key); else sel.add(key); }
     else if(!sel.has(key)){ sel.clear(); sel.add(key); }
@@ -2633,7 +2893,7 @@ function onCanvasPointerDown(e){
       window.addEventListener("pointerup",onImgUp,{once:true});
       return;
     }
-    clearImgSel();
+    clearImgSel();clearImg2Sel();
     if(!layoutEditable){return;} // 配置編集不可のときは項目選択・範囲選択を無効化
     if(!e.shiftKey){sel.clear();updateSelUI();hidePanel();}
     marq={x0:e.clientX-rect.left,y0:e.clientY-rect.top,rect};
@@ -2672,9 +2932,17 @@ function onCanvasUp(){window.removeEventListener("pointermove",onCanvasMove);con
     marq=null;updateSelUI();if(sel.size)showPanel();else hidePanel();}
 }
 window.addEventListener("keydown",e=>{
-  if(e.key==="Escape"&&$("#tab-layout").classList.contains("active")){
+  if(!$("#tab-layout").classList.contains("active"))return;
+  if(e.key==="Escape"){
     if(sel.size){sel.clear();updateSelUI();hidePanel();}
-    clearImgSel();
+    clearImgSel();clearImg2Sel();
+  }
+  // Delete／Backspaceで選択中の追加画像を削除（文字入力中は除く）
+  if((e.key==="Delete"||e.key==="Backspace")&&img2Sel&&!inlineEditKey){
+    const ae=document.activeElement;
+    if(ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"||ae.isContentEditable))return;
+    if(document.querySelector("dialog[open]"))return;
+    e.preventDefault();removeImg2();
   }
 });
 function updateSelUI(){
@@ -2887,7 +3155,7 @@ function buildSheets(){const p=proj();ensureLayout(p);
     works.forEach((w,i)=>{const k=i%per;const sheet=(k===0)?newSheet():sheets[sheets.length-1];const x=M+(k%cols)*(size.w+G),y=M+Math.floor(k/cols)*(size.h+G);place(sheet,w,x,y);});}
   sheets.forEach((s,i)=>{const n=document.createElement("div");n.className="pageno";n.textContent=`${esc(p.name)}　${i+1}/${sheets.length}`;s.appendChild(n);});
   return sheets;}
-function renderSheets(){if(!$("#tab-print").classList.contains("active"))return;const scroll=$("#sheetScroll");scroll.innerHTML="";
+function renderSheets(){if(!$("#tab-print").classList.contains("active"))return;ensureProjectFonts();const scroll=$("#sheetScroll");scroll.innerHTML="";
   const p=proj(),o=p.printOpt||{sheetKind:"a4"};const dims=sheetDims(o);
   const sheets=buildSheets();
   const perSheetCount=sheets.length?Math.round(proj().works.filter(w=>!o.section||(w.section||"").trim()===o.section).length/sheets.length):0;
@@ -2975,6 +3243,7 @@ $("#rubyFont").innerHTML=fontOptionsHTML(null,"本文に従う");
 loadStore();lastSnapshot=JSON.stringify(store);updateUndoButtons();
 applyEditScope();
 if(store.useGoogleFonts){$("#gfontToggle").checked=true;applyGoogleFonts(true);}
+ensureProjectFonts();
 renderAll();
 
 </script>
