@@ -106,8 +106,8 @@ td.ops button{border:1px solid var(--line);background:var(--white);border-radius
 
 #itemPanel{position:absolute;top:14px;right:14px;z-index:60;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(30,26,20,.22);padding:11px 12px;width:224px;max-height:calc(100% - 28px);overflow:auto;display:none}
 #itemPanel.show{display:block}
-#itemPanel h5{font-family:var(--mincho);font-size:12.5px;margin-bottom:9px;letter-spacing:.08em;display:flex;justify-content:space-between;align-items:center}
-#itemPanel h5 button{border:none;background:none;color:var(--sub);font-size:15px;line-height:1;padding:0 2px}
+#itemPanel h5{font-family:var(--mincho);font-size:12.5px;margin-bottom:9px;letter-spacing:.08em;display:flex;justify-content:space-between;align-items:center;cursor:move;touch-action:none;-webkit-user-select:none;user-select:none}
+#itemPanel h5 button{border:none;background:none;color:var(--sub);font-size:15px;line-height:1;padding:0 2px;cursor:pointer}
 #itemPanel .prow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
 #itemPanel .prow label{font-size:11px;color:var(--sub);width:46px;flex:none}
 #itemPanel .prow select,#itemPanel .prow input[type=number]{flex:1;font-size:12px;padding:4px 6px}
@@ -3137,7 +3137,34 @@ function showPanel(){const p=proj();if(!sel.size){hidePanel();return;}const keys
   else{const [c,m,y,k]=colorCommon.split(",").map(Number);setSwatchUI("ipColorSw",{c,m,y,k},"");}
   $("#itemPanel").classList.add("show");
 }
-function hidePanel(){$("#itemPanel").classList.remove("show");}
+function hidePanel(){const pnl=$("#itemPanel");pnl.classList.remove("show");
+  // 次に開いたときは既定位置（右上）に戻す
+  pnl.style.removeProperty("left");pnl.style.removeProperty("top");pnl.style.removeProperty("right");}
+/* 小パネル（項目の書式パネル）を見出し（h5）のドラッグで移動できるようにする。
+   閉じるボタン（✕）はドラッグ扱いにしない。editorWrap内の絶対配置なのでoffset座標で扱う。 */
+(function makeItemPanelDraggable(){
+  const pnl=$("#itemPanel"),head=pnl.querySelector("h5");
+  if(!head)return;
+  head.title="ドラッグして移動";
+  let drag=null;
+  head.addEventListener("pointerdown",e=>{
+    if(e.target.closest("button"))return;
+    drag={sx:e.clientX,sy:e.clientY,x0:pnl.offsetLeft,y0:pnl.offsetTop};
+    pnl.style.left=drag.x0+"px";pnl.style.top=drag.y0+"px";pnl.style.right="auto";
+    e.preventDefault();
+    window.addEventListener("pointermove",onMove);
+    window.addEventListener("pointerup",onUp,{once:true});
+  });
+  function onMove(e){
+    if(!drag)return;
+    const wrap=pnl.offsetParent||$("#editorWrap");
+    const maxL=Math.max(0,wrap.clientWidth-pnl.offsetWidth);
+    const maxT=Math.max(0,wrap.clientHeight-30); // 見出しが下に消えない範囲でクランプ
+    pnl.style.left=Math.min(Math.max(drag.x0+(e.clientX-drag.sx),0),maxL)+"px";
+    pnl.style.top=Math.min(Math.max(drag.y0+(e.clientY-drag.sy),0),maxT)+"px";
+  }
+  function onUp(){drag=null;window.removeEventListener("pointermove",onMove);}
+})();
 /* 縦書き項目のときは「幅」→「行の長さ（高さ）」「高さ」→「段の広さ（幅）」に表示だけ入れ替える（データ自体はL.w/L.hのまま） */
 function updateItemPanelLabels(vertical){
   $("#ipWLabel").textContent=vertical?"行の長さ（高さ）":"幅";
