@@ -441,7 +441,8 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 
 dialog{border:1px solid var(--line);border-radius:6px;padding:0;max-width:660px;width:calc(100% - 32px);background:var(--paper);color:var(--ink)}
 dialog::backdrop{background:rgba(30,26,20,.45)}
-.dlg-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
+.dlg-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line);cursor:move;-webkit-user-select:none;user-select:none}
+.dlg-head button{cursor:pointer}
 .dlg-head h3{font-family:var(--mincho);font-size:16px;letter-spacing:.12em;font-weight:600}
 .dlg-body{padding:16px 18px;max-height:72vh;overflow:auto}
 .dlg-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--line)}
@@ -1956,6 +1957,40 @@ $("#bulkClearImage").addEventListener("click",async()=>{
   save();renderList();renderPreviewSelect();renderEditor();
 });
 $("#bulkDeselect").addEventListener("click",()=>{bulkSel.clear();renderList();});
+
+/* ===== ダイアログ（作品の編集など）をタイトルバーのドラッグで移動できるようにする =====
+   見出し（.dlg-head）を掴んでドラッグすると、ダイアログ自体を画面上で移動できる。
+   閉じるボタンなど見出し内のボタン操作は邪魔しない。閉じたら次に開いたとき中央に戻る。 */
+function makeDialogDraggable(dialog){
+  const head=dialog.querySelector(".dlg-head");
+  if(!head)return;
+  head.title="ドラッグして移動";
+  let drag=null;
+  head.addEventListener("pointerdown",e=>{
+    if(e.target.closest("button"))return;
+    const r=dialog.getBoundingClientRect();
+    drag={sx:e.clientX,sy:e.clientY,x0:r.left,y0:r.top};
+    dialog.style.margin="0";dialog.style.position="fixed";
+    dialog.style.left=r.left+"px";dialog.style.top=r.top+"px";
+    e.preventDefault();
+    window.addEventListener("pointermove",onMove);
+    window.addEventListener("pointerup",onUp,{once:true});
+  });
+  function onMove(e){
+    if(!drag)return;
+    const w=dialog.offsetWidth,h=dialog.offsetHeight;
+    // 見出しの一部が画面内に残るようクランプし、完全に見失わないようにする
+    const nl=Math.min(Math.max(drag.x0+(e.clientX-drag.sx),-w+80),window.innerWidth-80);
+    const nt=Math.min(Math.max(drag.y0+(e.clientY-drag.sy),0),window.innerHeight-40);
+    dialog.style.left=nl+"px";dialog.style.top=nt+"px";
+  }
+  function onUp(){drag=null;window.removeEventListener("pointermove",onMove);}
+  dialog.addEventListener("close",()=>{
+    dialog.style.removeProperty("left");dialog.style.removeProperty("top");
+    dialog.style.removeProperty("margin");dialog.style.removeProperty("position");
+  });
+}
+$$("dialog").forEach(makeDialogDraggable);
 
 /* ===== 作品編集 ===== */
 let editingIndex=-1,editImage="";
