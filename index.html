@@ -1896,14 +1896,19 @@ function renderList(){const p=proj(),area=$("#worksListArea");const list=p.works
   const validIdx=new Set(list.map(x=>x.i));[...bulkSel].forEach(i=>{if(!validIdx.has(i))bulkSel.delete(i);});
   let html=`<table class="works"><thead><tr><th style="width:34px"><input type="checkbox" id="bulkAll" title="表示中をすべて選択"></th><th style="width:64px">番号</th><th>産地（作者）</th><th>作品名</th><th style="width:110px">時代</th><th style="width:150px">操作</th></tr></thead><tbody>`;
   let lastSec=null;
-  list.forEach(({w,i})=>{const sec=(w.section||"").trim();
+  list.forEach(({w,i},k)=>{const sec=(w.section||"").trim();
     if(sec!==lastSec){if(sec)html+=`<tr class="sec-row"><td colspan="6">${esc(sec)}</td></tr>`;lastSec=sec;}
     html+=`<tr class="work-row${bulkSel.has(i)?" bulk-on":""}"><td><input type="checkbox" class="bulkChk" data-i="${i}" ${bulkSel.has(i)?"checked":""}></td><td>${esc(w.no)}</td><td>${esc(oneLine(w.origin))}</td>
       <td class="t-title">${esc(oneLine(w.title))}${(w.image||(w.images||[]).length||(w.descImages||[]).length)?'<span class="imgmark">🖼</span>':""}</td><td>${esc(oneLine(w.period))}</td>
-      <td class="ops"><button data-move="-1" data-i="${i}" title="上へ（番号は行の位置に合わせて自動で振り直されます）">▲</button><button data-move="1" data-i="${i}" title="下へ（番号は行の位置に合わせて自動で振り直されます）">▼</button><button data-edit="${i}">編集</button></td></tr>`;});
+      <td class="ops"><button data-move="-1" data-i="${i}" data-lp="${k}" title="上へ（番号は行の位置に合わせて自動で振り直されます）">▲</button><button data-move="1" data-i="${i}" data-lp="${k}" title="下へ（番号は行の位置に合わせて自動で振り直されます）">▼</button><button data-edit="${i}">編集</button></td></tr>`;});
   html+="</tbody></table>";area.innerHTML=html;
   $$("button[data-edit]",area).forEach(b=>b.addEventListener("click",()=>openWorkDialog(+b.dataset.edit)));
-  $$("button[data-move]",area).forEach(b=>b.addEventListener("click",()=>{const i=+b.dataset.i,d=+b.dataset.move,j=i+d;if(j<0||j>=p.works.length)return;
+  $$("button[data-move]",area).forEach(b=>b.addEventListener("click",()=>{
+    const i=+b.dataset.i,d=+b.dataset.move,lp=+b.dataset.lp,lj=lp+d;
+    // 検索・章フィルターで絞り込み中でも、見えている一つ上／下の行と入れ替える
+    // （配列上の隣が絞り込みで隠れている行だと、見た目には何も変わらないように見えるため）
+    if(lj<0||lj>=list.length)return;
+    const j=list[lj].i;
     [p.works[i],p.works[j]]=[p.works[j],p.works[i]];
     // 番号は「行の位置」に据え置く（＝入れ替えた作品同士で番号も入れ替える）。
     // これにより並び替えても番号の並び順が自動で保たれる（1-01, 001 など書式は問わない）
