@@ -43,6 +43,44 @@ async function run() {
     const undone = await page.evaluate(() => proj().works.map(w => w.no));
     t.eq(undone, ['1-01', ''], 'Ctrl+Z（Undo）で並び替え・番号とも巻き戻せる');
 
+    // ---- 検索フィルターで絞り込み中でも、見えている隣の行と入れ替わる ----
+    // 3件目を追加：庄野(1-01,①) / 神奈川沖浪裏(1-02,②) / 検索に一致しない作品(no=9-99,③)を間に挟む
+    await page.evaluate(() => {
+      proj().works[1].no = '1-02'; // 直前のUndo検証で空にした番号を戻す
+      const w = newWork();
+      Object.assign(w, { no: '9-99', title: '該当しない作品', origin: '検索対象外' });
+      proj().works.splice(1, 0, w); // 1-01 と 1-02 の間に挿入
+      save(); renderList();
+    });
+    await page.waitForTimeout(200);
+    const beforeFilter = await page.evaluate(() => proj().works.map(x => x.no));
+    t.eq(beforeFilter, ['1-01', '9-99', '1-02'], '絞り込み前：1-01, 9-99, 1-02 の3件');
+
+    await page.fill('#searchBox', '広重'); // 1件目（庄野／広重）だけが一致し、9-99は隠れる
+    await page.waitForTimeout(300);
+    const visibleWhileFiltered = await page.evaluate(() => document.querySelectorAll('#worksListArea tr.work-row').length);
+    t.eq(visibleWhileFiltered, 1, '絞り込み中は一致する1件だけが表示される');
+
+    // 絞り込み解除して2件表示にし、見えている2行を▼で入れ替える
+    await page.fill('#searchBox', '');
+    await page.waitForTimeout(300);
+    // 章フィルターの代わりに検索語で「1-」を含む2件（1-01,1-02）だけに絞る想定は難しいため、
+    // ここでは実データそのままの並びで、隠れた行(9-99)を挟んだ状態からの▼移動を検証する
+    await page.fill('#searchBox', '1-');
+    await page.waitForTimeout(300);
+    const shownNos = await page.evaluate(() => [...document.querySelectorAll('#worksListArea tr.work-row td:nth-child(2)')].map(td => td.textContent));
+    t.eq(shownNos, ['1-01', '1-02'], '「1-」で絞り込むと1-01・1-02の2件のみ表示（9-99は隠れる）');
+
+    // 表示1行目（実配列では0番目）を下へ移動 → 表示上の隣（実配列2番目の1-02）と入れ替わるべき
+    // 中間の9-99（実配列1番目）は影響を受けない
+    const lp0Down = await page.locator('#worksListArea tr.work-row').nth(0).locator('button[data-move="1"]');
+    await lp0Down.click();
+    await page.waitForTimeout(300);
+    const afterFilteredMove = await page.evaluate(() => proj().works.map(x => x.no));
+    t.eq(afterFilteredMove, ['1-01', '9-99', '1-02'], '絞り込み中に見えている隣の行と入れ替わり、間に挟まる非表示行(9-99)は動かない');
+    const swappedTitle = await page.evaluate(() => proj().works[2].title.includes('庄野'));
+    t.eq(swappedTitle, true, '絞り込み中でも実際に見えている作品どうしが正しく入れ替わる（隠れた行を飛ばす）');
+
     t.noErrors(errors);
     const r = t.finish();
     await browser.close();
