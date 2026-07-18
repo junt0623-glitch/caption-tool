@@ -42,10 +42,11 @@
   .hbtn.primary{background:var(--accent);border-color:var(--accent)}
   .hbtn.primary:hover{filter:brightness(1.1)}
   header .spacer{flex:1}
-  header select{
+  header select, header input[type=number]{
     background:#33322f;color:#f5f3ec;border:1px solid #55534c;
     border-radius:var(--radius);padding:5px 8px;font-size:13px;
   }
+  header input[type=number]{width:60px}
   header label{font-size:12px;opacity:.75}
 
   /* ── メインレイアウト ─────────────── */
@@ -133,21 +134,15 @@
   #workList li:hover{background:var(--panel)}
   #workList li.sel{background:#fbe9dc}
   #workList .num{
-    flex:none;width:20px;height:20px;border-radius:50%;
+    flex:none;min-width:22px;height:20px;border-radius:10px;padding:0 6px;
     background:var(--accent);color:#fff;font-size:11px;
     display:flex;align-items:center;justify-content:center;font-weight:600;
   }
+  #workList .thumb{flex:none;width:34px;height:34px;object-fit:cover;border-radius:3px;border:1px solid var(--line)}
   #workList .meta{min-width:0;flex:1}
   #workList .meta .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #workList .meta .s{font-size:11px;color:#8c887c}
   #workList .none{padding:14px;font-size:12px;color:#8c887c}
-  #workList .ord{display:flex;flex-direction:column;gap:2px;flex:none}
-  #workList .ord .mv{
-    border:1px solid var(--line);background:#fff;border-radius:3px;
-    font-size:8px;width:18px;height:14px;line-height:1;cursor:pointer;padding:0;color:#6d6a60;
-  }
-  #workList .ord .mv:hover{border-color:var(--accent);color:var(--accent)}
-  #workList .ord .mv:disabled{opacity:.3;cursor:default}
 
   /* SVG内の要素スタイル */
   /* 注意: SVGはCSSがプレゼンテーション属性より優先されるため、
@@ -158,6 +153,9 @@
   .badge text{fill:#fff;font-weight:600;text-anchor:middle;dominant-baseline:central}
   .obj text.lbl{fill:var(--ink);text-anchor:middle;pointer-events:none}
   .obj{cursor:move}
+  .stock{cursor:copy}
+  .stock.empty{cursor:not-allowed}
+  .stock text.lbl{fill:var(--ink);text-anchor:middle;pointer-events:none}
 
   /* 印刷 */
   @media print{
@@ -171,28 +169,23 @@
 
 <header>
   <h1>展覧会図面作成<small>プロトタイプ</small></h1>
-  <label>縮尺
-    <select id="scaleSel">
-      <option value="20">1:20</option>
-      <option value="50">1:50</option>
-      <option value="75">1:75</option>
-      <option value="100" selected>1:100</option>
-      <option value="150">1:150</option>
-      <option value="200">1:200</option>
-    </select>
-  </label>
   <label>用紙
-    <select id="sheetSel" title="実寸出力プリセット: 用紙サイズ×縮尺で図面範囲が決まります">
+    <select id="sheetSel" title="展示室図面はA3の範囲内に最大サイズで配置されます">
       <option value="a3l" selected>A3 横</option>
       <option value="a3p">A3 縦</option>
-      <option value="a4l">A4 横</option>
-      <option value="a4p">A4 縦</option>
-      <option value="custom">フリー (20×14m)</option>
     </select>
+  </label>
+  <label>縮尺
+    <input id="scalePct" type="number" min="1" max="100" step="1" value="100"
+      title="可動ケース・展示台の図面に対する大きさ(1〜100%)"> %
   </label>
   <button class="hbtn" id="undoBtn" title="元に戻す (Ctrl+Z)">↩ 元に戻す</button>
   <button class="hbtn" id="redoBtn" title="やり直し (Ctrl+Y / Ctrl+Shift+Z)">↪ やり直し</button>
   <div class="spacer"></div>
+  <button class="hbtn" id="wlBtn" title="作品リスト(CSV)を読み込み。「番号」列の番号が図面に表示されます">📋 作品リスト</button>
+  <button class="hbtn" id="imgsBtn" title="作品画像を一括読み込み。ファイル名の番号とリストの番号を対応付けます">🖼 作品画像</button>
+  <input type="file" id="wlInput" accept=".csv,.tsv,.txt" hidden>
+  <input type="file" id="imgsInput" accept="image/*" multiple hidden>
   <button class="hbtn" id="loadBtn">📂 読み込み</button>
   <button class="hbtn" id="saveBtn">💾 保存 (JSON)</button>
   <button class="hbtn" id="pngBtn">🖼 PNG書き出し</button>
@@ -206,8 +199,6 @@
     <button class="tool" data-tool="wall"><span class="ic">╱</span>壁を描く</button>
     <hr>
     <button class="tool" data-tool="work"><span class="ic">🖼</span>作品</button>
-    <button class="tool" data-tool="case"><span class="ic">▣</span>可動ケース</button>
-    <button class="tool" data-tool="fixture"><span class="ic">◻</span>展示台</button>
     <button class="tool" data-tool="text"><span class="ic">あ</span>テキスト</button>
     <hr>
     <button class="tool" data-tool="erase"><span class="ic">✕</span>削除</button>
@@ -249,8 +240,8 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("plan");
 const GRID = 500;            // グリッド 500mm
 const WALL_T = 150;          // 壁厚 150mm
-const SHEET = {w: 42000, h: 29700}; // 図面範囲(mm)。既定はA3横×1:100。用紙プリセットで applySheet() が更新する
-const PAPERS = {a4l:[297,210], a4p:[210,297], a3l:[420,297], a3p:[297,420]}; // 用紙実寸(mm)
+const SHEET = {w: 42000, h: 29700}; // 図面範囲(mm)。A3実寸×100を基準にA3横/縦で切替
+const PAPERS = {a3l:[420,297], a3p:[297,420]}; // A3実寸(mm)
 
 /* ---- レイヤー構成 ----
    最背面: 展示室図面(state.rooms) → 壁 → ケース・展示台 → 作品 → テキスト(最前面)
@@ -268,43 +259,29 @@ function defaultRooms(){
   ]};
 }
 
-/* 可動ケース・展示台のデフォルト在庫 [名称, 幅mm, 奥行mm, 台数] */
-const CASE_DEFAULTS = [
-  ["α",             2400, 1800,  2],
-  ["β",             2400, 1200, 10],
-  ["180角",         1800, 1800,  2],
-  ["横長免震",      1800, 1000,  5],
-  ["横長免震背景",  1800, 1000,  1],
-  ["横長非免震",    1800, 1000,  1],
-  ["横長非免震背景",1800, 1000,  2],
-  ["行燈免震",      1000, 1000,  5],
-  ["のぞき",        1800, 1000,  5],
-];
-const PED_DEFAULTS = [ // [幅mm, 奥行mm, 台数]
-  [1530, 900, 18],
-  [1800, 900, 12],
-  [ 900, 900,  7],
-  [2000, 2000, 2],
-  [1200, 900, 30],
-];
-
-/* 印刷範囲(シート)の外に在庫を縦一列で並べる: ケースは左、展示台は右 */
-function seedDefaults(){
-  const objs = [], GAP = 300;
-  let y = GAP;
-  for (const [name,w,h,n] of CASE_DEFAULTS)
-    for (let i=0;i<n;i++){
-      objs.push({id:idSeq++, type:"case", x:-2000, y:y+h/2, rot:0, w, h, label:name});
-      y += h + GAP;
-    }
-  y = GAP;
-  for (const [w,h,n] of PED_DEFAULTS)
-    for (let i=0;i<n;i++){
-      objs.push({id:idSeq++, type:"fixture", x:SHEET.w+2000, y:y+h/2, rot:0, w, h,
-        label:`${w/1000}×${h/1000}`});
-      y += h + GAP;
-    }
-  return objs;
+/* 可動ケース・展示台の在庫。種類ごと1つだけパレット表示し、取り出すと残数が減る。
+   残数 = total - 配置済みインスタンス数(stockKeyで対応付け) */
+function defaultStock(){
+  return [
+    {key:"c_alpha",  cat:"case", name:"α",              w:2400, h:1800, total:2},
+    {key:"c_beta",   cat:"case", name:"β",              w:2400, h:1200, total:10},
+    {key:"c_180",    cat:"case", name:"180角",          w:1800, h:1800, total:2},
+    {key:"c_ym",     cat:"case", name:"横長免震",       w:1800, h:1000, total:5},
+    {key:"c_ymb",    cat:"case", name:"横長免震背景",   w:1800, h:1000, total:1},
+    {key:"c_yh",     cat:"case", name:"横長非免震",     w:1800, h:1000, total:1},
+    {key:"c_yhb",    cat:"case", name:"横長非免震背景", w:1800, h:1000, total:2},
+    {key:"c_andon",  cat:"case", name:"行燈免震",       w:1000, h:1000, total:5},
+    {key:"c_nozoki", cat:"case", name:"のぞき",         w:1800, h:1000, total:5},
+    {key:"p_153",    cat:"ped",  name:"1.53×0.9",       w:1530, h:900,  total:18},
+    {key:"p_180",    cat:"ped",  name:"1.8×0.9",        w:1800, h:900,  total:12},
+    {key:"p_090",    cat:"ped",  name:"0.9×0.9",        w:900,  h:900,  total:7},
+    {key:"p_200",    cat:"ped",  name:"2.0×2.0",        w:2000, h:2000, total:2},
+    {key:"p_120",    cat:"ped",  name:"1.2×0.9",        w:1200, h:900,  total:30},
+  ];
+}
+function stockRemain(key){
+  const s = state.stock.find(t=>t.key===key);
+  return s ? s.total - state.objects.filter(o=>o.stockKey===key).length : 0;
 }
 
 /* ---- 状態 ---- */
@@ -312,29 +289,31 @@ let idSeq = 1;
 let state = {
   meta: {title:"", venue:"", author:"", date: today()}, // JSONファイル名等で使用。図面上には表示しない
   sheet: {preset:"a3l"},
+  scalePct: 100,           // ケース・展示台の表示縮尺(1〜100%)
   rooms: defaultRooms(),
-  walls: [],                // {id,x1,y1,x2,y2}
-  objects: seedDefaults()   // {id,type:'work'|'case'|'fixture'|'text', x,y,w,h,rot, title,artist,note,label,img}
+  workList: [],            // 作品リスト(CSV) [{no,title,artist}]
+  images: {},              // 作品画像 番号→dataURL(512pxに圧縮済み)
+  stock: defaultStock(),
+  walls: [],               // {id,x1,y1,x2,y2}
+  objects: []              // {id,type:'work'|'case'|'fixture'|'text', x,y,w,h,rot, no,label,stockKey,img}
 };
 let tool = "select";
 let selectedId = null;
 let undoStack = [];
 let redoStack = [];
 
-/* 用紙サイズ×縮尺 → 図面範囲。A4横 1:100 なら 29.7m×21m の実空間が用紙に実寸で収まる */
+/* A3横/縦の図面範囲。展示室図面の画像はこの範囲内に最大サイズで自動フィットする */
 function applySheet(){
-  const preset = state.sheet?.preset || "custom";
-  const paper = PAPERS[preset];
-  if (!paper){ SHEET.w = 20000; SHEET.h = 14000; }
-  else {
-    const s = +document.getElementById("scaleSel").value;
-    SHEET.w = paper[0] * s; SHEET.h = paper[1] * s;
-  }
+  const paper = PAPERS[state.sheet?.preset] || PAPERS.a3l;
+  SHEET.w = paper[0] * 100; SHEET.h = paper[1] * 100;
 }
 function syncSheetUI(){
-  document.getElementById("sheetSel").value = PAPERS[state.sheet?.preset] ? state.sheet.preset : "custom";
+  document.getElementById("sheetSel").value = PAPERS[state.sheet?.preset] ? state.sheet.preset : "a3l";
+  document.getElementById("scalePct").value = state.scalePct ?? 100;
   applySheet();
 }
+/* 縮尺(1〜100%): 可動ケース・展示台の図面に対する表示サイズ倍率 */
+function fsc(){ return Math.min(100, Math.max(1, state.scalePct ?? 100)) / 100; }
 
 /* ---- ビュー(ズーム/パン) ---- */
 /* 初期表示はシート+左右の在庫列(印刷範囲外)が見える範囲 */
@@ -379,22 +358,36 @@ function snapWallPoint(p, excludeId){
 }
 function today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 
-/* ---- 履歴 ---- */
+/* ---- 履歴 ----
+   画像(state.images / rooms.img / objects.img)はサイズが大きいので履歴から除外し、
+   Undo/Redoをまたいで現在の画像を維持する(画像の読み込み自体は履歴で戻らない) */
+function snapshot(){
+  return JSON.stringify(state, (k,v)=> (k==="images" || k==="img") ? undefined : v);
+}
+function applySnapshot(json){
+  const images = state.images || {};
+  const roomImgs = {}; for (const r of state.rooms?.list||[]) roomImgs[r.id] = r.img;
+  const objImgs = {};  for (const o of state.objects||[]) if (o.img) objImgs[o.id] = o.img;
+  state = JSON.parse(json);
+  state.images = images;
+  for (const r of state.rooms?.list||[]) if (r.id in roomImgs) r.img = roomImgs[r.id];
+  for (const o of state.objects||[]) if (objImgs[o.id]) o.img = objImgs[o.id];
+}
 function pushUndo(){
-  undoStack.push(JSON.stringify(state));
+  undoStack.push(snapshot());
   if (undoStack.length > 50) undoStack.shift();
   redoStack.length = 0; // 新しい操作でやり直し履歴は無効になる
 }
 function undo(){
   if (!undoStack.length) return;
-  redoStack.push(JSON.stringify(state));
-  state = JSON.parse(undoStack.pop());
+  redoStack.push(snapshot());
+  applySnapshot(undoStack.pop());
   afterHistory();
 }
 function redo(){
   if (!redoStack.length) return;
-  undoStack.push(JSON.stringify(state));
-  state = JSON.parse(redoStack.pop());
+  undoStack.push(snapshot());
+  applySnapshot(redoStack.pop());
   afterHistory();
 }
 function afterHistory(){
@@ -437,38 +430,61 @@ function render(){
     if (w.id === selectedId) ln.style.stroke = "var(--accent)"; // inline styleでCSSクラスに勝たせる
   }
 
+  // 在庫パレット(印刷範囲の外): ケースは左・展示台は右に種類ごと1つ+残数を縦一列で表示。
+  // クリック(ドラッグ)で1台取り出す。残0はグレー表示
+  const f = fsc();
+  if (layerVis.furniture){
+    let ly = 400, ry = 400;
+    const GAPP = 500;
+    for (const s of state.stock){
+      const remain = stockRemain(s.key);
+      const isCase = s.cat === "case";
+      const w = s.w*f, h = s.h*f;
+      const x = isCase ? -2400 : SHEET.w + 2400;
+      const y = (isCase ? ly : ry) + h/2;
+      const col = isCase ? "var(--case)" : "var(--fixture)";
+      const g = el("g",{class:"stock"+(remain?"":" empty"),"data-stock":s.key,
+        transform:`translate(${x},${y})`}, svg);
+      el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:col,"fill-opacity":remain?.18:.05,
+        stroke:col,"stroke-width":25,"stroke-dasharray":remain?"":"120 80"}, g);
+      const lbl = el("text",{class:"lbl","font-size":240,y:-40}, g);
+      lbl.textContent = s.name;
+      const cnt = el("text",{class:"lbl","font-size":220,y:250,fill:remain?"var(--accent)":"#999",
+        "font-weight":600}, g);
+      cnt.textContent = `残 ${remain}`;
+      if (isCase) ly += h + GAPP; else ry += h + GAPP;
+    }
+  }
+
   // オブジェクト: レイヤー順(ケース・展示台 → 作品 → テキスト)に描画。安定ソートなので同レイヤー内は配列順
   const layerShown = o => [layerVis.furniture, layerVis.work, layerVis.text][layerOf(o)];
-  let workNum = 0;
   for (const o of [...state.objects].sort((a,b)=>layerOf(a)-layerOf(b))){
-    if (o.type === "work") workNum++;
     if (!layerShown(o)) continue;
     const grp = el("g",{class:"obj"+(o.id===selectedId?" selected":""),"data-id":o.id,
       transform:`translate(${o.x},${o.y}) rotate(${o.rot||0})`}, svg);
 
     if (o.type === "work"){
       el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"#fff",stroke:"var(--ink)","stroke-width":20}, grp);
-      if (o.img)
-        el("image",{href:o.img,x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,
+      const img = state.images[String(o.no)] || o.img;
+      if (img)
+        el("image",{href:img,x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,
           preserveAspectRatio:"xMidYMid meet","pointer-events":"none"}, grp);
       else
         el("line",{x1:-o.w/2,y1:o.h/2,x2:o.w/2,y2:-o.h/2,stroke:"#bbb","stroke-width":10}, grp);
+      // 図面上は「番号」のみ表示(作品名等は出さない)
       const b = el("g",{class:"badge",transform:`translate(0,${-o.h/2-260})`}, grp);
-      el("circle",{r:200}, b);
-      const t = el("text",{}, b); t.textContent = workNum;
+      const bw = Math.max(400, String(o.no??"").length*130 + 160);
+      el("rect",{x:-bw/2,y:-200,width:bw,height:400,rx:200,fill:"var(--accent)"}, b);
+      const t = el("text",{}, b); t.textContent = o.no ?? "";
       t.setAttribute("font-size", 220);
-      const lbl = el("text",{class:"lbl",y:o.h/2+320,"font-size":260}, grp);
-      lbl.textContent = o.title || "無題";
     }
-    else if (o.type === "case"){
-      el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"var(--case)","fill-opacity":.18,stroke:"var(--case)","stroke-width":25}, grp);
-      const lbl = el("text",{class:"lbl","font-size":240}, grp);
-      lbl.textContent = o.label || "ケース";
-    }
-    else if (o.type === "fixture"){
-      el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"var(--fixture)","fill-opacity":.25,stroke:"var(--fixture)","stroke-width":20}, grp);
-      const lbl = el("text",{class:"lbl","font-size":240}, grp);
-      lbl.textContent = o.label || "展示台";
+    else if (o.type === "case" || o.type === "fixture"){
+      const w = o.w*f, h = o.h*f; // 縮尺(1〜100%)を適用
+      const col = o.type === "case" ? "var(--case)" : "var(--fixture)";
+      el("rect",{class:"body",x:-w/2,y:-h/2,width:w,height:h,fill:col,
+        "fill-opacity":o.type==="case"?.18:.25,stroke:col,"stroke-width":o.type==="case"?25:20}, grp);
+      const lbl = el("text",{class:"lbl","font-size":Math.max(120, 240*f)}, grp);
+      lbl.textContent = o.label || (o.type==="case"?"ケース":"展示台");
     }
     else if (o.type === "text"){
       const t = el("text",{class:"lbl body","font-size":320,"font-weight":600}, grp);
@@ -539,20 +555,21 @@ function renderSide(){
   else {
     let html = "";
     if (obj.type === "work"){
-      html += fld("作品名","title",obj.title) + fld("作家名","artist",obj.artist);
+      const wl = state.workList.find(w=>String(w.no)===String(obj.no));
+      html += `<div class="field"><label>番号(作品リストと対応)</label>
+        <input id="pNo" value="${esc(obj.no)}"></div>`;
+      if (wl) html += `<div class="note">${esc(wl.title||"無題")}${wl.artist?" / "+esc(wl.artist):""}</div>`;
       html += `<div class="field"><label>幅 × 奥行 (mm)</label><div class="pair">
         <input id="pW" type="number" step="10" value="${obj.w}">
         <input id="pH" type="number" step="10" value="${obj.h}"></div></div>`;
-      html += `<div class="field"><label>画像</label><div class="pair">
+      html += `<div class="field"><label>画像(個別指定。一括読込より優先されません)</label><div class="pair">
         <button class="sbtn" id="pImgBtn">${obj.img?"画像を差し替え":"📂 画像を選択"}</button>
         ${obj.img?`<button class="sbtn" id="pImgDel">外す</button>`:""}
         </div></div><input type="file" id="pImgFile" accept="image/*" hidden>`;
-      html += `<div class="field"><label>備考</label><textarea id="pNote" rows="2">${esc(obj.note||"")}</textarea></div>`;
     } else if (obj.type === "fixture" || obj.type === "case"){
-      html += fld("名称","label",obj.label);
-      html += `<div class="field"><label>幅 × 奥行 (mm)</label><div class="pair">
-        <input id="pW" type="number" step="10" value="${obj.w}">
-        <input id="pH" type="number" step="10" value="${obj.h}"></div></div>`;
+      html += `<div class="field"><label>${obj.type==="case"?"可動ケース":"展示台"}</label>
+        <input value="${esc(obj.label||"")} — ${obj.w/1000}×${obj.h/1000}m" readonly></div>
+        <div class="note">削除すると在庫の残数に戻ります</div>`;
     } else {
       html += fld("テキスト","label",obj.label);
     }
@@ -568,8 +585,8 @@ function renderSide(){
     if (pH) pH.oninput = e => { obj.h = Math.max(50, +e.target.value||obj.h); render(); };
     const pR = document.getElementById("pRot");
     pR.oninput = e => { obj.rot = +e.target.value||0; render(); };
-    const pN = document.getElementById("pNote");
-    if (pN) pN.oninput = e => { obj.note = e.target.value; };
+    const pNo = document.getElementById("pNo");
+    if (pNo) pNo.oninput = e => { obj.no = normNo(e.target.value) || e.target.value.trim(); render(); renderList(); };
     const pImgBtn = document.getElementById("pImgBtn"), pImgFile = document.getElementById("pImgFile");
     if (pImgBtn) pImgBtn.onclick = ()=> pImgFile.click();
     if (pImgFile) pImgFile.onchange = e => {
@@ -589,37 +606,111 @@ function fld(label,key,val){
 }
 function esc(s){ return String(s??"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
 
-function renderList(){
-  const ul = document.getElementById("workList");
-  const works = state.objects.filter(o=>o.type==="work");
-  if (!works.length){ ul.innerHTML = `<li class="none" style="cursor:default">作品ツールで図面上に配置してください</li>`; return; }
-  ul.innerHTML = works.map((w,i)=>`
-    <li data-id="${w.id}" class="${w.id===selectedId?"sel":""}">
-      <span class="num">${i+1}</span>
-      <span class="meta"><div class="t">${esc(w.title||"無題")}</div>
-      <div class="s">${esc(w.artist||"作家未設定")} ・ ${w.w}×${w.h}mm</div></span>
-      <span class="ord">
-        <button class="mv" data-mv="-1" title="番号を上へ" ${i===0?"disabled":""}>▲</button>
-        <button class="mv" data-mv="1" title="番号を下へ" ${i===works.length-1?"disabled":""}>▼</button>
-      </span>
-    </li>`).join("");
-  ul.querySelectorAll("li[data-id]").forEach(li=>{
-    li.onclick = ()=>{ selectedId = +li.dataset.id; render(); renderSide(); };
-    li.querySelectorAll(".mv").forEach(b=>{
-      b.onclick = e=>{ e.stopPropagation(); moveWork(+li.dataset.id, +b.dataset.mv); };
-    });
+/* ---- 作品リスト(CSV)・作品画像の読み込み ---- */
+/* 番号の正規化: 全角数字→半角にして数字部分を取り出す(先頭ゼロは落とす)。
+   作品リストの「番号」とファイル名(例: 10001.jpg)をこれで対応付ける */
+function normNo(v){
+  const s = String(v??"").replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  const m = s.match(/\d+/);
+  return m ? String(+m[0]) : "";
+}
+/* Excel書き出しのCSVはShift_JISが多いため、UTF-8で化けたら読み直す */
+async function decodeText(file){
+  const buf = await file.arrayBuffer();
+  let t = new TextDecoder("utf-8").decode(buf);
+  if (t.includes("�")) t = new TextDecoder("shift_jis").decode(buf);
+  return t;
+}
+function splitLine(line, sep){
+  const out = []; let cur = "", q = false;
+  for (let i=0;i<line.length;i++){
+    const ch = line[i];
+    if (q){ if (ch === '"'){ if (line[i+1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === sep){ out.push(cur); cur = ""; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+function parseWorkList(text){
+  const sep = text.includes("\t") ? "\t" : ",";
+  const rows = text.split(/\r?\n/).filter(l=>l.trim()).map(l=>splitLine(l, sep).map(c=>c.trim()));
+  if (!rows.length) return [];
+  let noI = 0, titleI = 1, artistI = -1, start = 0;
+  const head = rows[0];
+  if (head.some(c=>/番号|作品名|タイトル|題名|作家|作者|^No\.?$/i.test(c))){
+    start = 1;
+    const n = head.findIndex(c=>/番号|^No\.?$|^NO$/i.test(c)); if (n >= 0) noI = n;
+    const t = head.findIndex(c=>/作品名|タイトル|題名/.test(c));  if (t >= 0) titleI = t;
+    const a = head.findIndex(c=>/作家|作者/.test(c));            if (a >= 0) artistI = a;
+  }
+  const list = [];
+  for (const r of rows.slice(start)){
+    const no = normNo(r[noI]);
+    if (!no) continue;
+    list.push({no, title: r[titleI] ?? "", artist: artistI >= 0 ? (r[artistI] ?? "") : ""});
+  }
+  return list;
+}
+/* 表示用に軽く圧縮(長辺512px・JPEG)してdataURL化する */
+function compressImage(file){
+  return new Promise((res, rej)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const MAX = 512, r = Math.min(1, MAX/Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(img.width*r));
+      c.height = Math.max(1, Math.round(img.height*r));
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      res(c.toDataURL("image/jpeg", 0.72));
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(img.src); rej(new Error("画像を開けません")); };
+    img.src = URL.createObjectURL(file);
   });
 }
 
-/* 作品番号の並べ替え: objects配列内で隣の作品と位置を入れ替える(採番は配列順) */
-function moveWork(id, dir){
+function renderList(){
+  const ul = document.getElementById("workList");
+  const placedByNo = new Map(state.objects.filter(o=>o.type==="work").map(o=>[String(o.no), o]));
+
+  if (state.workList.length){
+    // 作品リスト(CSV)を読み込み済み: リストの番号を軸に配置状況を表示
+    ul.innerHTML = state.workList.map(w=>{
+      const key = String(w.no);
+      const img = state.images[key];
+      const placed = placedByNo.get(key);
+      return `<li data-no="${esc(key)}" class="${placed && placed.id===selectedId?"sel":""}">
+        <span class="num">${esc(w.no)}</span>
+        ${img?`<img class="thumb" src="${img}" alt="">`:""}
+        <span class="meta"><div class="t">${esc(w.title||"無題")}</div>
+        <div class="s">${esc(w.artist||"")}${w.artist?" ・ ":""}${placed?"配置済":"未配置"}</div></span>
+      </li>`;
+    }).join("");
+    ul.querySelectorAll("li[data-no]").forEach(li=>{
+      li.onclick = ()=>{
+        const o = placedByNo.get(li.dataset.no);
+        if (o){ selectedId = o.id; render(); renderSide(); }
+      };
+    });
+    return;
+  }
+
   const works = state.objects.filter(o=>o.type==="work");
-  const i = works.findIndex(w=>w.id===id), j = i + dir;
-  if (i < 0 || j < 0 || j >= works.length) return;
-  pushUndo();
-  const a = state.objects.indexOf(works[i]), b = state.objects.indexOf(works[j]);
-  [state.objects[a], state.objects[b]] = [state.objects[b], state.objects[a]];
-  render(); renderSide();
+  if (!works.length){
+    ul.innerHTML = `<li class="none" style="cursor:default">📋作品リスト(CSV)を読み込むか、作品ツールで配置してください</li>`;
+    return;
+  }
+  ul.innerHTML = works.map(w=>`
+    <li data-id="${w.id}" class="${w.id===selectedId?"sel":""}">
+      <span class="num">${esc(w.no)}</span>
+      <span class="meta"><div class="t">番号 ${esc(w.no)}</div>
+      <div class="s">${w.w}×${w.h}mm</div></span>
+    </li>`).join("");
+  ul.querySelectorAll("li[data-id]").forEach(li=>{
+    li.onclick = ()=>{ selectedId = +li.dataset.id; render(); renderSide(); };
+  });
 }
 
 function deleteSelected(){
@@ -650,6 +741,23 @@ svg.addEventListener("pointerdown", ev=>{
   const p = clientToPlan(ev.clientX, ev.clientY);
   const hit = ev.target.closest("[data-id]");
 
+  // 在庫パレットから1台取り出す(残数が減る)。そのままドラッグで配置できる
+  const stockHit = ev.target.closest("[data-stock]");
+  if (stockHit && tool !== "erase"){
+    const s = state.stock.find(t=>t.key===stockHit.dataset.stock);
+    if (s && stockRemain(s.key) > 0){
+      pushUndo();
+      const o = {id:idSeq++, type:s.cat==="case"?"case":"fixture", stockKey:s.key,
+        x:snap(p.x), y:snap(p.y), rot:0, w:s.w, h:s.h, label:s.name};
+      state.objects.push(o);
+      selectedId = o.id;
+      setTool("select");
+      drag = {mode:"move", obj:o, dx:0, dy:0};
+      render(); renderSide();
+    }
+    return;
+  }
+
   if (tool === "wall"){
     pushUndo();
     const sp = snapWallPoint(p);
@@ -658,15 +766,25 @@ svg.addEventListener("pointerdown", ev=>{
     drag = {mode:"wall", wall:w};
     return;
   }
-  if (tool === "work" || tool === "case" || tool === "fixture" || tool === "text"){
+  if (tool === "work"){
     pushUndo();
-    const defaults = {
-      work:   {w:1200, h:100, title:"", artist:""},
-      case:   {w:1800, h:1000, label:"ケース"},
-      fixture:{w:900, h:900, label:"展示台"},
-      text:   {w:0, h:0, label:"テキスト"}
-    }[tool];
-    const o = {id:idSeq++, type:tool, x:snap(p.x), y:snap(p.y), rot:0, ...defaults};
+    // 作品リストの未配置の先頭番号を自動で割り当てる(リストが無ければ連番)
+    const used = new Set(state.objects.filter(o=>o.type==="work").map(o=>String(o.no)));
+    let no = state.workList.find(w=>!used.has(String(w.no)))?.no;
+    if (no == null){
+      const nums = [...used].map(Number).filter(n=>!isNaN(n));
+      no = (nums.length ? Math.max(...nums) : 0) + 1;
+    }
+    const o = {id:idSeq++, type:"work", no, x:snap(p.x), y:snap(p.y), rot:0, w:1200, h:900};
+    state.objects.push(o);
+    selectedId = o.id;
+    setTool("select");
+    render(); renderSide();
+    return;
+  }
+  if (tool === "text"){
+    pushUndo();
+    const o = {id:idSeq++, type:"text", x:snap(p.x), y:snap(p.y), rot:0, w:0, h:0, label:"テキスト"};
     state.objects.push(o);
     selectedId = o.id;
     setTool("select");
@@ -755,13 +873,11 @@ function setTool(t){
   tool = t;
   document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active", b.dataset.tool===t));
   const hints = {
-    select:"クリックで選択、ドラッグで移動。空白ドラッグで画面移動",
+    select:"クリックで選択、ドラッグで移動。左右の在庫をクリックすると1台取り出せます(残数が減ります)",
     wall:"ドラッグで壁を描画(Shiftで自由角度、既存の壁の端点に近づけると連結)",
-    work:"クリックで作品を配置 → 右パネルで作品名・サイズ・画像を設定",
-    case:"クリックで可動ケースを配置(在庫は印刷範囲の左外に一覧あり)",
-    fixture:"クリックで展示台を配置(在庫は印刷範囲の右外に一覧あり)",
+    work:"クリックで作品を配置(作品リストの未配置の番号が自動で付きます)",
     text:"クリックでテキストを配置",
-    erase:"クリックしたオブジェクトを削除"
+    erase:"クリックしたオブジェクトを削除(ケース・展示台は在庫に戻ります)"
   };
   document.getElementById("hint").textContent = hints[t];
 }
@@ -797,8 +913,13 @@ document.getElementById("fileInput").onchange = async ev=>{
     if (!data.walls || !data.objects) throw new Error("形式が違います");
     pushUndo();
     state = data;
-    if (!state.sheet) state.sheet = {preset:"custom"}; // 旧形式JSONとの互換
+    // 旧形式JSONとの互換
+    if (!state.sheet || !PAPERS[state.sheet.preset]) state.sheet = {preset:"a3l"};
     if (!state.rooms) state.rooms = defaultRooms();
+    if (!state.scalePct) state.scalePct = 100;
+    if (!state.workList) state.workList = [];
+    if (!state.images) state.images = {};
+    if (!state.stock) state.stock = defaultStock();
     idSeq = Math.max(0, ...state.walls.map(w=>w.id), ...state.objects.map(o=>o.id)) + 1;
     selectedId = null; syncSheetUI(); render(); renderSide();
   }catch(e){ alert("読み込みに失敗しました: " + e.message); }
@@ -844,11 +965,48 @@ document.getElementById("printBtn").onclick = ()=>{
   window.print();
   view = prev; applyView();
 };
-document.getElementById("scaleSel").onchange = ()=>{ applySheet(); fitView(); render(); };
 document.getElementById("sheetSel").onchange = ev=>{
   pushUndo();
   state.sheet = {preset: ev.target.value};
   applySheet(); fitView(); render();
+};
+document.getElementById("scalePct").onchange = ev=>{
+  pushUndo();
+  state.scalePct = Math.min(100, Math.max(1, Math.round(+ev.target.value || 100)));
+  ev.target.value = state.scalePct;
+  render();
+};
+
+/* 作品リスト(CSV)の読み込み */
+document.getElementById("wlBtn").onclick = ()=> document.getElementById("wlInput").click();
+document.getElementById("wlInput").onchange = async ev=>{
+  const f = ev.target.files[0]; if (!f) return;
+  try{
+    const list = parseWorkList(await decodeText(f));
+    if (!list.length) throw new Error("「番号」の列が見つかりません(1列目か「番号」列に数字を入れてください)");
+    pushUndo();
+    state.workList = list;
+    render(); renderSide();
+    document.getElementById("hint").textContent = `作品リスト ${list.length}件を読み込みました`;
+  }catch(e){ alert("作品リストの読み込みに失敗しました: " + e.message); }
+  ev.target.value = "";
+};
+
+/* 作品画像の一括読み込み: ファイル名の番号→リストの番号に対応付け、圧縮して保存 */
+document.getElementById("imgsBtn").onclick = ()=> document.getElementById("imgsInput").click();
+document.getElementById("imgsInput").onchange = async ev=>{
+  const files = [...ev.target.files]; if (!files.length) return;
+  let ok = 0, skipped = [];
+  for (const f of files){
+    const no = normNo(f.name);
+    if (!no){ skipped.push(f.name); continue; }
+    try{ state.images[no] = await compressImage(f); ok++; }
+    catch(e){ skipped.push(f.name); }
+  }
+  render(); renderSide();
+  document.getElementById("hint").textContent =
+    `作品画像 ${ok}/${files.length} 件を読み込みました` + (skipped.length ? `(番号なし/失敗: ${skipped.length}件)` : "");
+  ev.target.value = "";
 };
 document.getElementById("undoBtn").onclick = undo;
 document.getElementById("redoBtn").onclick = redo;
