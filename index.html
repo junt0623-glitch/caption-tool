@@ -17,6 +17,7 @@
   --biz-mincho:"BIZ UDPMincho","BIZ UDMincho",serif;
   --biz-gothic:"BIZ UDPGothic","BIZ UDGothic",sans-serif;
   --ud-kyokasho:"UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPMincho","BIZ UDMincho",serif;
+  --ud-kyokasho-b:"UD デジタル教科書体 NP-B","UD Digi Kyokasho NP-B","UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPGothic","BIZ UDGothic",sans-serif;
   --yu-mincho:"Yu Mincho","YuMincho","Hiragino Mincho ProN","MS PMincho",serif;
   --hiragino-mincho:"Hiragino Mincho ProN","YuMincho","Yu Mincho",serif;
   --ms-mincho:"MS PMincho","MS Mincho","Hiragino Mincho ProN",serif;
@@ -24,6 +25,7 @@
   --hiragino-gothic:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic",sans-serif;
   --meiryo:"Meiryo","Yu Gothic","Hiragino Kaku Gothic ProN",sans-serif;
   --ms-gothic:"MS PGothic","MS Gothic","Meiryo",sans-serif;
+  --ms-ui-gothic:"MS UI Gothic","MSUIGothic","MS PGothic","MS Gothic","Meiryo",sans-serif;
   --noto-serif-jp:"Noto Serif JP","BIZ UDPMincho","BIZ UDMincho",serif;
   --noto-sans-jp:"Noto Sans JP","BIZ UDPGothic","BIZ UDGothic",sans-serif;
   --georgia:"Georgia","Times New Roman",serif;
@@ -412,7 +414,7 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 /* ルビ（Word風・注釈ベース） */
 .cap-item ruby{ruby-position:over;ruby-align:var(--ruby-align,space-around)}
 .cap-item ruby>rt{font-size:var(--ruby-size,50%);letter-spacing:var(--ruby-ls,0em);font-family:var(--ruby-font,inherit);
-  font-weight:400;opacity:.95;margin-block-end:var(--ruby-offset,2pt)}
+  font-weight:var(--ruby-weight,400);opacity:.95;margin-block-end:var(--ruby-offset,2pt)}
 /* 補足：以前はtransform:translateYで位置調整していたが、主要ブラウザは<ruby>内の<rt>要素に対して
    transformによる移動を描画に反映しないため、margin-block-endに変更した（2026-07-10 修正）。
    論理プロパティにしているのは、縦書きモードでも書字方向に応じて自動的に正しい辺（本文との間隔）に
@@ -677,7 +679,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
           <fieldset class="grp lock-layout"><legend>書体・行間</legend>
             <div class="ctl"><label class="lbl">全体の書体（各項目の「全体に従う」に適用）</label>
               <select id="fontKind" style="width:100%"></select>
-              <p class="note" style="margin-top:4px">UD・BIZ系（視認性の高い書体）を優先します。楷書体・英字書体もお使いの端末に入っていれば選べます。入っていない場合は近い書体で表示されます。<b>「オンラインフォント」の書体は、選ぶと自動でネットから読み込まれ、プレビューに即時反映されます</b>（要ネット接続）。</p>
+              <p class="note" style="margin-top:4px">UD・BIZ系（視認性の高い書体）を優先します。楷書体・英字書体・UDデジタル教科書体（標準／太字）・MS UI Gothicなど、Windows等に標準搭載の書体もお使いの端末に入っていれば選べます。入っていない場合は近い書体で表示されます。<b>「オンラインフォント」の書体は、選ぶと自動でネットから読み込まれ、プレビューに即時反映されます</b>（要ネット接続）。</p>
               <label class="chk" style="margin-top:4px"><input type="checkbox" id="gfontToggle">Googleフォント（Noto系）をオンラインで読み込む（要ネット接続）</label>
               <p class="note" id="gfontNote" style="margin-top:2px;display:none">オンラインフォントの読み込み中はインターネット接続が必要です。オフラインや館内ネットワークで使う場合は、オンラインフォントを選ばずOFFのままにしてください。</p></div>
             <div class="ctl"><label class="lbl">行間</label><div class="row"><input type="range" id="stLh" min="1.05" max="2.4" step="0.05"><output id="oLh"></output></div></div>
@@ -1114,7 +1116,8 @@ const FONTS={
   udgothic:{label:"UDゴシック（自動選択）",stack:cssVar("--ud-gothic"),group:"UD・視認性重視"},
   bizmincho:{label:"BIZ UDP明朝",stack:cssVar("--biz-mincho"),group:"UD・視認性重視"},
   bizgothic:{label:"BIZ UDPゴシック",stack:cssVar("--biz-gothic"),group:"UD・視認性重視"},
-  udkyokasho:{label:"UDデジタル教科書体",stack:cssVar("--ud-kyokasho"),group:"UD・視認性重視"},
+  udkyokasho:{label:"UDデジタル教科書体 標準（NP-R）",stack:cssVar("--ud-kyokasho"),group:"UD・視認性重視"},
+  udkyokashob:{label:"UDデジタル教科書体 太字（NP-B）",stack:cssVar("--ud-kyokasho-b"),group:"UD・視認性重視",weight:700},
   /* 明朝体 */
   kaisho:{label:"楷書体",stack:cssVar("--kaisho"),group:"明朝体"},
   yumincho:{label:"游明朝",stack:cssVar("--yu-mincho"),group:"明朝体"},
@@ -1125,6 +1128,7 @@ const FONTS={
   hiraginogothic:{label:"ヒラギノ角ゴ ProN",stack:cssVar("--hiragino-gothic"),group:"ゴシック体"},
   meiryo:{label:"メイリオ",stack:cssVar("--meiryo"),group:"ゴシック体"},
   msgothic:{label:"MSゴシック",stack:cssVar("--ms-gothic"),group:"ゴシック体"},
+  msuigothic:{label:"MS UI Gothic",stack:cssVar("--ms-ui-gothic"),group:"ゴシック体"},
   /* オンラインフォント（選ぶと自動でネットから読み込み、プレビューに即時反映される。gf=Google Fonts APIのfamily指定） */
   notoserif:{label:"Noto Serif JP（オンライン）",stack:cssVar("--noto-serif-jp"),group:"オンラインフォント",gf:"Noto+Serif+JP:wght@400;700"},
   notosans:{label:"Noto Sans JP（オンライン）",stack:cssVar("--noto-sans-jp"),group:"オンラインフォント",gf:"Noto+Sans+JP:wght@400;700"},
@@ -1153,6 +1157,8 @@ const FONTS={
 };
 const FONT_GROUP_ORDER=["UD・視認性重視","明朝体","ゴシック体","オンラインフォント","英字"];
 function fontStack(key){return (FONTS[key]&&FONTS[key].stack)||FONTS.mincho.stack;}
+/* 一部の書体（太字ファミリのNP-B等）は太さ指定を持つ。未インストール時のフォールバックでも太字で出す */
+function fontWeight(key){return (FONTS[key]&&FONTS[key].weight)||null;}
 const MINCHO=FONTS.mincho.stack;
 const GOTHIC=FONTS.gothic.stack;
 /* フォント選択肢のHTMLを生成（inheritラベルは呼び出し側で付与）。UD・視認性重視グループを先頭に、
@@ -1772,7 +1778,8 @@ function buildCard(work,st,size,opts){
   card.style.setProperty("--ruby-offset",((st.rubyOffset==null?2:st.rubyOffset))+"pt");
   if(st.rubySizePt)card.style.setProperty("--ruby-size",st.rubySizePt+"pt");
   card.style.setProperty("--ruby-ls",((st.rubyLs||0))+"em");
-  if(st.rubyFont&&st.rubyFont!=="inherit")card.style.setProperty("--ruby-font",fontStack(st.rubyFont));
+  if(st.rubyFont&&st.rubyFont!=="inherit"){card.style.setProperty("--ruby-font",fontStack(st.rubyFont));
+    const rfw=fontWeight(st.rubyFont);if(rfw)card.style.setProperty("--ruby-weight",String(rfw));}
   card.style.setProperty("--ruby-align",st.rubyAlign||"space-around");
   if(mode!=="desc"&&work.image){const im=document.createElement("div");im.className="cap-img";
     im.style.backgroundImage=`url("${work.image}")`;
@@ -1813,6 +1820,8 @@ function buildCard(work,st,size,opts){
       if(L.h!=null){el.style.height=L.h+"mm";el.classList.add("fixed-h");}
     }
     el.style.fontFamily=(L.font==="inherit")?defFont:fontStack(L.font);
+    const effFontKey=(L.font==="inherit")?st.font:L.font;
+    const fw=fontWeight(effFontKey);if(fw)el.style.fontWeight=fw;
     el.style.fontSize=L.size+"pt";el.style.lineHeight=st.lh;
     el.style.letterSpacing=(L.ls||0)+"em";
     el.style.textAlign=(L.align==="inherit")?st.align:L.align;
