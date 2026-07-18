@@ -31,7 +31,7 @@ async function run() {
   const svgBox = await page.locator('svg#plan').boundingBox();
   const cx = svgBox.x + svgBox.width / 2, cy = svgBox.y + svgBox.height / 2;
 
-  // --- 作品の配置と作品リスト ---
+  // --- 作品の配置と作品リスト(リスト未読込時は連番) ---
   await page.click('.tool[data-tool="work"]');
   await page.mouse.click(cx - 120, cy - 60);
   await page.waitForTimeout(100);
@@ -41,15 +41,8 @@ async function run() {
   await page.mouse.click(cx + 120, cy + 60);
   await page.waitForTimeout(100);
   t.eq(await page.locator('#workList li[data-id]').count(), 2, '作品2つ目もリストに反映される');
-
-  // --- 作品番号の手動並べ替え ---
-  const idsBefore = await page.$$eval('#workList li[data-id]', ls => ls.map(l => l.dataset.id));
-  await page.click('#workList li[data-id]:first-child .mv[data-mv="1"]');
-  await page.waitForTimeout(100);
-  const idsAfter = await page.$$eval('#workList li[data-id]', ls => ls.map(l => l.dataset.id));
-  t.eq(idsAfter, [idsBefore[1], idsBefore[0]], '▼ボタンで作品の順序(=番号)が入れ替わる');
-  t.ok(await page.locator('#workList li[data-id]:first-child .mv[data-mv="-1"]').isDisabled(),
-    '先頭の作品の▲ボタンは無効');
+  t.eq(await page.$$eval('#workList li[data-id] .num', ns => ns.map(n => n.textContent)),
+    ['1', '2'], 'リスト未読込時は連番が振られる');
 
   // --- 壁の描画 ---
   await page.click('.tool[data-tool="wall"]');
@@ -89,18 +82,15 @@ async function run() {
   await page.waitForTimeout(100);
   t.eq(await page.locator('line.wall-line').count(), 2, 'Ctrl+YでもRedoできる');
 
-  // --- 用紙プリセット: シート矩形(最初のrect)が用紙×縮尺の寸法になる ---
+  // --- 用紙(A3横/縦): シート矩形(最初のrect)の寸法が切り替わる ---
   const sheetW = () => page.$eval('svg#plan > rect', r => +r.getAttribute('width'));
-  t.eq(await sheetW(), 42000, '既定はA3横×1:100でシート幅42000mm(=420mm×100)');
-  await page.selectOption('#sheetSel', 'a4l');
+  t.eq(await sheetW(), 42000, '既定はA3横でシート幅42000mm');
+  await page.selectOption('#sheetSel', 'a3p');
   await page.waitForTimeout(100);
-  t.eq(await sheetW(), 29700, 'A4横×1:100でシート幅29700mm(=297mm×100)');
-  await page.selectOption('#scaleSel', '50');
+  t.eq(await sheetW(), 29700, 'A3縦に切り替えるとシート幅29700mm');
+  await page.click('#undoBtn');
   await page.waitForTimeout(100);
-  t.eq(await sheetW(), 14850, '縮尺1:50に変えるとシート幅14850mm(=297mm×50)');
-  await page.click('#undoBtn'); // 用紙変更のUndoでA3横に戻る(縮尺1:50のまま)
-  await page.waitForTimeout(100);
-  t.eq(await sheetW(), 21000, '用紙プリセット変更もUndoで戻る(A3横×1:50=21000mm)');
+  t.eq(await sheetW(), 42000, '用紙切替もUndoで戻る');
   t.eq(await page.$eval('#sheetSel', s => s.value), 'a3l', 'Undo後は用紙セレクトも同期される');
 
   t.noErrors(errors);
