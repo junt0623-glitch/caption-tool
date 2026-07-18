@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>展覧会図面作成アプリ - プロトタイプ</title>
+<style>
+  :root{
+    --ink:#1c1c1e;
+    --paper:#fdfdfb;
+    --grid:#e4e2da;
+    --grid-major:#d0cdc2;
+    --accent:#b3541e;      /* 朱 — 選択・作品番号 */
+    --wall:#2b2b2e;
+    --fixture:#8a8578;
+    --panel:#f3f1ea;
+    --line:#c9c5b8;
+    --radius:6px;
+    font-size:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic","Meiryo",sans-serif;
+    color:var(--ink);background:var(--panel);
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+
+  /* ── 上部バー ─────────────────────── */
+  header{
+    display:flex;align-items:center;gap:12px;
+    padding:8px 14px;background:var(--ink);color:#f5f3ec;flex-wrap:wrap;
+  }
+  header h1{font-size:15px;font-weight:600;letter-spacing:.06em;margin-right:8px}
+  header h1 small{font-weight:400;opacity:.6;margin-left:6px;letter-spacing:.1em}
+  .hbtn{
+    background:transparent;color:#f5f3ec;border:1px solid #55534c;
+    border-radius:var(--radius);padding:5px 12px;cursor:pointer;font-size:13px;
+  }
+  .hbtn:hover{background:#33322f}
+  .hbtn.primary{background:var(--accent);border-color:var(--accent)}
+  .hbtn.primary:hover{filter:brightness(1.1)}
+  header .spacer{flex:1}
+  header select{
+    background:#33322f;color:#f5f3ec;border:1px solid #55534c;
+    border-radius:var(--radius);padding:5px 8px;font-size:13px;
+  }
+  header label{font-size:12px;opacity:.75}
+
+  /* ── メインレイアウト ─────────────── */
+  main{flex:1;display:flex;min-height:0}
+
+  /* ツールバー */
+  #toolbar{
+    width:88px;background:#efede5;border-right:1px solid var(--line);
+    display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:6px;
+  }
+  .tool{
+    width:72px;padding:8px 4px;border:1px solid transparent;border-radius:var(--radius);
+    background:transparent;cursor:pointer;font-size:11px;color:var(--ink);
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+  }
+  .tool span.ic{font-size:18px;line-height:1}
+  .tool:hover{background:#e4e1d6}
+  .tool.active{background:#fff;border-color:var(--accent);color:var(--accent);font-weight:600}
+  #toolbar hr{width:56px;border:none;border-top:1px solid var(--line);margin:6px 0}
+
+  /* キャンバス領域 */
+  #canvasWrap{flex:1;position:relative;overflow:hidden;background:#dad7cc}
+  svg#plan{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+  #zoomCtrl{
+    position:absolute;left:12px;bottom:12px;display:flex;gap:4px;
+    background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:4px;
+  }
+  #zoomCtrl button{border:none;background:transparent;width:28px;height:28px;cursor:pointer;font-size:15px;border-radius:4px}
+  #zoomCtrl button:hover{background:var(--panel)}
+  #hint{
+    position:absolute;top:10px;left:50%;transform:translateX(-50%);
+    background:rgba(28,28,30,.85);color:#f5f3ec;font-size:12px;
+    padding:5px 14px;border-radius:20px;pointer-events:none;white-space:nowrap;
+  }
+
+  /* 右パネル */
+  #side{
+    width:280px;background:var(--paper);border-left:1px solid var(--line);
+    display:flex;flex-direction:column;min-height:0;
+  }
+  #side h2{
+    font-size:12px;letter-spacing:.12em;font-weight:600;color:#6d6a60;
+    padding:12px 14px 6px;border-bottom:1px solid var(--line);
+  }
+  #props{padding:12px 14px;border-bottom:1px solid var(--line)}
+  #props .empty{font-size:12px;color:#8c887c}
+  .field{margin-bottom:8px}
+  .field label{display:block;font-size:11px;color:#6d6a60;margin-bottom:2px}
+  .field input,.field textarea{
+    width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:4px;
+    font-size:13px;font-family:inherit;background:#fff;
+  }
+  .field .pair{display:flex;gap:6px}
+  .field .pair input{flex:1}
+  #props .del{
+    margin-top:4px;width:100%;padding:6px;border:1px solid #c33;color:#c33;
+    background:#fff;border-radius:4px;cursor:pointer;font-size:12px;
+  }
+  #props .del:hover{background:#c33;color:#fff}
+
+  /* 作品リスト */
+  #workListWrap{flex:1;overflow-y:auto}
+  #workList{list-style:none}
+  #workList li{
+    display:flex;align-items:center;gap:8px;padding:7px 14px;
+    border-bottom:1px solid #eee9dd;cursor:pointer;font-size:13px;
+  }
+  #workList li:hover{background:var(--panel)}
+  #workList li.sel{background:#fbe9dc}
+  #workList .num{
+    flex:none;width:20px;height:20px;border-radius:50%;
+    background:var(--accent);color:#fff;font-size:11px;
+    display:flex;align-items:center;justify-content:center;font-weight:600;
+  }
+  #workList .meta{min-width:0}
+  #workList .meta .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #workList .meta .s{font-size:11px;color:#8c887c}
+  #workList .none{padding:14px;font-size:12px;color:#8c887c}
+
+  /* SVG内の要素スタイル */
+  /* 注意: SVGはCSSがプレゼンテーション属性より優先されるため、
+     font-size等はここに書かず属性側で指定する */
+  .wall-line{stroke:var(--wall);stroke-linecap:square}
+  .obj.selected .body{stroke:var(--accent);stroke-width:45}
+  .badge circle{fill:var(--accent)}
+  .badge text{fill:#fff;font-weight:600;text-anchor:middle;dominant-baseline:central}
+  .obj text.lbl{fill:var(--ink);text-anchor:middle;pointer-events:none}
+  .obj{cursor:move}
+  #titleBlock text{fill:var(--ink)}
+  #titleBlock .tb-head{fill:#6d6a60}
+  #titleBlock .tb-title{font-weight:600}
+
+  /* 印刷 */
+  @media print{
+    header,#toolbar,#side,#zoomCtrl,#hint{display:none!important}
+    body{background:#fff}
+    #canvasWrap{position:fixed;inset:0;background:#fff}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>展覧会図面作成<small>プロトタイプ</small></h1>
+  <label>縮尺
+    <select id="scaleSel">
+      <option value="50">1:50</option>
+      <option value="100" selected>1:100</option>
+      <option value="200">1:200</option>
+    </select>
+  </label>
+  <button class="hbtn" id="undoBtn" title="元に戻す (Ctrl+Z)">↩ 元に戻す</button>
+  <div class="spacer"></div>
+  <button class="hbtn" id="loadBtn">📂 読み込み</button>
+  <button class="hbtn" id="saveBtn">💾 保存 (JSON)</button>
+  <button class="hbtn" id="pngBtn">🖼 PNG書き出し</button>
+  <button class="hbtn primary" id="printBtn">🖨 印刷実行</button>
+  <input type="file" id="fileInput" accept=".json" hidden>
+</header>
+
+<main>
+  <nav id="toolbar">
+    <button class="tool active" data-tool="select"><span class="ic">↖</span>選択/移動</button>
+    <button class="tool" data-tool="wall"><span class="ic">╱</span>壁を描く</button>
+    <hr>
+    <button class="tool" data-tool="work"><span class="ic">🖼</span>作品</button>
+    <button class="tool" data-tool="fixture"><span class="ic">◻</span>展示台</button>
+    <button class="tool" data-tool="text"><span class="ic">あ</span>テキスト</button>
+    <hr>
+    <button class="tool" data-tool="erase"><span class="ic">✕</span>削除</button>
+  </nav>
+
+  <div id="canvasWrap">
+    <svg id="plan" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="zoomCtrl">
+      <button id="zoomOut" title="縮小">−</button>
+      <button id="zoomFit" title="全体表示">⌂</button>
+      <button id="zoomIn" title="拡大">＋</button>
+    </div>
+    <div id="hint">ツールを選んで図面上をクリック/ドラッグ</div>
+  </div>
+
+  <aside id="side">
+    <h2>プロパティ</h2>
+    <div id="props"><div class="empty">オブジェクトを選択すると編集できます</div></div>
+    <h2>作品リスト</h2>
+    <div id="workListWrap"><ul id="workList"></ul></div>
+  </aside>
+</main>
+
+<script>
+"use strict";
+/* ============================================================
+   展覧会図面作成アプリ(再構築版)
+   単位: 内部座標は mm。表示は 0.1px/mm を基準にviewBoxで拡縮。
+   ============================================================ */
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("plan");
+const GRID = 500;            // グリッド 500mm
+const WALL_T = 150;          // 壁厚 150mm
+const SHEET = {w: 20000, h: 14000}; // 用紙相当 20m × 14m
+
+/* ---- 状態 ---- */
+let state = {
+  meta: {title:"(展覧会名未設定)", venue:"", author:"", date: today()},
+  walls: [],     // {id,x1,y1,x2,y2}
+  objects: []    // {id,type:'work'|'fixture'|'text', x,y,w,h,rot, title,artist,note,label}
+};
+let tool = "select";
+let selectedId = null;
+let idSeq = 1;
+let undoStack = [];
+
+/* ---- ビュー(ズーム/パン) ---- */
+let view = {x:-1000, y:-1000, w: SHEET.w+2000, h: SHEET.h+2000};
+function applyView(){
+  const el = svg.getBoundingClientRect();
+  const ar = el.width / el.height;
+  let {x,y,w,h} = view;
+  if (w/h < ar) { const nw = h*ar; x -= (nw-w)/2; w = nw; }
+  else { const nh = w/ar; y -= (nh-h)/2; h = nh; }
+  svg.setAttribute("viewBox", `${x} ${y} ${w} ${h}`);
+}
+function zoom(f, cx, cy){
+  const pt = clientToPlan(cx ?? innerWidth/2, cy ?? innerHeight/2);
+  view.w *= f; view.h *= f;
+  view.x = pt.x - (pt.x - view.x)*f;
+  view.y = pt.y - (pt.y - view.y)*f;
+  applyView(); render();
+}
+function clientToPlan(cx, cy){
+  const p = svg.createSVGPoint(); p.x = cx; p.y = cy;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+function snap(v){ return Math.round(v / (GRID/2)) * (GRID/2); }
+function today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+
+/* ---- 履歴 ---- */
+function pushUndo(){
+  undoStack.push(JSON.stringify(state));
+  if (undoStack.length > 50) undoStack.shift();
+}
+function undo(){
+  if (!undoStack.length) return;
+  state = JSON.parse(undoStack.pop());
+  selectedId = null; render(); renderSide();
+}
+
+/* ---- 描画 ---- */
+function el(name, attrs, parent){
+  const e = document.createElementNS(SVG_NS, name);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+function render(){
+  svg.innerHTML = "";
+
+  // 用紙
+  el("rect",{x:0,y:0,width:SHEET.w,height:SHEET.h,fill:"var(--paper)",stroke:"var(--ink)","stroke-width":30}, svg);
+
+  // グリッド
+  const g = el("g",{}, svg);
+  for (let x=0; x<=SHEET.w; x+=GRID)
+    el("line",{x1:x,y1:0,x2:x,y2:SHEET.h,stroke: x%(GRID*4)?"var(--grid)":"var(--grid-major)","stroke-width":x%(GRID*4)?6:10}, g);
+  for (let y=0; y<=SHEET.h; y+=GRID)
+    el("line",{x1:0,y1:y,x2:SHEET.w,y2:y,stroke: y%(GRID*4)?"var(--grid)":"var(--grid-major)","stroke-width":y%(GRID*4)?6:10}, g);
+
+  // 壁
+  for (const w of state.walls){
+    const ln = el("line",{x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2,"stroke-width":WALL_T,class:"wall-line","data-id":w.id}, svg);
+    if (w.id === selectedId) ln.style.stroke = "var(--accent)"; // inline styleでCSSクラスに勝たせる
+  }
+
+  // オブジェクト
+  let workNum = 0;
+  for (const o of state.objects){
+    if (o.type === "work") workNum++;
+    const grp = el("g",{class:"obj"+(o.id===selectedId?" selected":""),"data-id":o.id,
+      transform:`translate(${o.x},${o.y}) rotate(${o.rot||0})`}, svg);
+
+    if (o.type === "work"){
+      el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"#fff",stroke:"var(--ink)","stroke-width":20}, grp);
+      el("line",{x1:-o.w/2,y1:o.h/2,x2:o.w/2,y2:-o.h/2,stroke:"#bbb","stroke-width":10}, grp);
+      const b = el("g",{class:"badge",transform:`translate(0,${-o.h/2-260})`}, grp);
+      el("circle",{r:200}, b);
+      const t = el("text",{}, b); t.textContent = workNum;
+      t.setAttribute("font-size", 220);
+      const lbl = el("text",{class:"lbl",y:o.h/2+320,"font-size":260}, grp);
+      lbl.textContent = o.title || "無題";
+    }
+    else if (o.type === "fixture"){
+      el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"var(--fixture)","fill-opacity":.25,stroke:"var(--fixture)","stroke-width":20}, grp);
+      const lbl = el("text",{class:"lbl","font-size":240}, grp);
+      lbl.textContent = o.label || "展示台";
+    }
+    else if (o.type === "text"){
+      const t = el("text",{class:"lbl body","font-size":320,"font-weight":600}, grp);
+      t.textContent = o.label || "テキスト";
+      el("rect",{x:-800,y:-260,width:1600,height:520,fill:"transparent"}, grp); // クリック領域
+    }
+  }
+
+  drawTitleBlock();
+  applyView();
+}
+
+function drawTitleBlock(){
+  const W = 5200, H = 1500;
+  const x = SHEET.w - W - 300, y = SHEET.h - H - 300;
+  const g = el("g",{id:"titleBlock"}, svg);
+  el("rect",{x,y,width:W,height:H,fill:"#fff",stroke:"var(--ink)","stroke-width":25}, g);
+  el("line",{x1:x,y1:y+520,x2:x+W,y2:y+520,stroke:"var(--ink)","stroke-width":15}, g);
+  el("line",{x1:x+W/2,y1:y+520,x2:x+W/2,y2:y+H,stroke:"var(--ink)","stroke-width":15}, g);
+
+  const put = (tx,ty,str,cls,size)=>{ const t = el("text",{x:tx,y:ty,class:cls,"font-size":size}, g); t.textContent = str; };
+  put(x+140, y+250, "展覧会平面図", "tb-head", 220);
+  put(x+140, y+430, state.meta.title, "tb-title", 300);
+  put(x+140, y+700, "会場", "tb-head", 190);
+  put(x+140, y+950, state.meta.venue || "—", "", 230);
+  put(x+140, y+1220, `作成: ${state.meta.author || "—"}`, "", 200);
+  put(x+W/2+140, y+700, "縮尺 / 日付", "tb-head", 190);
+  put(x+W/2+140, y+950, `1:${document.getElementById("scaleSel").value}`, "", 230);
+  put(x+W/2+140, y+1220, state.meta.date, "", 200);
+}
+
+/* ---- サイドパネル ---- */
+function renderSide(){
+  const props = document.getElementById("props");
+  const obj = state.objects.find(o=>o.id===selectedId);
+  const wall = state.walls.find(w=>w.id===selectedId);
+
+  if (!obj && !wall){
+    props.innerHTML = `<div class="empty">オブジェクトを選択すると編集できます</div>
+      <div class="field" style="margin-top:10px"><label>展覧会名</label><input id="mTitle" value="${esc(state.meta.title)}"></div>
+      <div class="field"><label>会場</label><input id="mVenue" value="${esc(state.meta.venue)}"></div>
+      <div class="field"><label>作成者</label><input id="mAuthor" value="${esc(state.meta.author)}"></div>`;
+    for (const [id,key] of [["mTitle","title"],["mVenue","venue"],["mAuthor","author"]])
+      document.getElementById(id).oninput = e => { state.meta[key] = e.target.value; render(); };
+  }
+  else if (wall){
+    const len = Math.hypot(wall.x2-wall.x1, wall.y2-wall.y1);
+    props.innerHTML = `<div class="field"><label>壁 — 長さ</label><input value="${(len/1000).toFixed(2)} m" readonly></div>
+      <button class="del" id="delBtn">この壁を削除</button>`;
+    document.getElementById("delBtn").onclick = deleteSelected;
+  }
+  else {
+    let html = "";
+    if (obj.type === "work"){
+      html += fld("作品名","title",obj.title) + fld("作家名","artist",obj.artist);
+      html += `<div class="field"><label>幅 × 奥行 (mm)</label><div class="pair">
+        <input id="pW" type="number" step="10" value="${obj.w}">
+        <input id="pH" type="number" step="10" value="${obj.h}"></div></div>`;
+      html += `<div class="field"><label>備考</label><textarea id="pNote" rows="2">${esc(obj.note||"")}</textarea></div>`;
+    } else if (obj.type === "fixture"){
+      html += fld("名称","label",obj.label);
+      html += `<div class="field"><label>幅 × 奥行 (mm)</label><div class="pair">
+        <input id="pW" type="number" step="10" value="${obj.w}">
+        <input id="pH" type="number" step="10" value="${obj.h}"></div></div>`;
+    } else {
+      html += fld("テキスト","label",obj.label);
+    }
+    html += `<div class="field"><label>回転 (度)</label><input id="pRot" type="number" step="15" value="${obj.rot||0}"></div>`;
+    html += `<button class="del" id="delBtn">削除</button>`;
+    props.innerHTML = html;
+
+    props.querySelectorAll("[data-key]").forEach(inp=>{
+      inp.oninput = e => { obj[inp.dataset.key] = e.target.value; render(); renderList(); };
+    });
+    const pW = document.getElementById("pW"), pH = document.getElementById("pH");
+    if (pW) pW.oninput = e => { obj.w = Math.max(50, +e.target.value||obj.w); render(); };
+    if (pH) pH.oninput = e => { obj.h = Math.max(50, +e.target.value||obj.h); render(); };
+    const pR = document.getElementById("pRot");
+    pR.oninput = e => { obj.rot = +e.target.value||0; render(); };
+    const pN = document.getElementById("pNote");
+    if (pN) pN.oninput = e => { obj.note = e.target.value; };
+    document.getElementById("delBtn").onclick = deleteSelected;
+  }
+  renderList();
+}
+function fld(label,key,val){
+  return `<div class="field"><label>${label}</label><input data-key="${key}" value="${esc(val||"")}"></div>`;
+}
+function esc(s){ return String(s??"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+
+function renderList(){
+  const ul = document.getElementById("workList");
+  const works = state.objects.filter(o=>o.type==="work");
+  if (!works.length){ ul.innerHTML = `<li class="none" style="cursor:default">作品ツールで図面上に配置してください</li>`; return; }
+  ul.innerHTML = works.map((w,i)=>`
+    <li data-id="${w.id}" class="${w.id===selectedId?"sel":""}">
+      <span class="num">${i+1}</span>
+      <span class="meta"><div class="t">${esc(w.title||"無題")}</div>
+      <div class="s">${esc(w.artist||"作家未設定")} ・ ${w.w}×${w.h}mm</div></span>
+    </li>`).join("");
+  ul.querySelectorAll("li[data-id]").forEach(li=>{
+    li.onclick = ()=>{ selectedId = +li.dataset.id; render(); renderSide(); };
+  });
+}
+
+function deleteSelected(){
+  if (selectedId == null) return;
+  pushUndo();
+  state.objects = state.objects.filter(o=>o.id!==selectedId);
+  state.walls = state.walls.filter(w=>w.id!==selectedId);
+  selectedId = null; render(); renderSide();
+}
+
+/* ---- ポインタ操作 ---- */
+let drag = null; // {mode:'wall'|'move'|'pan', ...}
+
+svg.addEventListener("pointerdown", ev=>{
+  svg.setPointerCapture(ev.pointerId);
+  const p = clientToPlan(ev.clientX, ev.clientY);
+  const hit = ev.target.closest("[data-id]");
+
+  if (tool === "wall"){
+    pushUndo();
+    const w = {id: idSeq++, x1:snap(p.x), y1:snap(p.y), x2:snap(p.x), y2:snap(p.y)};
+    state.walls.push(w);
+    drag = {mode:"wall", wall:w};
+    return;
+  }
+  if (tool === "work" || tool === "fixture" || tool === "text"){
+    pushUndo();
+    const defaults = {
+      work:   {w:1200, h:100, title:"", artist:""},
+      fixture:{w:900, h:900, label:"展示台"},
+      text:   {w:0, h:0, label:"テキスト"}
+    }[tool];
+    const o = {id:idSeq++, type:tool, x:snap(p.x), y:snap(p.y), rot:0, ...defaults};
+    state.objects.push(o);
+    selectedId = o.id;
+    setTool("select");
+    render(); renderSide();
+    return;
+  }
+  if (tool === "erase"){
+    if (hit){ selectedId = +hit.dataset.id; deleteSelected(); }
+    return;
+  }
+  // select
+  if (hit){
+    selectedId = +hit.dataset.id;
+    const obj = state.objects.find(o=>o.id===selectedId);
+    if (obj){ pushUndo(); drag = {mode:"move", obj, dx:p.x-obj.x, dy:p.y-obj.y}; }
+    render(); renderSide();
+  } else {
+    selectedId = null;
+    drag = {mode:"pan", sx:ev.clientX, sy:ev.clientY, view:{...view}};
+    render(); renderSide();
+  }
+});
+
+svg.addEventListener("pointermove", ev=>{
+  if (!drag) return;
+  const p = clientToPlan(ev.clientX, ev.clientY);
+  if (drag.mode === "wall"){
+    let x2 = snap(p.x), y2 = snap(p.y);
+    if (!ev.shiftKey){ // 通常は直交スナップ、Shiftで自由角度
+      if (Math.abs(x2-drag.wall.x1) > Math.abs(y2-drag.wall.y1)) y2 = drag.wall.y1;
+      else x2 = drag.wall.x1;
+    }
+    drag.wall.x2 = x2; drag.wall.y2 = y2;
+    render();
+  }
+  else if (drag.mode === "move"){
+    drag.obj.x = snap(p.x - drag.dx);
+    drag.obj.y = snap(p.y - drag.dy);
+    render();
+  }
+  else if (drag.mode === "pan"){
+    const scale = view.w / svg.getBoundingClientRect().width;
+    view.x = drag.view.x - (ev.clientX - drag.sx)*scale;
+    view.y = drag.view.y - (ev.clientY - drag.sy)*scale;
+    applyView();
+  }
+});
+
+svg.addEventListener("pointerup", ()=>{
+  if (drag?.mode === "wall"){
+    const w = drag.wall;
+    if (w.x1===w.x2 && w.y1===w.y2){ state.walls.pop(); undoStack.pop(); } // 長さ0は破棄
+    render();
+  }
+  drag = null;
+});
+
+svg.addEventListener("wheel", ev=>{
+  ev.preventDefault();
+  zoom(ev.deltaY > 0 ? 1.1 : 0.9, ev.clientX, ev.clientY);
+},{passive:false});
+
+/* ---- ツール切替 ---- */
+function setTool(t){
+  tool = t;
+  document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active", b.dataset.tool===t));
+  const hints = {
+    select:"クリックで選択、ドラッグで移動。空白ドラッグで画面移動",
+    wall:"ドラッグで壁を描画(Shiftで自由角度)",
+    work:"クリックで作品を配置 → 右パネルで作品名・サイズを入力",
+    fixture:"クリックで展示台を配置",
+    text:"クリックでテキストを配置",
+    erase:"クリックしたオブジェクトを削除"
+  };
+  document.getElementById("hint").textContent = hints[t];
+}
+document.querySelectorAll(".tool").forEach(b=> b.onclick = ()=> setTool(b.dataset.tool));
+
+/* ---- キーボード ---- */
+window.addEventListener("keydown", ev=>{
+  if (ev.target.matches("input,textarea")) return;
+  if ((ev.ctrlKey||ev.metaKey) && ev.key==="z"){ ev.preventDefault(); undo(); }
+  else if (ev.key==="Delete" || ev.key==="Backspace"){ deleteSelected(); }
+  else if (ev.key==="Escape"){ selectedId=null; setTool("select"); render(); renderSide(); }
+});
+
+/* ---- 保存 / 読み込み / 書き出し ---- */
+document.getElementById("saveBtn").onclick = ()=>{
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${state.meta.title||"floorplan"}_${state.meta.date}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+};
+document.getElementById("loadBtn").onclick = ()=> document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange = async ev=>{
+  const f = ev.target.files[0]; if (!f) return;
+  try{
+    const data = JSON.parse(await f.text());
+    if (!data.walls || !data.objects) throw new Error("形式が違います");
+    pushUndo();
+    state = data;
+    idSeq = Math.max(0, ...state.walls.map(w=>w.id), ...state.objects.map(o=>o.id)) + 1;
+    selectedId = null; render(); renderSide();
+  }catch(e){ alert("読み込みに失敗しました: " + e.message); }
+  ev.target.value = "";
+};
+document.getElementById("pngBtn").onclick = ()=>{
+  const clone = svg.cloneNode(true);
+  clone.setAttribute("viewBox", `-300 -300 ${SHEET.w+600} ${SHEET.h+600}`);
+  clone.setAttribute("width", 2400);
+  clone.setAttribute("height", Math.round(2400*SHEET.h/SHEET.w));
+  // 外部CSSはシリアライズされないため、必要なスタイルをSVG内に埋め込む
+  const css = getComputedStyle(document.documentElement);
+  const v = name => css.getPropertyValue(name).trim();
+  const styleTag = document.createElementNS(SVG_NS, "style");
+  styleTag.textContent = `
+    .wall-line{stroke:${v("--wall")};stroke-linecap:square}
+    .badge circle{fill:${v("--accent")}}
+    .badge text{fill:#fff;font-weight:600;text-anchor:middle;dominant-baseline:central}
+    .obj text.lbl{fill:${v("--ink")};text-anchor:middle}
+    #titleBlock text{fill:${v("--ink")}}
+    #titleBlock .tb-head{fill:#6d6a60}
+    #titleBlock .tb-title{font-weight:600}
+    text{font-family:sans-serif}`;
+  clone.insertBefore(styleTag, clone.firstChild);
+  let str = new XMLSerializer().serializeToString(clone);
+  for (const v of ["--paper","--ink","--grid","--grid-major","--accent","--wall","--fixture"])
+    str = str.replaceAll(`var(${v})`, css.getPropertyValue(v).trim());
+  str = str.replace("<svg", `<svg style="font-family:sans-serif"`);
+  const img = new Image();
+  img.onload = ()=>{
+    const c = document.createElement("canvas");
+    c.width = 2400; c.height = Math.round(2400*SHEET.h/SHEET.w);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0,0,c.width,c.height);
+    ctx.drawImage(img,0,0,c.width,c.height);
+    const a = document.createElement("a");
+    a.href = c.toDataURL("image/png");
+    a.download = `${state.meta.title||"floorplan"}.png`;
+    a.click();
+  };
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(str);
+};
+document.getElementById("printBtn").onclick = ()=>{
+  const prev = {...view};
+  view = {x:-300,y:-300,w:SHEET.w+600,h:SHEET.h+600}; applyView();
+  window.print();
+  view = prev; applyView();
+};
+document.getElementById("scaleSel").onchange = ()=> render();
+document.getElementById("undoBtn").onclick = undo;
+document.getElementById("zoomIn").onclick = ()=> zoom(0.8);
+document.getElementById("zoomOut").onclick = ()=> zoom(1.25);
+document.getElementById("zoomFit").onclick = ()=>{ view = {x:-1000,y:-1000,w:SHEET.w+2000,h:SHEET.h+2000}; applyView(); };
+
+window.addEventListener("resize", applyView);
+
+/* ---- 初期化 ---- */
+render(); renderSide();
+</script>
+</body>
+</html>
