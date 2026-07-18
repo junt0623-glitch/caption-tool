@@ -158,9 +158,6 @@
   .badge text{fill:#fff;font-weight:600;text-anchor:middle;dominant-baseline:central}
   .obj text.lbl{fill:var(--ink);text-anchor:middle;pointer-events:none}
   .obj{cursor:move}
-  #titleBlock text{fill:var(--ink)}
-  #titleBlock .tb-head{fill:#6d6a60}
-  #titleBlock .tb-title{font-weight:600}
 
   /* 印刷 */
   @media print{
@@ -176,18 +173,21 @@
   <h1>展覧会図面作成<small>プロトタイプ</small></h1>
   <label>縮尺
     <select id="scaleSel">
+      <option value="20">1:20</option>
       <option value="50">1:50</option>
+      <option value="75">1:75</option>
       <option value="100" selected>1:100</option>
+      <option value="150">1:150</option>
       <option value="200">1:200</option>
     </select>
   </label>
   <label>用紙
     <select id="sheetSel" title="実寸出力プリセット: 用紙サイズ×縮尺で図面範囲が決まります">
-      <option value="custom" selected>フリー (20×14m)</option>
+      <option value="a3l" selected>A3 横</option>
+      <option value="a3p">A3 縦</option>
       <option value="a4l">A4 横</option>
       <option value="a4p">A4 縦</option>
-      <option value="a3l">A3 横</option>
-      <option value="a3p">A3 縦</option>
+      <option value="custom">フリー (20×14m)</option>
     </select>
   </label>
   <button class="hbtn" id="undoBtn" title="元に戻す (Ctrl+Z)">↩ 元に戻す</button>
@@ -249,7 +249,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("plan");
 const GRID = 500;            // グリッド 500mm
 const WALL_T = 150;          // 壁厚 150mm
-const SHEET = {w: 20000, h: 14000}; // 図面範囲(mm)。用紙プリセットで applySheet() が更新する
+const SHEET = {w: 42000, h: 29700}; // 図面範囲(mm)。既定はA3横×1:100。用紙プリセットで applySheet() が更新する
 const PAPERS = {a4l:[297,210], a4p:[210,297], a3l:[420,297], a3p:[297,420]}; // 用紙実寸(mm)
 
 /* ---- レイヤー構成 ----
@@ -310,8 +310,8 @@ function seedDefaults(){
 /* ---- 状態 ---- */
 let idSeq = 1;
 let state = {
-  meta: {title:"(展覧会名未設定)", venue:"", author:"", date: today()},
-  sheet: {preset:"custom"},
+  meta: {title:"", venue:"", author:"", date: today()}, // JSONファイル名等で使用。図面上には表示しない
+  sheet: {preset:"a3l"},
   rooms: defaultRooms(),
   walls: [],                // {id,x1,y1,x2,y2}
   objects: seedDefaults()   // {id,type:'work'|'case'|'fixture'|'text', x,y,w,h,rot, title,artist,note,label,img}
@@ -477,27 +477,7 @@ function render(){
     }
   }
 
-  drawTitleBlock();
   applyView();
-}
-
-function drawTitleBlock(){
-  const W = 5200, H = 1500;
-  const x = SHEET.w - W - 300, y = SHEET.h - H - 300;
-  const g = el("g",{id:"titleBlock"}, svg);
-  el("rect",{x,y,width:W,height:H,fill:"#fff",stroke:"var(--ink)","stroke-width":25}, g);
-  el("line",{x1:x,y1:y+520,x2:x+W,y2:y+520,stroke:"var(--ink)","stroke-width":15}, g);
-  el("line",{x1:x+W/2,y1:y+520,x2:x+W/2,y2:y+H,stroke:"var(--ink)","stroke-width":15}, g);
-
-  const put = (tx,ty,str,cls,size)=>{ const t = el("text",{x:tx,y:ty,class:cls,"font-size":size}, g); t.textContent = str; };
-  put(x+140, y+250, "展覧会平面図", "tb-head", 220);
-  put(x+140, y+430, state.meta.title, "tb-title", 300);
-  put(x+140, y+700, "会場", "tb-head", 190);
-  put(x+140, y+950, state.meta.venue || "—", "", 230);
-  put(x+140, y+1220, `作成: ${state.meta.author || "—"}`, "", 200);
-  put(x+W/2+140, y+700, "縮尺 / 日付", "tb-head", 190);
-  put(x+W/2+140, y+950, `1:${document.getElementById("scaleSel").value}`, "", 230);
-  put(x+W/2+140, y+1220, state.meta.date, "", 200);
 }
 
 /* ---- サイドパネル ---- */
@@ -530,12 +510,7 @@ function renderSide(){
       }
     }
     props.innerHTML = rhtml +
-      `<div class="empty" style="margin:10px 0 4px">オブジェクトを選択すると編集できます</div>
-      <div class="field" style="margin-top:6px"><label>展覧会名</label><input id="mTitle" value="${esc(state.meta.title)}"></div>
-      <div class="field"><label>会場</label><input id="mVenue" value="${esc(state.meta.venue)}"></div>
-      <div class="field"><label>作成者</label><input id="mAuthor" value="${esc(state.meta.author)}"></div>`;
-    for (const [id,key] of [["mTitle","title"],["mVenue","venue"],["mAuthor","author"]])
-      document.getElementById(id).oninput = e => { state.meta[key] = e.target.value; render(); };
+      `<div class="empty" style="margin:10px 0 4px">オブジェクトを選択すると編集できます</div>`;
 
     document.getElementById("roomSel").onchange = e => {
       pushUndo(); state.rooms.current = e.target.value; render(); renderSide();
@@ -843,9 +818,6 @@ document.getElementById("pngBtn").onclick = ()=>{
     .badge circle{fill:${v("--accent")}}
     .badge text{fill:#fff;font-weight:600;text-anchor:middle;dominant-baseline:central}
     .obj text.lbl{fill:${v("--ink")};text-anchor:middle}
-    #titleBlock text{fill:${v("--ink")}}
-    #titleBlock .tb-head{fill:#6d6a60}
-    #titleBlock .tb-title{font-weight:600}
     text{font-family:sans-serif}`;
   clone.insertBefore(styleTag, clone.firstChild);
   let str = new XMLSerializer().serializeToString(clone);
