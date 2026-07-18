@@ -1573,8 +1573,18 @@ function loadImageScaled(file,maxDim,cb){
   reader.onload=()=>{const img=new Image();
     img.onload=()=>{const iw=img.naturalWidth,ih=img.naturalHeight;const scale=Math.min(1,maxDim/Math.max(iw,ih));
       const w=Math.max(1,Math.round(iw*scale)),h=Math.max(1,Math.round(ih*scale));
-      const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);
-      try{cb(c.toDataURL("image/jpeg",0.82),w,h);}catch(e){cb(null);}};
+      const c=document.createElement("canvas");c.width=w;c.height=h;
+      const ctx=c.getContext("2d");ctx.drawImage(img,0,0,w,h);
+      // 透過（アルファ）を持つ画像はPNGで保存する。JPEGは透明部分が黒く潰れてしまうため。
+      // 写真など透過のない画像は従来どおりJPEGで圧縮し、データ量を抑える。
+      let hasAlpha=false;
+      const type=((file&&file.type)||"").toLowerCase();
+      if(type!=="image/jpeg"&&type!=="image/jpg"){ // JPEGは透過を持たないので走査不要
+        try{const d=ctx.getImageData(0,0,w,h).data;
+          for(let i=3;i<d.length;i+=4){if(d[i]<255){hasAlpha=true;break;}}
+        }catch(e){hasAlpha=(type==="image/png"||type==="image/gif"||type==="image/webp");}
+      }
+      try{cb(c.toDataURL(hasAlpha?"image/png":"image/jpeg",0.82),w,h);}catch(e){cb(null);}};
     img.onerror=()=>cb(null);img.src=reader.result;};
   reader.onerror=()=>cb(null);reader.readAsDataURL(file);
 }
