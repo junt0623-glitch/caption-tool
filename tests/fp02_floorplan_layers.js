@@ -35,7 +35,7 @@ async function run() {
     .filter(g => { const r = g.querySelector('rect.body'); return r && r.getAttribute('stroke') === 'var(--fixture)'; })
     .map(g => +g.getAttribute('transform').match(/translate\(([-\d.]+)/)[1]));
   t.eq(pedXs.length, 69, '展示台は69台');
-  t.ok(pedXs.every(x => x === pedXs[0] && x > 20000), '展示台は印刷範囲の右外(x>シート幅)に縦一列(同一x)');
+  t.ok(pedXs.every(x => x === pedXs[0] && x > 42000), '展示台は印刷範囲の右外(x>シート幅42000mm)に縦一列(同一x)');
 
   // --- レイヤー表示切替 ---
   await page.uncheck('#layerBar input[data-layer="furniture"]');

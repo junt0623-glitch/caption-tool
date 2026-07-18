@@ -63,9 +63,9 @@ async function run() {
     ({ x1: +l.getAttribute('x1'), y1: +l.getAttribute('y1'), x2: +l.getAttribute('x2'), y2: +l.getAttribute('y2') }));
   t.eq(w1.y1, w1.y2, '通常ドラッグでは直交スナップされ水平になる');
 
-  // --- 壁の連結(端点吸着): 1本目の終端の5px近くから2本目を描く ---
+  // --- 壁の連結(端点吸着): 1本目の終端のすぐ近く(吸着半径400mm以内)から2本目を描く ---
   await page.click('.tool[data-tool="wall"]');
-  await page.mouse.move(cx + 150 + 5, cy + 150 + 5);
+  await page.mouse.move(cx + 150 + 3, cy + 150 + 3);
   await page.mouse.down();
   await page.mouse.move(cx + 150, cy + 20, { steps: 5 });
   await page.mouse.up();
@@ -91,17 +91,17 @@ async function run() {
 
   // --- 用紙プリセット: シート矩形(最初のrect)が用紙×縮尺の寸法になる ---
   const sheetW = () => page.$eval('svg#plan > rect', r => +r.getAttribute('width'));
-  t.eq(await sheetW(), 20000, '既定(フリー)のシート幅は20000mm');
-  await page.selectOption('#sheetSel', 'a3l');
+  t.eq(await sheetW(), 42000, '既定はA3横×1:100でシート幅42000mm(=420mm×100)');
+  await page.selectOption('#sheetSel', 'a4l');
   await page.waitForTimeout(100);
-  t.eq(await sheetW(), 42000, 'A3横×1:100でシート幅42000mm(=420mm×100)');
+  t.eq(await sheetW(), 29700, 'A4横×1:100でシート幅29700mm(=297mm×100)');
   await page.selectOption('#scaleSel', '50');
   await page.waitForTimeout(100);
-  t.eq(await sheetW(), 21000, '縮尺1:50に変えるとシート幅21000mm(=420mm×50)');
-  await page.click('#undoBtn'); // 用紙変更のUndoでフリーに戻る
+  t.eq(await sheetW(), 14850, '縮尺1:50に変えるとシート幅14850mm(=297mm×50)');
+  await page.click('#undoBtn'); // 用紙変更のUndoでA3横に戻る(縮尺1:50のまま)
   await page.waitForTimeout(100);
-  t.eq(await sheetW(), 20000, '用紙プリセット変更もUndoで戻る');
-  t.eq(await page.$eval('#sheetSel', s => s.value), 'custom', 'Undo後は用紙セレクトも同期される');
+  t.eq(await sheetW(), 21000, '用紙プリセット変更もUndoで戻る(A3横×1:50=21000mm)');
+  t.eq(await page.$eval('#sheetSel', s => s.value), 'a3l', 'Undo後は用紙セレクトも同期される');
 
   t.noErrors(errors);
   await context.close();
