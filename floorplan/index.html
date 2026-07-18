@@ -13,6 +13,7 @@
     --accent:#b3541e;      /* 朱 — 選択・作品番号 */
     --wall:#2b2b2e;
     --fixture:#8a8578;
+    --case:#5c7c8a;        /* 可動ケース */
     --panel:#f3f1ea;
     --line:#c9c5b8;
     --radius:6px;
@@ -104,6 +105,23 @@
     background:#fff;border-radius:4px;cursor:pointer;font-size:12px;
   }
   #props .del:hover{background:#c33;color:#fff}
+  .sbtn{
+    flex:1;padding:5px 7px;border:1px solid var(--line);background:#fff;
+    border-radius:4px;cursor:pointer;font-size:12px;
+  }
+  .sbtn:hover{border-color:var(--accent);color:var(--accent)}
+  #props .note{font-size:11px;color:#8c887c;margin-bottom:8px}
+  #props select{
+    width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:4px;
+    font-size:13px;font-family:inherit;background:#fff;
+  }
+
+  /* レイヤーバー */
+  #layerBar{
+    display:flex;flex-wrap:wrap;gap:4px 12px;padding:8px 14px;
+    border-bottom:1px solid var(--line);font-size:12px;
+  }
+  #layerBar label{display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--ink)}
 
   /* 作品リスト */
   #workListWrap{flex:1;overflow-y:auto}
@@ -188,6 +206,7 @@
     <button class="tool" data-tool="wall"><span class="ic">╱</span>壁を描く</button>
     <hr>
     <button class="tool" data-tool="work"><span class="ic">🖼</span>作品</button>
+    <button class="tool" data-tool="case"><span class="ic">▣</span>可動ケース</button>
     <button class="tool" data-tool="fixture"><span class="ic">◻</span>展示台</button>
     <button class="tool" data-tool="text"><span class="ic">あ</span>テキスト</button>
     <hr>
@@ -205,6 +224,13 @@
   </div>
 
   <aside id="side">
+    <h2>レイヤー</h2>
+    <div id="layerBar">
+      <label><input type="checkbox" data-layer="room" checked>展示室図面</label>
+      <label><input type="checkbox" data-layer="furniture" checked>ケース・展示台</label>
+      <label><input type="checkbox" data-layer="work" checked>作品</label>
+      <label><input type="checkbox" data-layer="text" checked>テキスト</label>
+    </div>
     <h2>プロパティ</h2>
     <div id="props"><div class="empty">オブジェクトを選択すると編集できます</div></div>
     <h2>作品リスト</h2>
@@ -226,16 +252,72 @@ const WALL_T = 150;          // 壁厚 150mm
 const SHEET = {w: 20000, h: 14000}; // 図面範囲(mm)。用紙プリセットで applySheet() が更新する
 const PAPERS = {a4l:[297,210], a4p:[210,297], a3l:[420,297], a3p:[297,420]}; // 用紙実寸(mm)
 
+/* ---- レイヤー構成 ----
+   最背面: 展示室図面(state.rooms) → 壁 → ケース・展示台 → 作品 → テキスト(最前面)
+   表示/非表示は layerVis(保存対象外のビュー状態) */
+const layerVis = {room:true, furniture:true, work:true, text:true};
+const layerOf = o => o.type==="work" ? 1 : o.type==="text" ? 2 : 0;
+
+/* 展示室図面のデフォルト4面。img は読み込んだ図面画像(dataURL) */
+function defaultRooms(){
+  return {current:"", list:[
+    {id:"r1a1", name:"展示室1-A（旧第1）", img:null, scale:100, dx:0, dy:0, op:70},
+    {id:"r1a2", name:"展示室1-A（旧第2）", img:null, scale:100, dx:0, dy:0, op:70},
+    {id:"r1b",  name:"展示室1-B",          img:null, scale:100, dx:0, dy:0, op:70},
+    {id:"r2b",  name:"展示室2-B",          img:null, scale:100, dx:0, dy:0, op:70},
+  ]};
+}
+
+/* 可動ケース・展示台のデフォルト在庫 [名称, 幅mm, 奥行mm, 台数] */
+const CASE_DEFAULTS = [
+  ["α",             2400, 1800,  2],
+  ["β",             2400, 1200, 10],
+  ["180角",         1800, 1800,  2],
+  ["横長免震",      1800, 1000,  5],
+  ["横長免震背景",  1800, 1000,  1],
+  ["横長非免震",    1800, 1000,  1],
+  ["横長非免震背景",1800, 1000,  2],
+  ["行燈免震",      1000, 1000,  5],
+  ["のぞき",        1800, 1000,  5],
+];
+const PED_DEFAULTS = [ // [幅mm, 奥行mm, 台数]
+  [1530, 900, 18],
+  [1800, 900, 12],
+  [ 900, 900,  7],
+  [2000, 2000, 2],
+  [1200, 900, 30],
+];
+
+/* 印刷範囲(シート)の外に在庫を縦一列で並べる: ケースは左、展示台は右 */
+function seedDefaults(){
+  const objs = [], GAP = 300;
+  let y = GAP;
+  for (const [name,w,h,n] of CASE_DEFAULTS)
+    for (let i=0;i<n;i++){
+      objs.push({id:idSeq++, type:"case", x:-2000, y:y+h/2, rot:0, w, h, label:name});
+      y += h + GAP;
+    }
+  y = GAP;
+  for (const [w,h,n] of PED_DEFAULTS)
+    for (let i=0;i<n;i++){
+      objs.push({id:idSeq++, type:"fixture", x:SHEET.w+2000, y:y+h/2, rot:0, w, h,
+        label:`${w/1000}×${h/1000}`});
+      y += h + GAP;
+    }
+  return objs;
+}
+
 /* ---- 状態 ---- */
+let idSeq = 1;
 let state = {
   meta: {title:"(展覧会名未設定)", venue:"", author:"", date: today()},
   sheet: {preset:"custom"},
-  walls: [],     // {id,x1,y1,x2,y2}
-  objects: []    // {id,type:'work'|'fixture'|'text', x,y,w,h,rot, title,artist,note,label}
+  rooms: defaultRooms(),
+  walls: [],                // {id,x1,y1,x2,y2}
+  objects: seedDefaults()   // {id,type:'work'|'case'|'fixture'|'text', x,y,w,h,rot, title,artist,note,label,img}
 };
 let tool = "select";
 let selectedId = null;
-let idSeq = 1;
 let undoStack = [];
 let redoStack = [];
 
@@ -255,7 +337,8 @@ function syncSheetUI(){
 }
 
 /* ---- ビュー(ズーム/パン) ---- */
-let view = {x:-1000, y:-1000, w: SHEET.w+2000, h: SHEET.h+2000};
+/* 初期表示はシート+左右の在庫列(印刷範囲外)が見える範囲 */
+let view = {x:-4400, y:-1000, w: SHEET.w+8800, h: SHEET.h+2000};
 function fitView(){
   const m = Math.max(SHEET.w, SHEET.h) * 0.05;
   view = {x:-m, y:-m, w:SHEET.w+m*2, h:SHEET.h+m*2};
@@ -339,28 +422,48 @@ function render(){
   for (let y=0; y<=SHEET.h; y+=GRID)
     el("line",{x1:0,y1:y,x2:SHEET.w,y2:y,stroke: y%(GRID*4)?"var(--grid)":"var(--grid-major)","stroke-width":y%(GRID*4)?6:10}, g);
 
+  // 展示室図面(最背面レイヤー)
+  const room = state.rooms?.list.find(r=>r.id===state.rooms.current);
+  if (layerVis.room && room?.img){
+    el("image",{href:room.img, x:room.dx||0, y:room.dy||0,
+      width:SHEET.w*(room.scale??100)/100, height:SHEET.h*(room.scale??100)/100,
+      preserveAspectRatio:"xMinYMin meet", opacity:(room.op??70)/100,
+      "pointer-events":"none"}, svg);
+  }
+
   // 壁
   for (const w of state.walls){
     const ln = el("line",{x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2,"stroke-width":WALL_T,class:"wall-line","data-id":w.id}, svg);
     if (w.id === selectedId) ln.style.stroke = "var(--accent)"; // inline styleでCSSクラスに勝たせる
   }
 
-  // オブジェクト
+  // オブジェクト: レイヤー順(ケース・展示台 → 作品 → テキスト)に描画。安定ソートなので同レイヤー内は配列順
+  const layerShown = o => [layerVis.furniture, layerVis.work, layerVis.text][layerOf(o)];
   let workNum = 0;
-  for (const o of state.objects){
+  for (const o of [...state.objects].sort((a,b)=>layerOf(a)-layerOf(b))){
     if (o.type === "work") workNum++;
+    if (!layerShown(o)) continue;
     const grp = el("g",{class:"obj"+(o.id===selectedId?" selected":""),"data-id":o.id,
       transform:`translate(${o.x},${o.y}) rotate(${o.rot||0})`}, svg);
 
     if (o.type === "work"){
       el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"#fff",stroke:"var(--ink)","stroke-width":20}, grp);
-      el("line",{x1:-o.w/2,y1:o.h/2,x2:o.w/2,y2:-o.h/2,stroke:"#bbb","stroke-width":10}, grp);
+      if (o.img)
+        el("image",{href:o.img,x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,
+          preserveAspectRatio:"xMidYMid meet","pointer-events":"none"}, grp);
+      else
+        el("line",{x1:-o.w/2,y1:o.h/2,x2:o.w/2,y2:-o.h/2,stroke:"#bbb","stroke-width":10}, grp);
       const b = el("g",{class:"badge",transform:`translate(0,${-o.h/2-260})`}, grp);
       el("circle",{r:200}, b);
       const t = el("text",{}, b); t.textContent = workNum;
       t.setAttribute("font-size", 220);
       const lbl = el("text",{class:"lbl",y:o.h/2+320,"font-size":260}, grp);
       lbl.textContent = o.title || "無題";
+    }
+    else if (o.type === "case"){
+      el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"var(--case)","fill-opacity":.18,stroke:"var(--case)","stroke-width":25}, grp);
+      const lbl = el("text",{class:"lbl","font-size":240}, grp);
+      lbl.textContent = o.label || "ケース";
     }
     else if (o.type === "fixture"){
       el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"var(--fixture)","fill-opacity":.25,stroke:"var(--fixture)","stroke-width":20}, grp);
@@ -404,12 +507,53 @@ function renderSide(){
   const wall = state.walls.find(w=>w.id===selectedId);
 
   if (!obj && !wall){
-    props.innerHTML = `<div class="empty">オブジェクトを選択すると編集できます</div>
-      <div class="field" style="margin-top:10px"><label>展覧会名</label><input id="mTitle" value="${esc(state.meta.title)}"></div>
+    const rooms = state.rooms, cur = rooms.list.find(r=>r.id===rooms.current);
+    let rhtml = `<div class="field"><label>展示室図面(最背面レイヤー)</label>
+      <select id="roomSel"><option value="">(なし)</option>
+      ${rooms.list.map(r=>`<option value="${r.id}" ${r.id===rooms.current?"selected":""}>${esc(r.name)}${r.img?" ✓":""}</option>`).join("")}
+      </select></div>`;
+    if (cur){
+      rhtml += `<div class="field"><div class="pair">
+        <button class="sbtn" id="roomImgBtn">${cur.img?"図面画像を差し替え":"📂 図面画像を読み込み"}</button>
+        ${cur.img?`<button class="sbtn" id="roomImgDel">外す</button>`:""}
+      </div></div>
+      <input type="file" id="roomFile" accept="image/*" hidden>`;
+      if (cur.img){
+        rhtml += `<div class="field"><label>倍率% / 透明度%</label><div class="pair">
+          <input id="rScale" type="number" step="5" value="${cur.scale??100}">
+          <input id="rOp" type="number" step="5" min="0" max="100" value="${cur.op??70}"></div></div>
+        <div class="field"><label>位置 X / Y (mm)</label><div class="pair">
+          <input id="rDx" type="number" step="100" value="${cur.dx||0}">
+          <input id="rDy" type="number" step="100" value="${cur.dy||0}"></div></div>`;
+      } else {
+        rhtml += `<div class="note">※PDFはPNG/JPG画像に変換してから読み込んでください</div>`;
+      }
+    }
+    props.innerHTML = rhtml +
+      `<div class="empty" style="margin:10px 0 4px">オブジェクトを選択すると編集できます</div>
+      <div class="field" style="margin-top:6px"><label>展覧会名</label><input id="mTitle" value="${esc(state.meta.title)}"></div>
       <div class="field"><label>会場</label><input id="mVenue" value="${esc(state.meta.venue)}"></div>
       <div class="field"><label>作成者</label><input id="mAuthor" value="${esc(state.meta.author)}"></div>`;
     for (const [id,key] of [["mTitle","title"],["mVenue","venue"],["mAuthor","author"]])
       document.getElementById(id).oninput = e => { state.meta[key] = e.target.value; render(); };
+
+    document.getElementById("roomSel").onchange = e => {
+      pushUndo(); state.rooms.current = e.target.value; render(); renderSide();
+    };
+    const rBtn = document.getElementById("roomImgBtn"), rFile = document.getElementById("roomFile");
+    if (rBtn) rBtn.onclick = ()=> rFile.click();
+    if (rFile) rFile.onchange = e => {
+      const f = e.target.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = ()=>{ pushUndo(); cur.img = rd.result; render(); renderSide(); };
+      rd.readAsDataURL(f);
+    };
+    const rDel = document.getElementById("roomImgDel");
+    if (rDel) rDel.onclick = ()=>{ pushUndo(); cur.img = null; render(); renderSide(); };
+    for (const [id,key] of [["rScale","scale"],["rOp","op"],["rDx","dx"],["rDy","dy"]]){
+      const inp = document.getElementById(id);
+      if (inp) inp.oninput = e => { cur[key] = +e.target.value||0; render(); };
+    }
   }
   else if (wall){
     const len = Math.hypot(wall.x2-wall.x1, wall.y2-wall.y1);
@@ -424,8 +568,12 @@ function renderSide(){
       html += `<div class="field"><label>幅 × 奥行 (mm)</label><div class="pair">
         <input id="pW" type="number" step="10" value="${obj.w}">
         <input id="pH" type="number" step="10" value="${obj.h}"></div></div>`;
+      html += `<div class="field"><label>画像</label><div class="pair">
+        <button class="sbtn" id="pImgBtn">${obj.img?"画像を差し替え":"📂 画像を選択"}</button>
+        ${obj.img?`<button class="sbtn" id="pImgDel">外す</button>`:""}
+        </div></div><input type="file" id="pImgFile" accept="image/*" hidden>`;
       html += `<div class="field"><label>備考</label><textarea id="pNote" rows="2">${esc(obj.note||"")}</textarea></div>`;
-    } else if (obj.type === "fixture"){
+    } else if (obj.type === "fixture" || obj.type === "case"){
       html += fld("名称","label",obj.label);
       html += `<div class="field"><label>幅 × 奥行 (mm)</label><div class="pair">
         <input id="pW" type="number" step="10" value="${obj.w}">
@@ -447,6 +595,16 @@ function renderSide(){
     pR.oninput = e => { obj.rot = +e.target.value||0; render(); };
     const pN = document.getElementById("pNote");
     if (pN) pN.oninput = e => { obj.note = e.target.value; };
+    const pImgBtn = document.getElementById("pImgBtn"), pImgFile = document.getElementById("pImgFile");
+    if (pImgBtn) pImgBtn.onclick = ()=> pImgFile.click();
+    if (pImgFile) pImgFile.onchange = e => {
+      const f = e.target.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = ()=>{ pushUndo(); obj.img = rd.result; render(); renderSide(); };
+      rd.readAsDataURL(f);
+    };
+    const pImgDel = document.getElementById("pImgDel");
+    if (pImgDel) pImgDel.onclick = ()=>{ pushUndo(); delete obj.img; render(); renderSide(); };
     document.getElementById("delBtn").onclick = deleteSelected;
   }
   renderList();
@@ -525,10 +683,11 @@ svg.addEventListener("pointerdown", ev=>{
     drag = {mode:"wall", wall:w};
     return;
   }
-  if (tool === "work" || tool === "fixture" || tool === "text"){
+  if (tool === "work" || tool === "case" || tool === "fixture" || tool === "text"){
     pushUndo();
     const defaults = {
       work:   {w:1200, h:100, title:"", artist:""},
+      case:   {w:1800, h:1000, label:"ケース"},
       fixture:{w:900, h:900, label:"展示台"},
       text:   {w:0, h:0, label:"テキスト"}
     }[tool];
@@ -623,14 +782,20 @@ function setTool(t){
   const hints = {
     select:"クリックで選択、ドラッグで移動。空白ドラッグで画面移動",
     wall:"ドラッグで壁を描画(Shiftで自由角度、既存の壁の端点に近づけると連結)",
-    work:"クリックで作品を配置 → 右パネルで作品名・サイズを入力",
-    fixture:"クリックで展示台を配置",
+    work:"クリックで作品を配置 → 右パネルで作品名・サイズ・画像を設定",
+    case:"クリックで可動ケースを配置(在庫は印刷範囲の左外に一覧あり)",
+    fixture:"クリックで展示台を配置(在庫は印刷範囲の右外に一覧あり)",
     text:"クリックでテキストを配置",
     erase:"クリックしたオブジェクトを削除"
   };
   document.getElementById("hint").textContent = hints[t];
 }
 document.querySelectorAll(".tool").forEach(b=> b.onclick = ()=> setTool(b.dataset.tool));
+
+/* ---- レイヤー表示切替 ---- */
+document.querySelectorAll("#layerBar input").forEach(cb=>{
+  cb.onchange = ()=>{ layerVis[cb.dataset.layer] = cb.checked; render(); };
+});
 
 /* ---- キーボード ---- */
 window.addEventListener("keydown", ev=>{
@@ -658,6 +823,7 @@ document.getElementById("fileInput").onchange = async ev=>{
     pushUndo();
     state = data;
     if (!state.sheet) state.sheet = {preset:"custom"}; // 旧形式JSONとの互換
+    if (!state.rooms) state.rooms = defaultRooms();
     idSeq = Math.max(0, ...state.walls.map(w=>w.id), ...state.objects.map(o=>o.id)) + 1;
     selectedId = null; syncSheetUI(); render(); renderSide();
   }catch(e){ alert("読み込みに失敗しました: " + e.message); }
@@ -683,7 +849,7 @@ document.getElementById("pngBtn").onclick = ()=>{
     text{font-family:sans-serif}`;
   clone.insertBefore(styleTag, clone.firstChild);
   let str = new XMLSerializer().serializeToString(clone);
-  for (const v of ["--paper","--ink","--grid","--grid-major","--accent","--wall","--fixture"])
+  for (const v of ["--paper","--ink","--grid","--grid-major","--accent","--wall","--fixture","--case"])
     str = str.replaceAll(`var(${v})`, css.getPropertyValue(v).trim());
   str = str.replace("<svg", `<svg style="font-family:sans-serif"`);
   const img = new Image();
