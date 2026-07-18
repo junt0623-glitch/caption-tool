@@ -7,7 +7,7 @@ const path = require('path');
 async function main() {
   const dir = __dirname;
   const files = fs.readdirSync(dir)
-    .filter(f => /^bt\d+.*\.js$/.test(f))
+    .filter(f => /^(bt|fp)\d+.*\.js$/.test(f))
     .sort();
 
   console.log(`=== 展覧会キャプション工房 テストスイート実行（${files.length}ファイル） ===\n`);

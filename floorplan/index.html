@@ -119,10 +119,17 @@
     background:var(--accent);color:#fff;font-size:11px;
     display:flex;align-items:center;justify-content:center;font-weight:600;
   }
-  #workList .meta{min-width:0}
+  #workList .meta{min-width:0;flex:1}
   #workList .meta .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #workList .meta .s{font-size:11px;color:#8c887c}
   #workList .none{padding:14px;font-size:12px;color:#8c887c}
+  #workList .ord{display:flex;flex-direction:column;gap:2px;flex:none}
+  #workList .ord .mv{
+    border:1px solid var(--line);background:#fff;border-radius:3px;
+    font-size:8px;width:18px;height:14px;line-height:1;cursor:pointer;padding:0;color:#6d6a60;
+  }
+  #workList .ord .mv:hover{border-color:var(--accent);color:var(--accent)}
+  #workList .ord .mv:disabled{opacity:.3;cursor:default}
 
   /* SVG内の要素スタイル */
   /* 注意: SVGはCSSがプレゼンテーション属性より優先されるため、
@@ -156,7 +163,17 @@
       <option value="200">1:200</option>
     </select>
   </label>
+  <label>用紙
+    <select id="sheetSel" title="実寸出力プリセット: 用紙サイズ×縮尺で図面範囲が決まります">
+      <option value="custom" selected>フリー (20×14m)</option>
+      <option value="a4l">A4 横</option>
+      <option value="a4p">A4 縦</option>
+      <option value="a3l">A3 横</option>
+      <option value="a3p">A3 縦</option>
+    </select>
+  </label>
   <button class="hbtn" id="undoBtn" title="元に戻す (Ctrl+Z)">↩ 元に戻す</button>
+  <button class="hbtn" id="redoBtn" title="やり直し (Ctrl+Y / Ctrl+Shift+Z)">↪ やり直し</button>
   <div class="spacer"></div>
   <button class="hbtn" id="loadBtn">📂 読み込み</button>
   <button class="hbtn" id="saveBtn">💾 保存 (JSON)</button>
@@ -206,11 +223,13 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("plan");
 const GRID = 500;            // グリッド 500mm
 const WALL_T = 150;          // 壁厚 150mm
-const SHEET = {w: 20000, h: 14000}; // 用紙相当 20m × 14m
+const SHEET = {w: 20000, h: 14000}; // 図面範囲(mm)。用紙プリセットで applySheet() が更新する
+const PAPERS = {a4l:[297,210], a4p:[210,297], a3l:[420,297], a3p:[297,420]}; // 用紙実寸(mm)
 
 /* ---- 状態 ---- */
 let state = {
   meta: {title:"(展覧会名未設定)", venue:"", author:"", date: today()},
+  sheet: {preset:"custom"},
   walls: [],     // {id,x1,y1,x2,y2}
   objects: []    // {id,type:'work'|'fixture'|'text', x,y,w,h,rot, title,artist,note,label}
 };
@@ -218,9 +237,30 @@ let tool = "select";
 let selectedId = null;
 let idSeq = 1;
 let undoStack = [];
+let redoStack = [];
+
+/* 用紙サイズ×縮尺 → 図面範囲。A4横 1:100 なら 29.7m×21m の実空間が用紙に実寸で収まる */
+function applySheet(){
+  const preset = state.sheet?.preset || "custom";
+  const paper = PAPERS[preset];
+  if (!paper){ SHEET.w = 20000; SHEET.h = 14000; }
+  else {
+    const s = +document.getElementById("scaleSel").value;
+    SHEET.w = paper[0] * s; SHEET.h = paper[1] * s;
+  }
+}
+function syncSheetUI(){
+  document.getElementById("sheetSel").value = PAPERS[state.sheet?.preset] ? state.sheet.preset : "custom";
+  applySheet();
+}
 
 /* ---- ビュー(ズーム/パン) ---- */
 let view = {x:-1000, y:-1000, w: SHEET.w+2000, h: SHEET.h+2000};
+function fitView(){
+  const m = Math.max(SHEET.w, SHEET.h) * 0.05;
+  view = {x:-m, y:-m, w:SHEET.w+m*2, h:SHEET.h+m*2};
+  applyView();
+}
 function applyView(){
   const el = svg.getBoundingClientRect();
   const ar = el.width / el.height;
@@ -241,17 +281,41 @@ function clientToPlan(cx, cy){
   return p.matrixTransform(svg.getScreenCTM().inverse());
 }
 function snap(v){ return Math.round(v / (GRID/2)) * (GRID/2); }
+/* 既存の壁の端点が近くにあればそこへ吸着(壁の連結)。なければグリッドスナップ */
+function snapWallPoint(p, excludeId){
+  const R = 400; // 吸着半径(mm)
+  let best = null, bd = R;
+  for (const w of state.walls){
+    if (w.id === excludeId) continue;
+    for (const [ex,ey] of [[w.x1,w.y1],[w.x2,w.y2]]){
+      const d = Math.hypot(p.x-ex, p.y-ey);
+      if (d < bd){ bd = d; best = {x:ex, y:ey, joined:true}; }
+    }
+  }
+  return best || {x:snap(p.x), y:snap(p.y), joined:false};
+}
 function today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 
 /* ---- 履歴 ---- */
 function pushUndo(){
   undoStack.push(JSON.stringify(state));
   if (undoStack.length > 50) undoStack.shift();
+  redoStack.length = 0; // 新しい操作でやり直し履歴は無効になる
 }
 function undo(){
   if (!undoStack.length) return;
+  redoStack.push(JSON.stringify(state));
   state = JSON.parse(undoStack.pop());
-  selectedId = null; render(); renderSide();
+  afterHistory();
+}
+function redo(){
+  if (!redoStack.length) return;
+  undoStack.push(JSON.stringify(state));
+  state = JSON.parse(redoStack.pop());
+  afterHistory();
+}
+function afterHistory(){
+  selectedId = null; syncSheetUI(); render(); renderSide();
 }
 
 /* ---- 描画 ---- */
@@ -401,10 +465,28 @@ function renderList(){
       <span class="num">${i+1}</span>
       <span class="meta"><div class="t">${esc(w.title||"無題")}</div>
       <div class="s">${esc(w.artist||"作家未設定")} ・ ${w.w}×${w.h}mm</div></span>
+      <span class="ord">
+        <button class="mv" data-mv="-1" title="番号を上へ" ${i===0?"disabled":""}>▲</button>
+        <button class="mv" data-mv="1" title="番号を下へ" ${i===works.length-1?"disabled":""}>▼</button>
+      </span>
     </li>`).join("");
   ul.querySelectorAll("li[data-id]").forEach(li=>{
     li.onclick = ()=>{ selectedId = +li.dataset.id; render(); renderSide(); };
+    li.querySelectorAll(".mv").forEach(b=>{
+      b.onclick = e=>{ e.stopPropagation(); moveWork(+li.dataset.id, +b.dataset.mv); };
+    });
   });
+}
+
+/* 作品番号の並べ替え: objects配列内で隣の作品と位置を入れ替える(採番は配列順) */
+function moveWork(id, dir){
+  const works = state.objects.filter(o=>o.type==="work");
+  const i = works.findIndex(w=>w.id===id), j = i + dir;
+  if (i < 0 || j < 0 || j >= works.length) return;
+  pushUndo();
+  const a = state.objects.indexOf(works[i]), b = state.objects.indexOf(works[j]);
+  [state.objects[a], state.objects[b]] = [state.objects[b], state.objects[a]];
+  render(); renderSide();
 }
 
 function deleteSelected(){
@@ -417,15 +499,28 @@ function deleteSelected(){
 
 /* ---- ポインタ操作 ---- */
 let drag = null; // {mode:'wall'|'move'|'pan', ...}
+const pointers = new Map(); // アクティブなポインタ(ピンチズーム判定用)
+let pinch = null;           // {d,cx,cy} 直前フレームの2本指間距離と中点
 
 svg.addEventListener("pointerdown", ev=>{
   svg.setPointerCapture(ev.pointerId);
+  pointers.set(ev.pointerId, {x:ev.clientX, y:ev.clientY});
+  if (pointers.size === 2){
+    // 2本目の指が触れたらピンチ開始。描きかけの壁は破棄する
+    if (drag?.mode === "wall"){ state.walls.pop(); undoStack.pop(); render(); }
+    drag = null;
+    const [p1,p2] = [...pointers.values()];
+    pinch = {d: Math.hypot(p1.x-p2.x, p1.y-p2.y), cx:(p1.x+p2.x)/2, cy:(p1.y+p2.y)/2};
+    return;
+  }
+  if (pointers.size > 2) return;
   const p = clientToPlan(ev.clientX, ev.clientY);
   const hit = ev.target.closest("[data-id]");
 
   if (tool === "wall"){
     pushUndo();
-    const w = {id: idSeq++, x1:snap(p.x), y1:snap(p.y), x2:snap(p.x), y2:snap(p.y)};
+    const sp = snapWallPoint(p);
+    const w = {id: idSeq++, x1:sp.x, y1:sp.y, x2:sp.x, y2:sp.y};
     state.walls.push(w);
     drag = {mode:"wall", wall:w};
     return;
@@ -462,11 +557,25 @@ svg.addEventListener("pointerdown", ev=>{
 });
 
 svg.addEventListener("pointermove", ev=>{
+  if (pointers.has(ev.pointerId)) pointers.set(ev.pointerId, {x:ev.clientX, y:ev.clientY});
+  if (pinch && pointers.size >= 2){
+    const [p1,p2] = [...pointers.values()];
+    const d = Math.hypot(p1.x-p2.x, p1.y-p2.y);
+    const cx = (p1.x+p2.x)/2, cy = (p1.y+p2.y)/2;
+    if (d > 0 && pinch.d > 0) zoom(pinch.d / d, cx, cy); // 指を広げる→拡大
+    const scale = view.w / svg.getBoundingClientRect().width;
+    view.x -= (cx - pinch.cx) * scale;
+    view.y -= (cy - pinch.cy) * scale;
+    applyView();
+    pinch = {d, cx, cy};
+    return;
+  }
   if (!drag) return;
   const p = clientToPlan(ev.clientX, ev.clientY);
   if (drag.mode === "wall"){
-    let x2 = snap(p.x), y2 = snap(p.y);
-    if (!ev.shiftKey){ // 通常は直交スナップ、Shiftで自由角度
+    const sp = snapWallPoint(p, drag.wall.id);
+    let x2 = sp.x, y2 = sp.y;
+    if (!sp.joined && !ev.shiftKey){ // 端点連結時以外は直交スナップ、Shiftで自由角度
       if (Math.abs(x2-drag.wall.x1) > Math.abs(y2-drag.wall.y1)) y2 = drag.wall.y1;
       else x2 = drag.wall.x1;
     }
@@ -486,12 +595,19 @@ svg.addEventListener("pointermove", ev=>{
   }
 });
 
-svg.addEventListener("pointerup", ()=>{
+svg.addEventListener("pointerup", ev=>{
+  pointers.delete(ev.pointerId);
+  if (pointers.size < 2) pinch = null;
   if (drag?.mode === "wall"){
     const w = drag.wall;
     if (w.x1===w.x2 && w.y1===w.y2){ state.walls.pop(); undoStack.pop(); } // 長さ0は破棄
     render();
   }
+  drag = null;
+});
+svg.addEventListener("pointercancel", ev=>{
+  pointers.delete(ev.pointerId);
+  if (pointers.size < 2) pinch = null;
   drag = null;
 });
 
@@ -506,7 +622,7 @@ function setTool(t){
   document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active", b.dataset.tool===t));
   const hints = {
     select:"クリックで選択、ドラッグで移動。空白ドラッグで画面移動",
-    wall:"ドラッグで壁を描画(Shiftで自由角度)",
+    wall:"ドラッグで壁を描画(Shiftで自由角度、既存の壁の端点に近づけると連結)",
     work:"クリックで作品を配置 → 右パネルで作品名・サイズを入力",
     fixture:"クリックで展示台を配置",
     text:"クリックでテキストを配置",
@@ -519,7 +635,8 @@ document.querySelectorAll(".tool").forEach(b=> b.onclick = ()=> setTool(b.datase
 /* ---- キーボード ---- */
 window.addEventListener("keydown", ev=>{
   if (ev.target.matches("input,textarea")) return;
-  if ((ev.ctrlKey||ev.metaKey) && ev.key==="z"){ ev.preventDefault(); undo(); }
+  if ((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==="z" && !ev.shiftKey){ ev.preventDefault(); undo(); }
+  else if ((ev.ctrlKey||ev.metaKey) && (ev.key.toLowerCase()==="y" || (ev.key.toLowerCase()==="z" && ev.shiftKey))){ ev.preventDefault(); redo(); }
   else if (ev.key==="Delete" || ev.key==="Backspace"){ deleteSelected(); }
   else if (ev.key==="Escape"){ selectedId=null; setTool("select"); render(); renderSide(); }
 });
@@ -540,8 +657,9 @@ document.getElementById("fileInput").onchange = async ev=>{
     if (!data.walls || !data.objects) throw new Error("形式が違います");
     pushUndo();
     state = data;
+    if (!state.sheet) state.sheet = {preset:"custom"}; // 旧形式JSONとの互換
     idSeq = Math.max(0, ...state.walls.map(w=>w.id), ...state.objects.map(o=>o.id)) + 1;
-    selectedId = null; render(); renderSide();
+    selectedId = null; syncSheetUI(); render(); renderSide();
   }catch(e){ alert("読み込みに失敗しました: " + e.message); }
   ev.target.value = "";
 };
@@ -588,16 +706,22 @@ document.getElementById("printBtn").onclick = ()=>{
   window.print();
   view = prev; applyView();
 };
-document.getElementById("scaleSel").onchange = ()=> render();
+document.getElementById("scaleSel").onchange = ()=>{ applySheet(); fitView(); render(); };
+document.getElementById("sheetSel").onchange = ev=>{
+  pushUndo();
+  state.sheet = {preset: ev.target.value};
+  applySheet(); fitView(); render();
+};
 document.getElementById("undoBtn").onclick = undo;
+document.getElementById("redoBtn").onclick = redo;
 document.getElementById("zoomIn").onclick = ()=> zoom(0.8);
 document.getElementById("zoomOut").onclick = ()=> zoom(1.25);
-document.getElementById("zoomFit").onclick = ()=>{ view = {x:-1000,y:-1000,w:SHEET.w+2000,h:SHEET.h+2000}; applyView(); };
+document.getElementById("zoomFit").onclick = fitView;
 
 window.addEventListener("resize", applyView);
 
 /* ---- 初期化 ---- */
-render(); renderSide();
+syncSheetUI(); render(); renderSide();
 </script>
 </body>
 </html>
