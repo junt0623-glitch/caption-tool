@@ -18,6 +18,12 @@ async function run() {
     }));
     t.ok(reg.npb && reg.npb.group === 'UD・視認性重視', 'UDデジタル教科書体 太字(NP-B)がUD・視認性重視グループに登録される');
     t.ok(reg.npb && reg.npb.stack.includes('UD デジタル教科書体 NP-B'), 'NP-Bのスタックに「UD デジタル教科書体 NP-B」ファミリ名が含まれる');
+    // Windowsの正式ファミリ名は「UD デジタル 教科書体 NP-B」（デジタルと教科書体の間にもスペース）。
+    // この名前が無いと実フォントに一致せず代替書体で表示されてしまう（PowerPointと見た目が変わる不具合の原因）
+    t.ok(reg.npb && reg.npb.stack.includes('UD デジタル 教科書体 NP-B'), 'NP-BのスタックにWindows正式名「UD デジタル 教科書体 NP-B」（スペース入り）が先頭側に含まれる');
+    t.ok(reg.npb && reg.npb.stack.indexOf('UD デジタル 教科書体 NP-B') < reg.npb.stack.indexOf('BIZ UDPGothic'), '正式名が代替書体より前に並ぶ');
+    t.ok(reg.npr && reg.npr.stack.includes('UD デジタル 教科書体 NP-R'), 'NP-R（標準）のスタックにもWindows正式名（スペース入り）が含まれる');
+    t.ok(reg.npb && reg.npb.stack.includes('UD Digi Kyokasho NP-B'), 'NP-Bのスタックに英語ファミリ名も含まれる');
     t.eq(reg.npb && reg.npb.weight, 700, 'NP-Bは太字（weight:700）として登録される');
     t.ok(reg.npb && !reg.npb.gf, 'NP-Bはオンライン書体ではない（ダウンロードせずシステムフォント参照）');
     t.ok(reg.msui && reg.msui.group === 'ゴシック体', 'MS UI Gothicがゴシック体グループに登録される');

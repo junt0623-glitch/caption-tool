@@ -9,15 +9,15 @@
   --paper:#F5F3EC;--wall:#E9E6DC;--ink:#221F1A;--sub:#6F6A5E;--line:#D8D3C4;--shu:#A63A22;--white:#FFFFFF;
   --mincho:"BIZ UDPMincho","BIZ UDMincho","Hiragino Mincho ProN","YuMincho","Yu Mincho","Noto Serif JP","MS PMincho",serif;
   --gothic:"BIZ UDPGothic","BIZ UDGothic","Hiragino Kaku Gothic ProN","Yu Gothic Medium","YuGothic","Yu Gothic","Noto Sans JP","Meiryo",sans-serif;
-  --kaisho:"UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","Kaiti SC","Kaiti TC","STKaiti","BIZ UDMincho","HGP楷書体","楷体",serif;
-  --ud-mincho:"BIZ UDPMincho","BIZ UDMincho","UD デジタル教科書体 NP-R","Hiragino Mincho ProN","Noto Serif JP",serif;
-  --ud-gothic:"BIZ UDPGothic","BIZ UDGothic","UD デジタル教科書体 NP-R","Hiragino Sans","Yu Gothic Medium","Noto Sans JP",sans-serif;
+  --kaisho:"UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","Kaiti SC","Kaiti TC","STKaiti","BIZ UDMincho","HGP楷書体","楷体",serif;
+  --ud-mincho:"BIZ UDPMincho","BIZ UDMincho","UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","Hiragino Mincho ProN","Noto Serif JP",serif;
+  --ud-gothic:"BIZ UDPGothic","BIZ UDGothic","UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","Hiragino Sans","Yu Gothic Medium","Noto Sans JP",sans-serif;
   --en-sans:"Verdana","Segoe UI","Helvetica Neue","Arial","Noto Sans","Liberation Sans",sans-serif;
   --en-serif:"Georgia","Times New Roman","Noto Serif","Liberation Serif",serif;
   --biz-mincho:"BIZ UDPMincho","BIZ UDMincho",serif;
   --biz-gothic:"BIZ UDPGothic","BIZ UDGothic",sans-serif;
-  --ud-kyokasho:"UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPMincho","BIZ UDMincho",serif;
-  --ud-kyokasho-b:"UD デジタル教科書体 NP-B","UD Digi Kyokasho NP-B","UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPGothic","BIZ UDGothic",sans-serif;
+  --ud-kyokasho:"UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPMincho","BIZ UDMincho",serif;
+  --ud-kyokasho-b:"UD デジタル 教科書体 NP-B","UD デジタル教科書体 NP-B","UD Digi Kyokasho NP-B","UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPGothic","BIZ UDGothic",sans-serif;
   --yu-mincho:"Yu Mincho","YuMincho","Hiragino Mincho ProN","MS PMincho",serif;
   --hiragino-mincho:"Hiragino Mincho ProN","YuMincho","Yu Mincho",serif;
   --ms-mincho:"MS PMincho","MS Mincho","Hiragino Mincho ProN",serif;
@@ -39,8 +39,8 @@
 html.gfonts-on{
   --mincho:"Noto Serif JP","BIZ UDPMincho","BIZ UDMincho","Hiragino Mincho ProN","YuMincho","Yu Mincho","MS PMincho",serif;
   --gothic:"Noto Sans JP","BIZ UDPGothic","BIZ UDGothic","Hiragino Kaku Gothic ProN","Yu Gothic Medium","YuGothic","Yu Gothic","Meiryo",sans-serif;
-  --ud-mincho:"Noto Serif JP","BIZ UDPMincho","BIZ UDMincho","UD デジタル教科書体 NP-R","Hiragino Mincho ProN",serif;
-  --ud-gothic:"Noto Sans JP","BIZ UDPGothic","BIZ UDGothic","UD デジタル教科書体 NP-R","Hiragino Sans","Yu Gothic Medium",sans-serif;
+  --ud-mincho:"Noto Serif JP","BIZ UDPMincho","BIZ UDMincho","UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","Hiragino Mincho ProN",serif;
+  --ud-gothic:"Noto Sans JP","BIZ UDPGothic","BIZ UDGothic","UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","Hiragino Sans","Yu Gothic Medium",sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
@@ -1141,7 +1141,7 @@ const FONTS={
   sawarabigothic:{label:"さわらびゴシック（オンライン）",stack:'"Sawarabi Gothic","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"Sawarabi+Gothic"},
   zenmarugothic:{label:"Zen丸ゴシック（オンライン）",stack:'"Zen Maru Gothic","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"Zen+Maru+Gothic:wght@400;700"},
   kosugimaru:{label:"小杉丸ゴシック（オンライン）",stack:'"Kosugi Maru","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"Kosugi+Maru"},
-  kleeone:{label:"クレー One・手書き風（オンライン）",stack:'"Klee One","UD デジタル教科書体 NP-R",serif',group:"オンラインフォント",gf:"Klee+One:wght@400;600"},
+  kleeone:{label:"クレー One・手書き風（オンライン）",stack:'"Klee One","UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R",serif',group:"オンラインフォント",gf:"Klee+One:wght@400;600"},
   yujisyuku:{label:"佑字 肅・毛筆風（オンライン）",stack:'"Yuji Syuku",serif',group:"オンラインフォント",gf:"Yuji+Syuku"},
   kaiseidecol:{label:"Kaisei Decol・デザイン明朝（オンライン）",stack:'"Kaisei Decol",serif',group:"オンラインフォント",gf:"Kaisei+Decol:wght@400;700"},
   yuseimagic:{label:"油性マジック風（オンライン）",stack:'"Yusei Magic",sans-serif',group:"オンラインフォント",gf:"Yusei+Magic"},
