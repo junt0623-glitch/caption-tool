@@ -60,6 +60,7 @@ node tests/bt05_layout_override_diff.js
 | bt32_item_panel_draggable.js | 編集キャンバスの項目クリックで開く書式の小パネルをヘッダーのドラッグで移動できること（閉じる✕との誤認防止・再オープン時に右上へ復帰・書式変更で再描画されても位置維持・タッチ操作でのドラッグ） |
 | bt33_added_system_fonts.js | 追加システムフォント（UDデジタル教科書体 太字 NP-B・MS UI Gothic）の登録・選択肢表示・NP-B選択時の太字適用・書体切替時に太字が引きずられないこと |
 | bt34_transparent_png.js | 透過PNGを取り込んでも透明部分が黒くならない（アルファ有→PNG保存・透過保持／アルファ無→JPEG圧縮） |
+| bt35_export_filename.js | 書き出しファイル名（JSON・CSV）に展覧会名＋日付が自動で入ること（名称変更の追随・禁止文字の置換・空名時の補完） |
 
 ## 新機能を追加した時のテスト追加手順
 

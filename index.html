@@ -1883,8 +1883,9 @@ $("#btnDeleteProject").addEventListener("click",async()=>{const p=proj();
   store.currentId=store.projects[0].id;save();renderAll();});
 
 /* ===== JSON ===== */
-$("#btnExport").addEventListener("click",()=>{const d=new Date(),pad=n=>String(n).padStart(2,"0");
-  download(`キャプション工房_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`,
+$("#btnExport").addEventListener("click",()=>{
+  // ファイル名には現在選択中の展覧会名を自動で入れる（中身は全展覧会のバックアップ）
+  download(`キャプション工房_${safeFilename(proj().name)}_${stampYMD()}.json`,
     JSON.stringify({app:"caption-koubou",version:1,projects:store.projects},null,1));
   if(!store.backupMeta)store.backupMeta={};
   store.backupMeta.editsSinceExport=0;store.backupMeta.lastExportAt=Date.now();
@@ -2101,13 +2102,14 @@ function worksToDelimited(delim){
   proj().works.forEach(w=>rows.push(FIELDS.map(f=>w[f.key]||"")));
   return rows.map(r=>r.map(v=>delimEscape(v,delim)).join(delim)).join("\r\n");
 }
-function safeFilename(s){return String(s||"").replace(/[\\/:*?"<>|]/g,"_").trim()||"作品リスト";}
+function safeFilename(s){return String(s||"").replace(/[\\/:*?"<>|]/g,"_").trim()||"無題";}
+function stampYMD(){const d=new Date(),pad=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;}
 $("#btnExportCsv").addEventListener("click",()=>{
   const p=proj();
   if(!p.works.length){alert("書き出せる作品がありません。先に作品を登録してください。");return;}
-  const d=new Date(),pad=n=>String(n).padStart(2,"0");
   // 先頭のBOMはExcelでの文字化け防止（UTF-8として認識させる）
-  download(`作品リスト_${safeFilename(p.name)}_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.csv`,
+  download(`作品リスト_${safeFilename(p.name)}_${stampYMD()}.csv`,
     "\uFEFF"+worksToDelimited(","),"text/csv");
 });
 $("#btnCopyTsv").addEventListener("click",async()=>{
