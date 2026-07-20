@@ -7,17 +7,17 @@
 <style>
 :root{
   --paper:#F5F3EC;--wall:#E9E6DC;--ink:#221F1A;--sub:#6F6A5E;--line:#D8D3C4;--shu:#A63A22;--white:#FFFFFF;
-  --mincho:"BIZ UDPMincho","BIZ UDMincho","Hiragino Mincho ProN","YuMincho","Yu Mincho","Noto Serif JP","MS PMincho",serif;
+  --mincho:"BIZ UDPMincho","BIZ UDPMincho Medium","BIZ UDMincho","BIZ UDMincho Medium","Hiragino Mincho ProN","YuMincho","Yu Mincho","Noto Serif JP","MS PMincho",serif;
   --gothic:"BIZ UDPGothic","BIZ UDGothic","Hiragino Kaku Gothic ProN","Yu Gothic Medium","YuGothic","Yu Gothic","Noto Sans JP","Meiryo",sans-serif;
-  --kaisho:"UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","Kaiti SC","Kaiti TC","STKaiti","BIZ UDMincho","HGP楷書体","楷体",serif;
-  --ud-mincho:"BIZ UDPMincho","BIZ UDMincho","UD デジタル教科書体 NP-R","Hiragino Mincho ProN","Noto Serif JP",serif;
-  --ud-gothic:"BIZ UDPGothic","BIZ UDGothic","UD デジタル教科書体 NP-R","Hiragino Sans","Yu Gothic Medium","Noto Sans JP",sans-serif;
+  --kaisho:"UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","HG正楷書体-PRO","HGP正楷書体-PRO","Kaiti SC","Kaiti TC","STKaiti","KaiTi","楷体","DFKai-SB","標楷體","BIZ UDMincho","BIZ UDMincho Medium",serif;
+  --ud-mincho:"BIZ UDPMincho","BIZ UDPMincho Medium","BIZ UDMincho","BIZ UDMincho Medium","UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","Hiragino Mincho ProN","Noto Serif JP",serif;
+  --ud-gothic:"BIZ UDPGothic","BIZ UDGothic","UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","Hiragino Sans","Yu Gothic Medium","Noto Sans JP",sans-serif;
   --en-sans:"Verdana","Segoe UI","Helvetica Neue","Arial","Noto Sans","Liberation Sans",sans-serif;
   --en-serif:"Georgia","Times New Roman","Noto Serif","Liberation Serif",serif;
-  --biz-mincho:"BIZ UDPMincho","BIZ UDMincho",serif;
+  --biz-mincho:"BIZ UDPMincho","BIZ UDPMincho Medium","BIZ UDMincho","BIZ UDMincho Medium",serif;
   --biz-gothic:"BIZ UDPGothic","BIZ UDGothic",sans-serif;
-  --ud-kyokasho:"UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPMincho","BIZ UDMincho",serif;
-  --ud-kyokasho-b:"UD デジタル教科書体 NP-B","UD Digi Kyokasho NP-B","UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPGothic","BIZ UDGothic",sans-serif;
+  --ud-kyokasho:"UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPMincho","BIZ UDPMincho Medium","BIZ UDMincho","BIZ UDMincho Medium",serif;
+  --ud-kyokasho-b:"UD デジタル 教科書体 NP-B","UD デジタル教科書体 NP-B","UD Digi Kyokasho NP-B","UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPGothic","BIZ UDGothic",sans-serif;
   --yu-mincho:"Yu Mincho","YuMincho","Hiragino Mincho ProN","MS PMincho",serif;
   --hiragino-mincho:"Hiragino Mincho ProN","YuMincho","Yu Mincho",serif;
   --ms-mincho:"MS PMincho","MS Mincho","Hiragino Mincho ProN",serif;
@@ -26,7 +26,7 @@
   --meiryo:"Meiryo","Yu Gothic","Hiragino Kaku Gothic ProN",sans-serif;
   --ms-gothic:"MS PGothic","MS Gothic","Meiryo",sans-serif;
   --ms-ui-gothic:"MS UI Gothic","MSUIGothic","MS PGothic","MS Gothic","Meiryo",sans-serif;
-  --noto-serif-jp:"Noto Serif JP","BIZ UDPMincho","BIZ UDMincho",serif;
+  --noto-serif-jp:"Noto Serif JP","BIZ UDPMincho","BIZ UDPMincho Medium","BIZ UDMincho","BIZ UDMincho Medium",serif;
   --noto-sans-jp:"Noto Sans JP","BIZ UDPGothic","BIZ UDGothic",sans-serif;
   --georgia:"Georgia","Times New Roman",serif;
   --times:"Times New Roman","Georgia",serif;
@@ -37,10 +37,10 @@
    ほとんどのWindows機に標準搭載されており、スタックの後方にNotoを置くだけでは常にシステムフォントが
    優先されてしまい「読み込んでも見た目が変わらない」状態になる。ONの間はNotoを最優先にして必ず反映させる。 */
 html.gfonts-on{
-  --mincho:"Noto Serif JP","BIZ UDPMincho","BIZ UDMincho","Hiragino Mincho ProN","YuMincho","Yu Mincho","MS PMincho",serif;
+  --mincho:"Noto Serif JP","BIZ UDPMincho","BIZ UDPMincho Medium","BIZ UDMincho","BIZ UDMincho Medium","Hiragino Mincho ProN","YuMincho","Yu Mincho","MS PMincho",serif;
   --gothic:"Noto Sans JP","BIZ UDPGothic","BIZ UDGothic","Hiragino Kaku Gothic ProN","Yu Gothic Medium","YuGothic","Yu Gothic","Meiryo",sans-serif;
-  --ud-mincho:"Noto Serif JP","BIZ UDPMincho","BIZ UDMincho","UD デジタル教科書体 NP-R","Hiragino Mincho ProN",serif;
-  --ud-gothic:"Noto Sans JP","BIZ UDPGothic","BIZ UDGothic","UD デジタル教科書体 NP-R","Hiragino Sans","Yu Gothic Medium",sans-serif;
+  --ud-mincho:"Noto Serif JP","BIZ UDPMincho","BIZ UDPMincho Medium","BIZ UDMincho","BIZ UDMincho Medium","UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","Hiragino Mincho ProN",serif;
+  --ud-gothic:"Noto Sans JP","BIZ UDPGothic","BIZ UDGothic","UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R","Hiragino Sans","Yu Gothic Medium",sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
@@ -1132,16 +1132,16 @@ const FONTS={
   /* オンラインフォント（選ぶと自動でネットから読み込み、プレビューに即時反映される。gf=Google Fonts APIのfamily指定） */
   notoserif:{label:"Noto Serif JP（オンライン）",stack:cssVar("--noto-serif-jp"),group:"オンラインフォント",gf:"Noto+Serif+JP:wght@400;700"},
   notosans:{label:"Noto Sans JP（オンライン）",stack:cssVar("--noto-sans-jp"),group:"オンラインフォント",gf:"Noto+Sans+JP:wght@400;700"},
-  zenoldmincho:{label:"Zen Old明朝（オンライン）",stack:'"Zen Old Mincho","BIZ UDPMincho",serif',group:"オンラインフォント",gf:"Zen+Old+Mincho:wght@400;700"},
-  shipporimincho:{label:"しっぽり明朝（オンライン）",stack:'"Shippori Mincho","BIZ UDPMincho",serif',group:"オンラインフォント",gf:"Shippori+Mincho:wght@400;700"},
-  hinamincho:{label:"ひな明朝（オンライン）",stack:'"Hina Mincho","BIZ UDPMincho",serif',group:"オンラインフォント",gf:"Hina+Mincho"},
-  sawarabimincho:{label:"さわらび明朝（オンライン）",stack:'"Sawarabi Mincho","BIZ UDPMincho",serif',group:"オンラインフォント",gf:"Sawarabi+Mincho"},
+  zenoldmincho:{label:"Zen Old明朝（オンライン）",stack:'"Zen Old Mincho","BIZ UDPMincho","BIZ UDPMincho Medium",serif',group:"オンラインフォント",gf:"Zen+Old+Mincho:wght@400;700"},
+  shipporimincho:{label:"しっぽり明朝（オンライン）",stack:'"Shippori Mincho","BIZ UDPMincho","BIZ UDPMincho Medium",serif',group:"オンラインフォント",gf:"Shippori+Mincho:wght@400;700"},
+  hinamincho:{label:"ひな明朝（オンライン）",stack:'"Hina Mincho","BIZ UDPMincho","BIZ UDPMincho Medium",serif',group:"オンラインフォント",gf:"Hina+Mincho"},
+  sawarabimincho:{label:"さわらび明朝（オンライン）",stack:'"Sawarabi Mincho","BIZ UDPMincho","BIZ UDPMincho Medium",serif',group:"オンラインフォント",gf:"Sawarabi+Mincho"},
   zenkakugothic:{label:"Zen角ゴシック New（オンライン）",stack:'"Zen Kaku Gothic New","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"Zen+Kaku+Gothic+New:wght@400;700"},
   mplus1p:{label:"M PLUS 1p（オンライン）",stack:'"M PLUS 1p","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"M+PLUS+1p:wght@400;700"},
   sawarabigothic:{label:"さわらびゴシック（オンライン）",stack:'"Sawarabi Gothic","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"Sawarabi+Gothic"},
   zenmarugothic:{label:"Zen丸ゴシック（オンライン）",stack:'"Zen Maru Gothic","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"Zen+Maru+Gothic:wght@400;700"},
   kosugimaru:{label:"小杉丸ゴシック（オンライン）",stack:'"Kosugi Maru","BIZ UDPGothic",sans-serif',group:"オンラインフォント",gf:"Kosugi+Maru"},
-  kleeone:{label:"クレー One・手書き風（オンライン）",stack:'"Klee One","UD デジタル教科書体 NP-R",serif',group:"オンラインフォント",gf:"Klee+One:wght@400;600"},
+  kleeone:{label:"クレー One・手書き風（オンライン）",stack:'"Klee One","UD デジタル 教科書体 NP-R","UD デジタル教科書体 NP-R",serif',group:"オンラインフォント",gf:"Klee+One:wght@400;600"},
   yujisyuku:{label:"佑字 肅・毛筆風（オンライン）",stack:'"Yuji Syuku",serif',group:"オンラインフォント",gf:"Yuji+Syuku"},
   kaiseidecol:{label:"Kaisei Decol・デザイン明朝（オンライン）",stack:'"Kaisei Decol",serif',group:"オンラインフォント",gf:"Kaisei+Decol:wght@400;700"},
   yuseimagic:{label:"油性マジック風（オンライン）",stack:'"Yusei Magic",sans-serif',group:"オンラインフォント",gf:"Yusei+Magic"},
@@ -1883,8 +1883,9 @@ $("#btnDeleteProject").addEventListener("click",async()=>{const p=proj();
   store.currentId=store.projects[0].id;save();renderAll();});
 
 /* ===== JSON ===== */
-$("#btnExport").addEventListener("click",()=>{const d=new Date(),pad=n=>String(n).padStart(2,"0");
-  download(`キャプション工房_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`,
+$("#btnExport").addEventListener("click",()=>{
+  // ファイル名には現在選択中の展覧会名を自動で入れる（中身は全展覧会のバックアップ）
+  download(`キャプション工房_${safeFilename(proj().name)}_${stampYMD()}.json`,
     JSON.stringify({app:"caption-koubou",version:1,projects:store.projects},null,1));
   if(!store.backupMeta)store.backupMeta={};
   store.backupMeta.editsSinceExport=0;store.backupMeta.lastExportAt=Date.now();
@@ -2101,13 +2102,14 @@ function worksToDelimited(delim){
   proj().works.forEach(w=>rows.push(FIELDS.map(f=>w[f.key]||"")));
   return rows.map(r=>r.map(v=>delimEscape(v,delim)).join(delim)).join("\r\n");
 }
-function safeFilename(s){return String(s||"").replace(/[\\/:*?"<>|]/g,"_").trim()||"作品リスト";}
+function safeFilename(s){return String(s||"").replace(/[\\/:*?"<>|]/g,"_").trim()||"無題";}
+function stampYMD(){const d=new Date(),pad=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;}
 $("#btnExportCsv").addEventListener("click",()=>{
   const p=proj();
   if(!p.works.length){alert("書き出せる作品がありません。先に作品を登録してください。");return;}
-  const d=new Date(),pad=n=>String(n).padStart(2,"0");
   // 先頭のBOMはExcelでの文字化け防止（UTF-8として認識させる）
-  download(`作品リスト_${safeFilename(p.name)}_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.csv`,
+  download(`作品リスト_${safeFilename(p.name)}_${stampYMD()}.csv`,
     "\uFEFF"+worksToDelimited(","),"text/csv");
 });
 $("#btnCopyTsv").addEventListener("click",async()=>{
