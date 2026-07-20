@@ -30,6 +30,20 @@ async function run() {
     t.ok(reg.msui && reg.msui.stack.includes('MS UI Gothic'), 'MS UI Gothicのスタックに「MS UI Gothic」ファミリ名が含まれる');
     t.ok(reg.msui && !reg.msui.gf, 'MS UI Gothicはオンライン書体ではない（システムフォント参照）');
     t.ok(reg.npr && reg.npr.stack.includes('UD デジタル教科書体 NP-R'), '既存のNP-R（標準）も残っている');
+    // Windowsの正式ファミリ名の監査：NP-B/NP-Rはスペース入り正式名、BIZ UD明朝は
+    // 英語登録名「BIZ UDPMincho Medium」、楷書体は実在する「HG正楷書体-PRO」等を含むこと
+    const audit = await page.evaluate(() => ({
+      npbSpaced: FONTS.udkyokashob.stack.includes('UD デジタル 教科書体 NP-B'),
+      nprSpaced: FONTS.udkyokasho.stack.includes('UD デジタル 教科書体 NP-R'),
+      minchoMedium: FONTS.mincho.stack.includes('BIZ UDPMincho Medium'),
+      bizMinchoMedium: FONTS.bizmincho.stack.includes('BIZ UDPMincho Medium'),
+      kaishoReal: FONTS.kaisho.stack.includes('HG正楷書体-PRO') && FONTS.kaisho.stack.includes('DFKai-SB'),
+      kaishoBogusGone: !FONTS.kaisho.stack.includes('HGP楷書体')
+    }));
+    t.eq(audit.npbSpaced && audit.nprSpaced, true, 'UDデジタル教科書体はWindows正式名（スペース入り）を含む');
+    t.eq(audit.minchoMedium && audit.bizMinchoMedium, true, 'BIZ UD明朝系はWindows英語登録名「BIZ UDPMincho Medium」を含む');
+    t.eq(audit.kaishoReal, true, '楷書体は実在するフォント名（HG正楷書体-PRO・DFKai-SB等）を含む');
+    t.eq(audit.kaishoBogusGone, true, '実在しない「HGP楷書体」は取り除かれている');
 
     // ---- 書体セレクトに両方が選択肢として並ぶ ----
     const inSelect = await page.evaluate(() => {
