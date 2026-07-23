@@ -825,8 +825,8 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
         <div class="ctl" id="finishRow"><label class="lbl">仕上げ</label>
           <label class="chk"><input type="checkbox" id="prMarks">トンボ（断裁位置の目印）を付ける</label>
           <label class="chk"><input type="checkbox" id="prBorder">切り取り用の枠線を印刷する</label></div>
-        <button class="btn shu" id="btnPrint" style="width:100%;padding:10px;font-size:14px;letter-spacing:.1em">印刷する（PDF保存）</button>
-        <p class="note" style="margin-top:10px">印刷ダイアログで<b>「余白：なし」「倍率：100%」「背景のグラフィックON」</b>を選ぶと、寸法・背景どおりに出力されます。大型プリンターの場合は用紙サイズをその機種の設定（例：ロール紙・カスタムサイズ）に合わせてください。</p>
+        <button class="btn shu" id="btnPrint" style="width:100%;padding:10px;font-size:14px;letter-spacing:.1em">印刷する（実際のサイズ／PDF保存）</button>
+        <p class="note" style="margin-top:10px">ボタンを押すと<b>原寸（実際のサイズ）で印刷するための案内</b>が出て、そこから<b>プリンターの詳細設定（印刷ダイアログ）</b>へ進めます。印刷ダイアログで<b>「実際のサイズ／倍率100%」「余白：なし」「背景のグラフィックON」</b>を選ぶと、寸法・背景どおりに出力されます（既定の「用紙に合わせる」のままだと縮小されます）。大型プリンターの場合は用紙サイズをその機種の設定（例：ロール紙・カスタムサイズ）に合わせてください。</p>
       </div>
       <div>
         <div class="edit-topbar">
@@ -913,6 +913,25 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
   </div>
 </dialog>
 
+<!-- 印刷前の案内（実際のサイズで印刷するための設定） -->
+<dialog id="printGuideDialog">
+  <div class="dlg-head"><h3>実際のサイズ（原寸）で印刷する</h3><button class="btn ghost small" data-close="printGuideDialog">✕ 閉じる</button></div>
+  <div class="dlg-body">
+    <p style="margin-bottom:8px">続いて開く<b>印刷ダイアログ</b>で、次のように設定すると<b>原寸（実際のサイズ）</b>で出力されます：</p>
+    <ul style="margin:0 0 10px 20px;line-height:1.9">
+      <li>倍率・拡大縮小：<b>「実際のサイズ」または「100%」</b>（「用紙に合わせる」だと縮小されます）</li>
+      <li>余白：<b>なし</b></li>
+      <li>背景のグラフィック：<b>オン</b>（背景・罫線を印刷）</li>
+    </ul>
+    <p class="note" style="margin-bottom:10px">用紙サイズ・給紙・ロール紙などプリンター固有の設定は、印刷ダイアログの「<b>詳細設定</b>」、または「<b>システム ダイアログを使用して印刷（Ctrl+Shift+P）</b>」から開けます。</p>
+    <label class="chk"><input type="checkbox" id="printGuideHide">次回から表示しない</label>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" data-close="printGuideDialog">キャンセル</button>
+    <button class="btn primary shu" id="printGuideGo">プリンターの詳細設定へ（印刷ダイアログを開く）</button>
+  </div>
+</dialog>
+
 <!-- 追加画像の一括コピー -->
 <dialog id="img2CopyDialog">
   <div class="dlg-head"><h3>追加画像を他の作品へコピー</h3><button class="btn ghost small" data-close="img2CopyDialog">✕ 閉じる</button></div>
@@ -944,7 +963,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     <ol>
       <li><b>作品台帳</b>で作品を登録（貼り付け取り込み／手入力）。画像は「編集」画面から。▲▼で並び替えると、<b>番号は行の位置に合わせて自動で振り直されます</b>（入れ替えた作品どうしで番号が入れ替わります）。</li>
       <li><b>レイアウト</b>の上部キャンバスで、各項目をドラッグして配置。クリックで小パネルを開きフォント・サイズ・文字間を調整。複数選択して整列ツールで揃える。</li>
-      <li><b>印刷・PDF</b>で配置を選び「印刷する」→ 送信先を「PDFに保存」に。</li>
+      <li><b>印刷・PDF</b>で配置を選び「印刷する」→ 案内に従い、印刷ダイアログで<b>倍率を「実際のサイズ／100%」</b>に（原寸で出力）。PDFにするときは送信先を「PDFに保存」に。</li>
     </ol>
     <h4>レイアウトの操作</h4>
     <ul>
@@ -964,7 +983,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     </ul>
     <h4>うまくいかないとき</h4>
     <ul>
-      <li><b>印刷寸法がずれる</b>→「余白：なし」「倍率100%」。</li>
+      <li><b>実際のサイズで印刷されない／縮小される</b>→ 印刷ダイアログの倍率を<b>「実際のサイズ」または「100%」</b>に（既定の「用紙に合わせる」だと縮む）。あわせて「余白：なし」。プリンター固有の設定は「詳細設定／システムダイアログを使用して印刷」から。</li>
       <li><b>背景・罫が印刷されない</b>→ 印刷ダイアログの「背景のグラフィック」をON。</li>
       <li><b>項目が札からはみ出す</b>→ 上部に赤い表示。位置か幅、サイズを調整。</li>
       <li><b>ドラッグしづらい（重なり）</b>→ 一旦別項目を選び直すか、範囲選択で選んで移動。</li>
@@ -3295,8 +3314,10 @@ function renderSheets(){if(!$("#tab-print").classList.contains("active"))return;
     holder.style.width=(dims.w*MM2PX*sheetZoom)+"px";holder.style.height=(dims.h*MM2PX*sheetZoom)+"px";
     s.style.transform=`scale(${sheetZoom})`;s.style.transformOrigin="top left";holder.appendChild(s);scroll.appendChild(holder);});
   fitDescIn(scroll);}
-$("#btnPrint").addEventListener("click",()=>{const root=$("#print-root");root.innerHTML="";const sheets=buildSheets();
-  if(!sheets.length){alert("印刷できる作品がありません。作品台帳に登録してください。");return;}
+/* 実際にブラウザの印刷ダイアログ（＝プリンターの詳細設定への入口）を開く */
+function doPrint(){
+  const root=$("#print-root");root.innerHTML="";const sheets=buildSheets();
+  if(!sheets.length){alert("印刷できる作品がありません。作品台帳に登録してください。");return false;}
   const dims=sheetDims(proj().printOpt||{sheetKind:"a4"});
   $("#dynPageSize").textContent=`@page{size:${dims.w}mm ${dims.h}mm;margin:0}`;
   sheets.forEach(s=>{s.style.transform="";root.appendChild(s);});
@@ -3304,7 +3325,25 @@ $("#btnPrint").addEventListener("click",()=>{const root=$("#print-root");root.in
   root.style.cssText=`display:block;position:absolute;left:-${Math.round(dims.w*3+2000)}px;top:0;width:${dims.w}mm`;
   fitDescIn(root);
   root.style.cssText="";
-  window.print();});
+  window.print();
+  return true;
+}
+/* 印刷ボタン：まず原寸印刷の設定案内を出し、そこからプリンターの詳細設定（印刷ダイアログ）へ進む。
+   「次回から表示しない」を選ぶと以後は案内を飛ばして直接ダイアログを開く。 */
+$("#btnPrint").addEventListener("click",()=>{
+  if(!buildSheets().length){alert("印刷できる作品がありません。作品台帳に登録してください。");return;}
+  if(store.printGuideHide){doPrint();return;}
+  $("#printGuideHide").checked=false;
+  $("#printGuideDialog").showModal();
+});
+$("#printGuideGo").addEventListener("click",()=>{
+  if($("#printGuideHide").checked){
+    store.printGuideHide=true;
+    try{localStorage.setItem(LS_KEY,JSON.stringify(store));}catch(_){}
+  }
+  $("#printGuideDialog").close();
+  doPrint();
+});
 window.addEventListener("afterprint",()=>{$("#print-root").innerHTML="";renderSheets();});
 
 $("#btnHelp").addEventListener("click",()=>$("#helpDialog").showModal());
