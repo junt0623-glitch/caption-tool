@@ -682,7 +682,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
               <p class="note" id="fontMissingWarn" style="margin-top:4px;display:none;color:var(--shu)"></p>
               <button type="button" class="btn small ghost" id="btnFontCheck" style="margin-top:6px">この端末でこの書体が使えるか診断</button>
               <div class="note" id="fontCheckResult" style="display:none;margin-top:4px;line-height:1.8"></div>
-              <p class="note" style="margin-top:4px">UD・BIZ系（視認性の高い書体）を優先します。楷書体・英字書体・UDデジタル教科書体（標準／太字）・MS UI Gothicなど、Windows等に標準搭載の書体もお使いの端末に入っていれば選べます。<b>入っていない端末（macOS等）では近い代替書体で表示されます。</b><b>「オンラインフォント」の書体は、選ぶと自動でネットから読み込まれ、どの端末でも同じ字形で表示されます</b>（要ネット接続）。</p>
+              <p class="note" style="margin-top:4px">UDデジタル教科書体・游明朝／游ゴシック・メイリオ・MS書体・BIZ UD書体に加え、<b>「欧文（Windows標準）」グループにArial・Calibri・Segoe UI・Times New Roman・Georgia・Consolasなど、Windows標準搭載の欧文書体を網羅</b>しています。お使いの端末に入っていれば選べます。<b>入っていない端末（macOS等）では近い代替書体で表示されます</b>（下の「診断」ボタンで確認できます）。<b>「オンラインフォント」の書体は選ぶと自動でネットから読み込まれ、どの端末でも同じ字形で表示されます</b>（要ネット接続）。<br>※ 記号・絵文字専用書体（Wingdings・Segoe UI Emoji等）は文章の表示に使えないため除いています。</p>
               <label class="chk" style="margin-top:4px"><input type="checkbox" id="gfontToggle">Googleフォント（Noto系）をオンラインで読み込む（要ネット接続）</label>
               <p class="note" id="gfontNote" style="margin-top:2px;display:none">オンラインフォントの読み込み中はインターネット接続が必要です。オフラインや館内ネットワークで使う場合は、オンラインフォントを選ばずOFFのままにしてください。</p></div>
             <div class="ctl"><label class="lbl">行間</label><div class="row"><input type="range" id="stLh" min="1.05" max="2.4" step="0.05"><output id="oLh"></output></div></div>
@@ -1138,6 +1138,8 @@ const FONTS={
   udgothic:{label:"UDゴシック（自動選択）",stack:cssVar("--ud-gothic"),group:"UD・視認性重視"},
   bizmincho:{label:"BIZ UDP明朝",stack:cssVar("--biz-mincho"),group:"UD・視認性重視"},
   bizgothic:{label:"BIZ UDPゴシック",stack:cssVar("--biz-gothic"),group:"UD・視認性重視"},
+  bizminchom:{label:"BIZ UD明朝（等幅）",stack:'"BIZ UDMincho","BIZ UDMincho Medium","BIZ UDPMincho",serif',group:"UD・視認性重視"},
+  bizgothicm:{label:"BIZ UDゴシック（等幅）",stack:'"BIZ UDGothic","BIZ UDPGothic","Meiryo",sans-serif',group:"UD・視認性重視"},
   udkyokasho:{label:"UDデジタル教科書体（標準）",stack:cssVar("--ud-kyokasho"),group:"UD・視認性重視"},
   udkyokashob:{label:"UDデジタル教科書体（太字）",stack:cssVar("--ud-kyokasho-b"),group:"UD・視認性重視",weight:700},
   /* 明朝体 */
@@ -1151,6 +1153,8 @@ const FONTS={
   meiryo:{label:"メイリオ",stack:cssVar("--meiryo"),group:"ゴシック体"},
   msgothic:{label:"MSゴシック",stack:cssVar("--ms-gothic"),group:"ゴシック体"},
   msuigothic:{label:"MS UI Gothic",stack:cssVar("--ms-ui-gothic"),group:"ゴシック体"},
+  yugothicui:{label:"游ゴシック UI",stack:'"Yu Gothic UI","Yu Gothic","YuGothic","Meiryo",sans-serif',group:"ゴシック体"},
+  meiryoui:{label:"メイリオ UI",stack:'"Meiryo UI","Meiryo","Yu Gothic",sans-serif',group:"ゴシック体"},
   /* オンラインフォント（選ぶと自動でネットから読み込み、プレビューに即時反映される。gf=Google Fonts APIのfamily指定） */
   notoserif:{label:"Noto Serif JP（オンライン）",stack:cssVar("--noto-serif-jp"),group:"オンラインフォント",gf:"Noto+Serif+JP:wght@400;700"},
   notosans:{label:"Noto Sans JP（オンライン）",stack:cssVar("--noto-sans-jp"),group:"オンラインフォント",gf:"Noto+Sans+JP:wght@400;700"},
@@ -1175,9 +1179,40 @@ const FONTS={
   georgia:{label:"Georgia",stack:cssVar("--georgia"),group:"英字"},
   times:{label:"Times New Roman",stack:cssVar("--times"),group:"英字"},
   helvetica:{label:"Helvetica Neue",stack:cssVar("--helvetica"),group:"英字"},
-  segoe:{label:"Segoe UI",stack:cssVar("--segoe"),group:"英字"}
+  segoe:{label:"Segoe UI",stack:cssVar("--segoe"),group:"英字"},
+  /* 欧文（Windows標準搭載。入っていない端末では近い代替書体で表示） */
+  winCambria:{label:"Cambria（欧文セリフ）",stack:'"Cambria",serif',group:"欧文（Windows標準）"},
+  winConstantia:{label:"Constantia（欧文セリフ）",stack:'"Constantia",serif',group:"欧文（Windows標準）"},
+  winPalatino:{label:"Palatino Linotype（欧文セリフ）",stack:'"Palatino Linotype",serif',group:"欧文（Windows標準）"},
+  winSitka:{label:"Sitka（欧文セリフ）",stack:'"Sitka Text","Sitka",serif',group:"欧文（Windows標準）"},
+  winSylfaen:{label:"Sylfaen（欧文セリフ）",stack:'"Sylfaen",serif',group:"欧文（Windows標準）"},
+  winArial:{label:"Arial",stack:'"Arial",sans-serif',group:"欧文（Windows標準）"},
+  winArialBlack:{label:"Arial Black（極太）",stack:'"Arial Black",sans-serif',group:"欧文（Windows標準）"},
+  winBahnschrift:{label:"Bahnschrift",stack:'"Bahnschrift",sans-serif',group:"欧文（Windows標準）"},
+  winCalibri:{label:"Calibri",stack:'"Calibri",sans-serif',group:"欧文（Windows標準）"},
+  winCandara:{label:"Candara",stack:'"Candara",sans-serif',group:"欧文（Windows標準）"},
+  winCorbel:{label:"Corbel",stack:'"Corbel",sans-serif',group:"欧文（Windows標準）"},
+  winFranklin:{label:"Franklin Gothic Medium",stack:'"Franklin Gothic Medium",sans-serif',group:"欧文（Windows標準）"},
+  winGadugi:{label:"Gadugi",stack:'"Gadugi",sans-serif',group:"欧文（Windows標準）"},
+  winLeelawadee:{label:"Leelawadee UI",stack:'"Leelawadee UI",sans-serif',group:"欧文（Windows標準）"},
+  winMSSans:{label:"Microsoft Sans Serif",stack:'"Microsoft Sans Serif",sans-serif',group:"欧文（Windows標準）"},
+  winNirmala:{label:"Nirmala UI",stack:'"Nirmala UI",sans-serif',group:"欧文（Windows標準）"},
+  winEbrima:{label:"Ebrima",stack:'"Ebrima",sans-serif',group:"欧文（Windows標準）"},
+  winTahoma:{label:"Tahoma",stack:'"Tahoma",sans-serif',group:"欧文（Windows標準）"},
+  winTrebuchet:{label:"Trebuchet MS",stack:'"Trebuchet MS",sans-serif',group:"欧文（Windows標準）"},
+  winVerdana:{label:"Verdana",stack:'"Verdana",sans-serif',group:"欧文（Windows標準）"},
+  winConsolas:{label:"Consolas（等幅）",stack:'"Consolas",monospace',group:"欧文（Windows標準）"},
+  winCourier:{label:"Courier New（等幅）",stack:'"Courier New",monospace',group:"欧文（Windows標準）"},
+  winLucidaConsole:{label:"Lucida Console（等幅）",stack:'"Lucida Console",monospace',group:"欧文（Windows標準）"},
+  winComic:{label:"Comic Sans MS（手書き風）",stack:'"Comic Sans MS",cursive',group:"欧文（Windows標準）"},
+  winInkFree:{label:"Ink Free（手書き風）",stack:'"Ink Free",cursive',group:"欧文（Windows標準）"},
+  winSegoePrint:{label:"Segoe Print（手書き風）",stack:'"Segoe Print",cursive',group:"欧文（Windows標準）"},
+  winSegoeScript:{label:"Segoe Script（筆記体）",stack:'"Segoe Script",cursive',group:"欧文（Windows標準）"},
+  winGabriola:{label:"Gabriola（装飾）",stack:'"Gabriola",cursive',group:"欧文（Windows標準）"},
+  winImpact:{label:"Impact（極太見出し）",stack:'"Impact",sans-serif',group:"欧文（Windows標準）"},
+  winLucidaSans:{label:"Lucida Sans Unicode",stack:'"Lucida Sans Unicode",sans-serif',group:"欧文（Windows標準）"}
 };
-const FONT_GROUP_ORDER=["UD・視認性重視","明朝体","ゴシック体","オンラインフォント","英字"];
+const FONT_GROUP_ORDER=["UD・視認性重視","明朝体","ゴシック体","オンラインフォント","英字","欧文（Windows標準）"];
 function fontStack(key){return (FONTS[key]&&FONTS[key].stack)||FONTS.mincho.stack;}
 /* 一部の書体（太字ファミリのNP-B等）は太さ指定を持つ。未インストール時のフォールバックでも太字で出す */
 function fontWeight(key){return (FONTS[key]&&FONTS[key].weight)||null;}
