@@ -17,7 +17,7 @@
   --biz-mincho:"BIZ UDPMincho","BIZ UDPMincho Medium","BIZ UDMincho","BIZ UDMincho Medium",serif;
   --biz-gothic:"BIZ UDPGothic","BIZ UDGothic",sans-serif;
   --ud-kyokasho:"UD デジタル 教科書体 NP","UDデジタル教科書体 NP","UD Digi Kyokasho NP","UD デジタル 教科書体 NK","UD Digi Kyokasho NK","UD デジタル 教科書体 N","UD Digi Kyokasho N","UD デジタル 教科書体 NP-R","UDデジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPMincho","BIZ UDPMincho Medium","BIZ UDMincho","BIZ UDMincho Medium",serif;
-  --ud-kyokasho-b:"UD デジタル 教科書体 NP","UDデジタル教科書体 NP","UD Digi Kyokasho NP","UD デジタル 教科書体 NK","UD Digi Kyokasho NK","UD デジタル 教科書体 N","UD Digi Kyokasho N","UD デジタル 教科書体 NP-B","UDデジタル教科書体 NP-B","UD Digi Kyokasho NP-B","UD デジタル 教科書体 NP-R","UDデジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPGothic","BIZ UDGothic",sans-serif;
+  --ud-kyokasho-b:"UD デジタル 教科書体 NP","UDデジタル教科書体 NP","UD Digi Kyokasho NP","UD デジタル 教科書体 NK","UD Digi Kyokasho NK","UD デジタル 教科書体 N","UD Digi Kyokasho N","UD デジタル 教科書体 NP-B","UDデジタル教科書体 NP-B","UD Digi Kyokasho NP-B","UD デジタル 教科書体 NP-R","UDデジタル教科書体 NP-R","UD Digi Kyokasho NP-R","BIZ UDPMincho","BIZ UDPMincho Medium","BIZ UDMincho","BIZ UDMincho Medium",serif;
   --yu-mincho:"Yu Mincho","YuMincho","Hiragino Mincho ProN","MS PMincho",serif;
   --hiragino-mincho:"Hiragino Mincho ProN","YuMincho","Yu Mincho",serif;
   --ms-mincho:"MS PMincho","MS Mincho","Hiragino Mincho ProN",serif;
@@ -679,7 +679,10 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
           <fieldset class="grp lock-layout"><legend>書体・行間</legend>
             <div class="ctl"><label class="lbl">全体の書体（各項目の「全体に従う」に適用）</label>
               <select id="fontKind" style="width:100%"></select>
-              <p class="note" style="margin-top:4px">UD・BIZ系（視認性の高い書体）を優先します。楷書体・英字書体・UDデジタル教科書体（標準／太字）・MS UI Gothicなど、Windows等に標準搭載の書体もお使いの端末に入っていれば選べます。入っていない場合は近い書体で表示されます。<b>「オンラインフォント」の書体は、選ぶと自動でネットから読み込まれ、プレビューに即時反映されます</b>（要ネット接続）。</p>
+              <p class="note" id="fontMissingWarn" style="margin-top:4px;display:none;color:var(--shu)"></p>
+              <button type="button" class="btn small ghost" id="btnFontCheck" style="margin-top:6px">この端末でこの書体が使えるか診断</button>
+              <div class="note" id="fontCheckResult" style="display:none;margin-top:4px;line-height:1.8"></div>
+              <p class="note" style="margin-top:4px">UD・BIZ系（視認性の高い書体）を優先します。楷書体・英字書体・UDデジタル教科書体（標準／太字）・MS UI Gothicなど、Windows等に標準搭載の書体もお使いの端末に入っていれば選べます。<b>入っていない端末（macOS等）では近い代替書体で表示されます。</b><b>「オンラインフォント」の書体は、選ぶと自動でネットから読み込まれ、どの端末でも同じ字形で表示されます</b>（要ネット接続）。</p>
               <label class="chk" style="margin-top:4px"><input type="checkbox" id="gfontToggle">Googleフォント（Noto系）をオンラインで読み込む（要ネット接続）</label>
               <p class="note" id="gfontNote" style="margin-top:2px;display:none">オンラインフォントの読み込み中はインターネット接続が必要です。オフラインや館内ネットワークで使う場合は、オンラインフォントを選ばずOFFのままにしてください。</p></div>
             <div class="ctl"><label class="lbl">行間</label><div class="row"><input type="range" id="stLh" min="1.05" max="2.4" step="0.05"><output id="oLh"></output></div></div>
@@ -2169,7 +2172,7 @@ function refreshLayoutControls(){const p=proj();ensureLayout(p);const st=p.style
   setRange("bgOpacity","oBgOp",Math.round((cst.bgOpacity==null?1:cst.bgOpacity)*100),"%");
   setRange("bgScale","oBgScale",Math.round(cst.bgScale==null?100:cst.bgScale),"%");
   $("#textScrim").checked=st.textScrim;
-  $("#fontKind").value=st.font;
+  $("#fontKind").value=st.font;updateFontMissingWarn();
   setRange("stLh","oLh",st.lh,"");setRange("stPad","oPad",st.pad,"mm");
   $("#stBracket").checked=st.bracket;
   $("#stVertical").checked=!!st.vertical;
@@ -2225,7 +2228,59 @@ $("#rubyFont").addEventListener("change",e=>{proj().style.rubyFont=e.target.valu
 bindRange("rubyLs","oRubyLs",v=>proj().style.rubyLs=v,"em");
 $("#rubyAlign").addEventListener("change",e=>{proj().style.rubyAlign=e.target.value;save();renderEditor();});
 $("#textScrim").addEventListener("change",e=>{proj().style.textScrim=e.target.checked;save();renderEditor();});
-$("#fontKind").addEventListener("change",e=>{proj().style.font=e.target.value;save();renderEditor();});
+$("#fontKind").addEventListener("change",e=>{proj().style.font=e.target.value;save();renderEditor();updateFontMissingWarn();$("#fontCheckResult").style.display="none";});
+
+/* ===== フォント診断：選択中の書体の実フォントがこの端末に入っているか判定する =====
+   canvasで総称フォント(monospace/sans-serif/serif)の文字幅と、
+   「候補フォント,総称」の文字幅を比較し、差があれば候補フォントが実在すると判定する。 */
+const GENERIC_FAMS=["serif","sans-serif","monospace","cursive","fantasy","system-ui",
+  "ui-serif","ui-sans-serif","ui-monospace","ui-rounded","inherit","initial"];
+function isFontAvailable(family){
+  if(!family)return false;
+  const name=String(family).replace(/["']/g,"").trim();
+  if(!name||GENERIC_FAMS.includes(name.toLowerCase()))return false;
+  const text="あぁ亜衣書体教科ABCgQ字0123",size=72;
+  const ctx=document.createElement("canvas").getContext("2d");
+  const width=f=>{ctx.font=size+"px "+f;return ctx.measureText(text).width;};
+  return ["monospace","sans-serif","serif"].some(g=>{
+    const base=width(g);
+    const test=width('"'+name+'",'+g);
+    return Math.abs(test-base)>0.5; // 総称と幅が変われば実フォントが効いている
+  });
+}
+/* スタック文字列から、総称を除いた実ファミリ名の配列を返す */
+function stackFamilies(stack){
+  return String(stack||"").split(",").map(s=>s.trim().replace(/^["']|["']$/g,""))
+    .filter(s=>s&&!GENERIC_FAMS.includes(s.toLowerCase()));
+}
+/* 選択中のシステム書体（オンライン以外）の実フォントが1つも見つからないか */
+function selectedFontUnavailable(key){
+  const f=FONTS[key];
+  if(!f||f.gf)return false; // オンライン書体はダウンロードされるので対象外
+  const fams=stackFamilies(f.stack);
+  return fams.length>0 && !fams.some(isFontAvailable);
+}
+function updateFontMissingWarn(){
+  const w=$("#fontMissingWarn");if(!w)return;
+  const key=proj()&&proj().style?proj().style.font:null;
+  if(key&&selectedFontUnavailable(key)){
+    w.style.display="";
+    w.innerHTML="⚠ <b>この端末には選択中の書体の実フォントが見つかりません。</b>近い代替書体で表示しています。"+
+      "（例：UDデジタル教科書体はWindows搭載フォントで、macOS等には入っていません。）"+
+      "PowerPointと同じ字形にするには、その書体が入ったWindows端末で開くか、どの端末でも同じ字形で出る「オンラインフォント」をお使いください。";
+  }else{w.style.display="none";}
+}
+$("#btnFontCheck").addEventListener("click",()=>{
+  const key=proj().style.font,f=FONTS[key];const out=$("#fontCheckResult");
+  if(!f){out.style.display="none";return;}
+  const fams=stackFamilies(f.stack);
+  const rows=fams.map(n=>`${isFontAvailable(n)?"✓ 利用可":"×  なし"}：${esc(n)}`);
+  const anyReal=fams.some(isFontAvailable);
+  out.style.display="";
+  out.innerHTML=`<b>「${esc(f.label)}」</b>の候補フォント（この端末での判定）：<br>`+rows.join("<br>")+
+    `<br><b>→ ${anyReal?"実フォントのいずれかが利用できます（実フォントで表示）。":"実フォントは見つかりませんでした。総称（serif/sans-serif）による代替表示です。"}</b>`;
+});
+
 /* ===== オンラインフォントのオンデマンド読み込み =====
    「オンラインフォント」グループの書体が選ばれた（またはデータ中で使われている）瞬間に、
    その書体だけをGoogle Fontsから読み込む。読み込み完了後に再描画し、プレビューへ即時反映する。
