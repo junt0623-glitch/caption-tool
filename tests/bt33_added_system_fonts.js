@@ -22,7 +22,8 @@ async function run() {
     t.ok(reg.npb && reg.npb.stack.includes('UD デジタル 教科書体 NP'), 'NP-Bのスタックに24H2統合名「UD デジタル 教科書体 NP」が含まれる');
     t.ok(reg.npr && reg.npr.stack.includes('UD デジタル 教科書体 NP'), 'NP-R（標準）のスタックにも24H2統合名「UD デジタル 教科書体 NP」が含まれる');
     t.ok(reg.npb && reg.npb.stack.indexOf('UD デジタル 教科書体 NP"') < reg.npb.stack.indexOf('UD デジタル 教科書体 NP-B'), '統合名が旧太さ別名(NP-B)より前に並ぶ（24H2優先）');
-    t.ok(reg.npb && reg.npb.stack.indexOf('UD デジタル 教科書体 NP') < reg.npb.stack.indexOf('BIZ UDPGothic'), '実フォント名が代替書体より前に並ぶ');
+    t.ok(reg.npb && reg.npb.stack.indexOf('UD デジタル 教科書体 NP') < reg.npb.stack.indexOf('BIZ UDPMincho'), '実フォント名が代替書体より前に並ぶ');
+    t.ok(reg.npb && /BIZ UDPMincho".*serif$/.test(reg.npb.stack) && !reg.npb.stack.includes('BIZ UDPGothic'), '太字の代替は明朝系（教科書体に近い）。ゴシックへは落とさない');
     t.ok(reg.npb && reg.npb.stack.includes('UD Digi Kyokasho NP'), 'NP-Bのスタックに英語の統合名「UD Digi Kyokasho NP」も含まれる');
     t.ok(reg.npb && reg.npb.stack.includes('UD デジタル 教科書体 NP-B'), '旧OS互換のため太さ別名「UD デジタル 教科書体 NP-B」も残っている');
     t.eq(reg.npb && reg.npb.weight, 700, 'NP-Bは太字（weight:700）として登録される（24H2統合名を太字で出すため）');

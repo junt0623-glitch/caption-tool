@@ -62,6 +62,7 @@ node tests/bt05_layout_override_diff.js
 | bt34_transparent_png.js | 透過PNGを取り込んでも透明部分が黒くならない（アルファ有→PNG保存・透過保持／アルファ無→JPEG圧縮） |
 | bt35_export_filename.js | 書き出しファイル名（JSON・CSV）に展覧会名＋日付が自動で入ること（名称変更の追随・禁止文字の置換・空名時の補完） |
 | bt36_print_actual_size.js | 印刷ボタンで原寸印刷の案内→プリンター詳細設定（印刷ダイアログ）へ進む流れ・原寸@page設定・キャンセル・「次回から表示しない」の保存と直接印刷 |
+| bt37_font_diagnosis.js | フォント診断（isFontAvailableの陽性/陰性判定・未インストール書体選択時の警告・候補フォント利用可否の一覧表示・オンライン書体は警告対象外） |
 
 ## 新機能を追加した時のテスト追加手順
 
