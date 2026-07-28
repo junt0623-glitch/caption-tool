@@ -33,7 +33,9 @@ async function run() {
     }));
     t.eq(st2.open, false, '案内ダイアログが閉じる');
     t.eq(st2.prints, 1, '印刷ダイアログ（プリンター詳細設定への入口）へ進む');
-    t.ok(/@page\{size:210mm 297mm;margin:0\}/.test(st2.page), '原寸で出力するため用紙寸法(A4)がmm単位で@pageに設定される');
+    // 原寸で出力するため@pageに用紙を指定する。A4など標準用紙は用紙名で指定し、
+    // プリンタ側の用紙選択と確実に一致させる（bt39参照）。標準外はmm実寸。
+    t.ok(/@page\{size:(A4 portrait|210mm 297mm);margin:0\}/.test(st2.page), '原寸で出力するため用紙(A4)が@pageに設定される');
 
     // ---- キャンセルでは印刷しない ----
     await page.click('#btnPrint');

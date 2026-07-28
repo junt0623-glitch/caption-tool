@@ -529,14 +529,22 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 #print-root{display:none}
 @page{size:A4 portrait;margin:0}
 @media print{
+  /* 原寸印刷のため、ページ幅を超える要素を一切作らない（幅がページを超えると
+     ブラウザが「用紙に合わせる」判定でページ全体を縮小してしまう） */
+  html,body{width:auto !important;min-width:0 !important;max-width:none !important;margin:0 !important;padding:0 !important;overflow:visible !important}
   body{background:#fff}
   body > *:not(#print-root){display:none !important}
-  #print-root{display:block}
-  .sheet{box-shadow:none;page-break-after:always;break-after:page}
+  #print-root{display:block !important;width:auto !important;margin:0 !important;padding:0 !important;position:static !important;left:auto !important;top:auto !important}
+  .sheet{box-shadow:none;page-break-after:always;break-after:page;margin:0 !important;overflow:hidden}
   .sheet:last-child{page-break-after:auto;break-after:auto}
   .cap-card,.cap-img{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .cap-card{box-shadow:none}
+  .scale-ruler{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+/* 原寸確認用の目盛り（100mm）。印刷後に定規で測れば実寸かどうか判定できる */
+.scale-ruler{position:absolute;height:3.2mm;border:0.2mm solid #333;border-top:none;box-sizing:border-box}
+.scale-ruler i{position:absolute;top:0;width:0.2mm;height:1.6mm;background:#333}
+.scale-ruler span{position:absolute;left:0;top:3.4mm;font-size:6pt;color:#333;white-space:nowrap;font-family:var(--gothic)}
 </style>
 <style id="dynPageSize"></style>
 </head>
@@ -827,7 +835,9 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
         </div>
         <div class="ctl" id="finishRow"><label class="lbl">仕上げ</label>
           <label class="chk"><input type="checkbox" id="prMarks">トンボ（断裁位置の目印）を付ける</label>
-          <label class="chk"><input type="checkbox" id="prBorder">切り取り用の枠線を印刷する</label></div>
+          <label class="chk"><input type="checkbox" id="prBorder">切り取り用の枠線を印刷する</label>
+          <label class="chk"><input type="checkbox" id="prRuler">原寸確認用の目盛り（100mm）を入れる</label>
+          <p class="note" style="margin:2px 0 0 24px">印刷した紙の目盛りを定規で測り、ちょうど100mmなら実際のサイズで出力できています。ずれていれば印刷ダイアログの倍率が100%になっていません。</p></div>
         <button class="btn shu" id="btnPrint" style="width:100%;padding:10px;font-size:14px;letter-spacing:.1em">印刷する（実際のサイズ／PDF保存）</button>
         <p class="note" style="margin-top:10px">ボタンを押すと<b>原寸（実際のサイズ）で印刷するための案内</b>が出て、そこから<b>プリンターの詳細設定（印刷ダイアログ）</b>へ進めます。印刷ダイアログで<b>「実際のサイズ／倍率100%」「余白：なし」「背景のグラフィックON」</b>を選ぶと、寸法・背景どおりに出力されます（既定の「用紙に合わせる」のままだと縮小されます）。大型プリンターの場合は用紙サイズをその機種の設定（例：ロール紙・カスタムサイズ）に合わせてください。</p>
       </div>
@@ -927,6 +937,16 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <li>背景のグラフィック：<b>オン</b>（背景・罫線を印刷）</li>
     </ul>
     <p class="note" style="margin-bottom:10px">用紙サイズ・給紙・ロール紙などプリンター固有の設定は、印刷ダイアログの「<b>詳細設定</b>」、または「<b>システム ダイアログを使用して印刷（Ctrl+Shift+P）</b>」から開けます。</p>
+    <details style="margin-bottom:10px">
+      <summary style="cursor:pointer;color:var(--shu);font-weight:600">それでも縮小されてしまうときは（クリックで展開）</summary>
+      <ul style="margin:8px 0 0 20px;line-height:1.9">
+        <li><b>倍率が「既定」のままだと縮小されます。</b>「カスタム」を選び <b>100</b> と入力してください（Chrome／Edge：詳細設定 → 拡大縮小 → カスタム＝100）。</li>
+        <li><b>余白は「なし」</b>に。既定のままだと用紙に合わせて縮められます。</li>
+        <li><b>用紙サイズがA4など実際の用紙と一致</b>しているか確認（違う用紙だと自動で縮小されます）。</li>
+        <li>プリンター側にも「用紙に合わせる／フィット」設定があります。<b>「実寸」「100%」「等倍」</b>を選んでください。</li>
+        <li>確認するには、印刷タブの<b>「原寸確認用の目盛り（100mm）を入れる」</b>にチェックして印刷し、定規で測ってください。</li>
+      </ul>
+    </details>
     <label class="chk"><input type="checkbox" id="printGuideHide">次回から表示しない</label>
   </div>
   <div class="dlg-foot">
@@ -986,7 +1006,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     </ul>
     <h4>うまくいかないとき</h4>
     <ul>
-      <li><b>実際のサイズで印刷されない／縮小される</b>→ 印刷ダイアログの倍率を<b>「実際のサイズ」または「100%」</b>に（既定の「用紙に合わせる」だと縮む）。あわせて「余白：なし」。プリンター固有の設定は「詳細設定／システムダイアログを使用して印刷」から。</li>
+      <li><b>実際のサイズで印刷されない／縮小される</b>→ 印刷ダイアログの<b>倍率を「カスタム＝100」</b>に（「既定」のままだと用紙に合わせて縮小されます）。あわせて<b>「余白：なし」</b>、<b>用紙サイズが実際の用紙と一致</b>しているか確認。プリンター側の「用紙に合わせる／フィット」も<b>「実寸・等倍」</b>に。確認は印刷タブの<b>「原寸確認用の目盛り（100mm）を入れる」</b>で印刷し、定規で測ってください。</li>
       <li><b>背景・罫が印刷されない</b>→ 印刷ダイアログの「背景のグラフィック」をON。</li>
       <li><b>項目が札からはみ出す</b>→ 上部に赤い表示。位置か幅、サイズを調整。</li>
       <li><b>ドラッグしづらい（重なり）</b>→ 一旦別項目を選び直すか、範囲選択で選んで移動。</li>
@@ -3333,11 +3353,26 @@ function checkOverflow(){const p=proj(),st=p.style,size=curSize();let over=false
 /* ===== 印刷 ===== */
 let sheetZoom=.5;
 const SHEET_KINDS={a4:{w:210,h:297,fudge:1},large:{w:1000,h:800,fudge:2},custom:{w:1000,h:800,fudge:1}};
+/* 原寸印刷のための安全マージン：シートの実寸が用紙寸法と完全に同値だと、
+   小数丸めでわずかに超えた瞬間にブラウザが「用紙に合わせる」判定でページ全体を
+   縮小してしまう。幅にもごく僅かな余裕（0.5mm）を持たせて確実に収める。 */
+const SHEET_FUDGE_W=0.5;
 function sheetDims(o){
   const k=SHEET_KINDS[o.sheetKind]||SHEET_KINDS.a4;
   const w=(o.sheetKind==="custom")?Math.max(100,+o.sheetCustomW||1000):k.w;
   const h=(o.sheetKind==="custom")?Math.max(100,+o.sheetCustomH||800):k.h;
-  return {w,h,fudge:k.fudge};
+  return {w,h,fudge:k.fudge,fudgeW:SHEET_FUDGE_W};
+}
+/* 用紙が標準サイズと一致するときは @page に用紙名（A4等）を使う。
+   プリンタ側の用紙選択と確実に一致し、「用紙に合わせる」縮小が起きにくい。 */
+const PAPER_NAMES=[{n:"A4",w:210,h:297},{n:"A3",w:297,h:420},{n:"A5",w:148,h:210},
+  {n:"B4",w:257,h:364},{n:"B5",w:182,h:257},{n:"letter",w:215.9,h:279.4},{n:"legal",w:215.9,h:355.6}];
+function pageSizeRule(dims){
+  const hit=PAPER_NAMES.find(p=>Math.abs(p.w-dims.w)<0.6&&Math.abs(p.h-dims.h)<0.6);
+  if(hit)return `@page{size:${hit.n} portrait;margin:0}`;
+  const land=PAPER_NAMES.find(p=>Math.abs(p.h-dims.w)<0.6&&Math.abs(p.w-dims.h)<0.6);
+  if(land)return `@page{size:${land.n} landscape;margin:0}`;
+  return `@page{size:${dims.w}mm ${dims.h}mm;margin:0}`;
 }
 function refreshPrintControls(){const p=proj();ensureLayout(p);
   if(!p.printOpt)p.printOpt={mode:"impose",marks:false,border:true,section:"",face:"cap",sheetKind:"a4",sheetCustomW:1000,sheetCustomH:800,tight:false};
@@ -3347,13 +3382,14 @@ function refreshPrintControls(){const p=proj();ensureLayout(p);
   $$('input[name=printMode]').forEach(r=>r.checked=(r.value===o.mode));$("#prMarks").checked=o.marks;$("#prBorder").checked=o.border;
   $("#sheetKind").value=o.sheetKind;$("#customSheetRow").style.display=(o.sheetKind==="custom")?"":"none";
   $("#sheetCustomW").value=o.sheetCustomW;$("#sheetCustomH").value=o.sheetCustomH;
-  $("#prTight").checked=o.tight;
+  $("#prTight").checked=o.tight;$("#prRuler").checked=!!o.ruler;
   $("#prMarks").disabled=o.tight;$("#finishRow").style.opacity=o.tight?.45:1;
   const secs=sectionsOf(p),sel2=$("#printSection");sel2.innerHTML=`<option value="">すべての作品</option>`+secs.map(s=>`<option value="${esc(s)}" ${s===o.section?"selected":""}>${esc(s)}</option>`).join("");}
 $$('input[name=printMode]').forEach(r=>r.addEventListener("change",()=>{proj().printOpt.mode=r.value;save();renderSheets();}));
 $$('input[name=printFace]').forEach(r=>r.addEventListener("change",()=>{proj().printOpt.face=r.value;save();renderSheets();}));
 $("#prMarks").addEventListener("change",e=>{proj().printOpt.marks=e.target.checked;save();renderSheets();});
 $("#prBorder").addEventListener("change",e=>{proj().printOpt.border=e.target.checked;save();renderSheets();});
+$("#prRuler").addEventListener("change",e=>{proj().printOpt.ruler=e.target.checked;save();renderSheets();});
 $("#printSection").addEventListener("change",e=>{proj().printOpt.section=e.target.value;save();renderSheets();});
 $("#sheetKind").addEventListener("change",e=>{proj().printOpt.sheetKind=e.target.value;$("#customSheetRow").style.display=(e.target.value==="custom")?"":"none";save();renderSheets();});
 $("#sheetCustomW").addEventListener("input",e=>{proj().printOpt.sheetCustomW=Math.max(100,+e.target.value||1000);save();renderSheets();});
@@ -3367,7 +3403,7 @@ function buildSheets(){const p=proj();ensureLayout(p);
   const face=(o.face==="desc")?"desc":"cap";
   const works=p.works.filter(w=>!o.section||(w.section||"").trim()===o.section);
   const size=(face==="desc")?p.descSize:p.size,st=p.style,sheets=[];
-  const dims=sheetDims(o);const SW=dims.w,SH=dims.h-dims.fudge;
+  const dims=sheetDims(o);const SW=dims.w-dims.fudgeW,SH=dims.h-dims.fudge;
   const tight=!!o.tight;
   function newSheet(){const s=document.createElement("div");
     s.className="sheet"+(tight?" tight":(o.border?" cut-border":""));
@@ -3394,7 +3430,16 @@ function buildSheets(){const p=proj();ensureLayout(p);
   }else{const M=o.marks?12:8,G=o.marks?10:5;const cols=Math.max(1,Math.floor((SW-2*M+G)/(size.w+G)));const rows=Math.max(1,Math.floor((SH-2*M+G)/(size.h+G)));const per=cols*rows;
     works.forEach((w,i)=>{const k=i%per;const sheet=(k===0)?newSheet():sheets[sheets.length-1];const x=M+(k%cols)*(size.w+G),y=M+Math.floor(k/cols)*(size.h+G);place(sheet,w,x,y);});}
   sheets.forEach((s,i)=>{const n=document.createElement("div");n.className="pageno";n.textContent=`${esc(p.name)}　${i+1}/${sheets.length}`;s.appendChild(n);});
+  if(o.ruler)sheets.forEach(s=>s.appendChild(makeScaleRuler()));
   return sheets;}
+/* 原寸確認用の目盛り（100mm・10mm刻み）。印刷して定規で測れば実寸かどうか判定できる */
+function makeScaleRuler(){
+  const r=document.createElement("div");r.className="scale-ruler";
+  r.style.left="8mm";r.style.bottom="6mm";r.style.width="100mm";
+  for(let i=0;i<=10;i++){const t=document.createElement("i");t.style.left=(i*10)+"mm";
+    if(i%5===0)t.style.height="2.6mm";r.appendChild(t);}
+  const cap=document.createElement("span");cap.textContent="原寸確認：この目盛りが 100mm ちょうどなら実際のサイズで印刷されています";
+  r.appendChild(cap);return r;}
 function renderSheets(){if(!$("#tab-print").classList.contains("active"))return;ensureProjectFonts();const scroll=$("#sheetScroll");scroll.innerHTML="";
   const p=proj(),o=p.printOpt||{sheetKind:"a4"};const dims=sheetDims(o);
   const sheets=buildSheets();
@@ -3409,7 +3454,7 @@ function doPrint(){
   const root=$("#print-root");root.innerHTML="";const sheets=buildSheets();
   if(!sheets.length){alert("印刷できる作品がありません。作品台帳に登録してください。");return false;}
   const dims=sheetDims(proj().printOpt||{sheetKind:"a4"});
-  $("#dynPageSize").textContent=`@page{size:${dims.w}mm ${dims.h}mm;margin:0}`;
+  $("#dynPageSize").textContent=pageSizeRule(dims);
   sheets.forEach(s=>{s.style.transform="";root.appendChild(s);});
   // 解説文の自動流し込み調整は寸法計測が必要なため、一時的に画面外で可視化して実行
   root.style.cssText=`display:block;position:absolute;left:-${Math.round(dims.w*3+2000)}px;top:0;width:${dims.w}mm`;

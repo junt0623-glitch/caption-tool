@@ -64,6 +64,7 @@ node tests/bt05_layout_override_diff.js
 | bt36_print_actual_size.js | 印刷ボタンで原寸印刷の案内→プリンター詳細設定（印刷ダイアログ）へ進む流れ・原寸@page設定・キャンセル・「次回から表示しない」の保存と直接印刷 |
 | bt37_font_diagnosis.js | フォント診断（isFontAvailableの陽性/陰性判定・未インストール書体選択時の警告・候補フォント利用可否の一覧表示・オンライン書体は警告対象外） |
 | bt38_windows_fonts.js | Windows標準搭載フォントの網羅追加（「欧文（Windows標準）」グループ・Arial/Calibri/Consolas等の登録と適用・游ゴシックUI/メイリオUI/BIZ UD等幅の追加・診断連携） |
+| bt39_print_actual_size_fix.js | 原寸印刷の縮小対策（シートが用紙寸法を超えない安全マージン・A4等の用紙名@page指定・原寸確認用100mm目盛りの実寸/刻み/保存・印刷CSSのページ超過防止） |
 
 ## 新機能を追加した時のテスト追加手順
 
