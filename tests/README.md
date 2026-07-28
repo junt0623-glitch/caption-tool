@@ -66,6 +66,7 @@ node tests/bt05_layout_override_diff.js
 | bt38_windows_fonts.js | Windows標準搭載フォントの網羅追加（「欧文（Windows標準）」グループ・Arial/Calibri/Consolas等の登録と適用・游ゴシックUI/メイリオUI/BIZ UD等幅の追加・診断連携） |
 | bt39_print_actual_size_fix.js | 原寸印刷の縮小対策（シートが用紙寸法を超えない安全マージン・A4等の用紙名@page指定・原寸確認用100mm目盛りの実寸/刻み/保存・印刷CSSのページ超過防止） |
 | bt40_no_pageno.js | 印刷シート右下の見出し（展覧会名＋ページ番号）を廃止し、プレビュー・印刷DOM・複数枚のいずれにも含まれないこと |
+| bt41_tight_safe_edge.js | 詰めて並べる（tight）モードで外周の枠線が印字不可領域に入らないこと（四辺とも安全余白5mm以上・用紙中央配置・取り数維持・小さい札でも成立） |
 
 ## 新機能を追加した時のテスト追加手順
 

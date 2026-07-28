@@ -830,7 +830,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
           <label class="chk"><input type="radio" name="printMode" value="single">1点ずつ用紙中央に配置</label></div>
         <div class="ctl"><label class="lbl">詰め方</label>
           <label class="chk"><input type="checkbox" id="prTight">できるだけ詰めて並べる（枠線を共有・すき間なし）</label>
-          <p class="note" style="margin:2px 0 0 24px">余白と断裁ロスを減らし、1枚あたりの取り数を最大化します。隣り合うキャプションは1本の枠線（1px）を共有します。</p>
+          <p class="note" style="margin:2px 0 0 24px">余白と断裁ロスを減らし、1枚あたりの取り数を増やします。隣り合うキャプションは1本の枠線（1px）を共有します。プリンターの印字できない用紙端（約5mm）に外周の枠線が入って消えないよう、並べたブロックは用紙の中央に配置されます。</p>
         </div>
         <div class="ctl" id="finishRow"><label class="lbl">仕上げ</label>
           <label class="chk"><input type="checkbox" id="prMarks">トンボ（断裁位置の目印）を付ける</label>
@@ -3356,6 +3356,9 @@ const SHEET_KINDS={a4:{w:210,h:297,fudge:1},large:{w:1000,h:800,fudge:2},custom:
    小数丸めでわずかに超えた瞬間にブラウザが「用紙に合わせる」判定でページ全体を
    縮小してしまう。幅にもごく僅かな余裕（0.5mm）を持たせて確実に収める。 */
 const SHEET_FUDGE_W=0.5;
+/* プリンタの印字不可領域（用紙端の余白）。多くの機種で3〜5mm程度あるため、
+   枠線やトンボがこの内側に入らないよう最低限これだけ用紙端から離す */
+const SAFE_EDGE=5;
 function sheetDims(o){
   const k=SHEET_KINDS[o.sheetKind]||SHEET_KINDS.a4;
   const w=(o.sheetKind==="custom")?Math.max(100,+o.sheetCustomW||1000):k.w;
@@ -3421,10 +3424,15 @@ function buildSheets(){const p=proj();ensureLayout(p);
   const single=o.mode==="single"||size.w>SW-16||size.h>SH-16;
   if(single){works.forEach(w=>{const s=newSheet();place(s,w,Math.max(0,(SW-size.w)/2),Math.max(0,(SH-size.h)/2),true,true);});}
   else if(tight){
-    const M=1;const cols=Math.max(1,Math.floor((SW-2*M)/size.w));const rows=Math.max(1,Math.floor((SH-2*M)/size.h));const per=cols*rows;
+    // 多くのプリンタは用紙端から3〜5mmが印字不可領域のため、外周の枠線がそこに入ると
+    // 上端・左端の線が印刷されない。安全な余白（SAFE_EDGE）を確保し、並べたブロックを
+    // 用紙の中央に置くことで、上下左右いずれの枠線も確実に印刷範囲に収める。
+    const M=SAFE_EDGE;
+    const cols=Math.max(1,Math.floor((SW-2*M)/size.w));const rows=Math.max(1,Math.floor((SH-2*M)/size.h));const per=cols*rows;
+    const offX=Math.max(M,round1((SW-cols*size.w)/2)),offY=Math.max(M,round1((SH-rows*size.h)/2));
     works.forEach((w,i)=>{const k=i%per;const sheet=(k===0)?newSheet():sheets[sheets.length-1];
       const col=k%cols,row=Math.floor(k/cols);
-      const x=M+col*size.w,y=M+row*size.h;
+      const x=offX+col*size.w,y=offY+row*size.h;
       place(sheet,w,x,y,col===0,row===0);});
   }else{const M=o.marks?12:8,G=o.marks?10:5;const cols=Math.max(1,Math.floor((SW-2*M+G)/(size.w+G)));const rows=Math.max(1,Math.floor((SH-2*M+G)/(size.h+G)));const per=cols*rows;
     works.forEach((w,i)=>{const k=i%per;const sheet=(k===0)?newSheet():sheets[sheets.length-1];const x=M+(k%cols)*(size.w+G),y=M+Math.floor(k/cols)*(size.h+G);place(sheet,w,x,y);});}
