@@ -435,7 +435,6 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 .sheet{background:#fff;position:relative;overflow:hidden;box-shadow:0 4px 18px rgba(40,35,25,.18)}
 .sheet .cap-card{position:absolute;box-shadow:none}
 .sheet .tick{position:absolute;background:#000}
-.sheet .pageno{position:absolute;bottom:2mm;right:4mm;font-size:7pt;color:#999;font-family:var(--gothic)}
 .cut-border .cap-card{outline:0.2mm solid #AAA}
 .sheet.tight .cap-card{outline:none;box-sizing:border-box;border-right:1px solid #AAA;border-bottom:1px solid #AAA}
 .sheet.tight .cap-card.edge-l{border-left:1px solid #AAA}
@@ -3429,7 +3428,6 @@ function buildSheets(){const p=proj();ensureLayout(p);
       place(sheet,w,x,y,col===0,row===0);});
   }else{const M=o.marks?12:8,G=o.marks?10:5;const cols=Math.max(1,Math.floor((SW-2*M+G)/(size.w+G)));const rows=Math.max(1,Math.floor((SH-2*M+G)/(size.h+G)));const per=cols*rows;
     works.forEach((w,i)=>{const k=i%per;const sheet=(k===0)?newSheet():sheets[sheets.length-1];const x=M+(k%cols)*(size.w+G),y=M+Math.floor(k/cols)*(size.h+G);place(sheet,w,x,y);});}
-  sheets.forEach((s,i)=>{const n=document.createElement("div");n.className="pageno";n.textContent=`${esc(p.name)}　${i+1}/${sheets.length}`;s.appendChild(n);});
   if(o.ruler)sheets.forEach(s=>s.appendChild(makeScaleRuler()));
   return sheets;}
 /* 原寸確認用の目盛り（100mm・10mm刻み）。印刷して定規で測れば実寸かどうか判定できる */
