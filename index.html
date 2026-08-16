@@ -267,6 +267,55 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
   repeating-linear-gradient(45deg,transparent 0 calc(4mm*var(--bg-scale,1)),var(--bg-accent,#39588F) calc(4mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1) + .3px),transparent calc(4mm*var(--bg-scale,1) + .6px) calc(8mm*var(--bg-scale,1))),
   repeating-linear-gradient(-45deg,transparent 0 calc(4mm*var(--bg-scale,1)),var(--bg-accent,#39588F) calc(4mm*var(--bg-scale,1)) calc(4mm*var(--bg-scale,1) + .3px),transparent calc(4mm*var(--bg-scale,1) + .6px) calc(8mm*var(--bg-scale,1)))}
 
+/* ===== 建築（中国古代・漢代の木造高層建築）=====
+   出土する明器「陶楼」に見る重層の楼閣を意匠化。色は灰陶（グレー）と緑釉（銀化したグリーン）。 */
+/* 斗栱帯（ときょう）：軒を支える組物の列。上に軒桁、下に基壇の線 */
+.bg-tokyou::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(11mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);
+  background-repeat:repeat-x;
+  background-image:
+    /* 軒桁（最上部の水平材） */
+    linear-gradient(var(--bg-accent,#6E6E66),var(--bg-accent,#6E6E66)),
+    /* 散斗（上段の升） */
+    repeating-linear-gradient(90deg,transparent 0 calc(1.1mm*var(--bg-scale,1)),var(--bg-accent,#6E6E66) calc(1.1mm*var(--bg-scale,1)) calc(2.7mm*var(--bg-scale,1)),transparent calc(2.7mm*var(--bg-scale,1)) calc(6.3mm*var(--bg-scale,1)),var(--bg-accent,#6E6E66) calc(6.3mm*var(--bg-scale,1)) calc(7.9mm*var(--bg-scale,1)),transparent calc(7.9mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1))),
+    /* 上段の栱（長い腕木） */
+    repeating-linear-gradient(90deg,transparent 0 calc(.6mm*var(--bg-scale,1)),var(--bg-accent,#6E6E66) calc(.6mm*var(--bg-scale,1)) calc(8.4mm*var(--bg-scale,1)),transparent calc(8.4mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1))),
+    /* 中間の斗 */
+    repeating-linear-gradient(90deg,transparent 0 calc(3.4mm*var(--bg-scale,1)),var(--bg-accent,#6E6E66) calc(3.4mm*var(--bg-scale,1)) calc(5.6mm*var(--bg-scale,1)),transparent calc(5.6mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1))),
+    /* 下段の栱（短い腕木） */
+    repeating-linear-gradient(90deg,transparent 0 calc(1.8mm*var(--bg-scale,1)),var(--bg-accent,#6E6E66) calc(1.8mm*var(--bg-scale,1)) calc(7.2mm*var(--bg-scale,1)),transparent calc(7.2mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1))),
+    /* 大斗と柱頭 */
+    repeating-linear-gradient(90deg,transparent 0 calc(3.6mm*var(--bg-scale,1)),var(--bg-accent,#6E6E66) calc(3.6mm*var(--bg-scale,1)) calc(5.4mm*var(--bg-scale,1)),transparent calc(5.4mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1)));
+  background-size:100% calc(1.2mm*var(--bg-scale,1)),100% calc(1.8mm*var(--bg-scale,1)),100% calc(.9mm*var(--bg-scale,1)),100% calc(1.5mm*var(--bg-scale,1)),100% calc(.9mm*var(--bg-scale,1)),100% calc(2.2mm*var(--bg-scale,1));
+  background-position:0 0,0 calc(1.3mm*var(--bg-scale,1)),0 calc(3.2mm*var(--bg-scale,1)),0 calc(4.2mm*var(--bg-scale,1)),0 calc(5.8mm*var(--bg-scale,1)),0 calc(6.8mm*var(--bg-scale,1))}
+.bg-tokyou::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(2.4mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);
+  background:linear-gradient(180deg,var(--bg-accent,#6E6E66) 0 calc(.5mm*var(--bg-scale,1)),transparent calc(.5mm*var(--bg-scale,1)) calc(1.4mm*var(--bg-scale,1)),var(--bg-accent,#6E6E66) calc(1.4mm*var(--bg-scale,1)) calc(2.4mm*var(--bg-scale,1)))}
+/* 重層楼閣（陶楼）：左帯に各層の軒（水平材）と柱（縦材）を重ね、望楼の骨組みを示す */
+.bg-rokaku::before{content:"";position:absolute;left:0;top:0;bottom:0;width:calc(9mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);
+  background-repeat:repeat-y;
+  background-image:
+    /* 各層の軒（帯いっぱいに張り出す水平材）と、その下の腰組を細線で */
+    repeating-linear-gradient(180deg,var(--bg-accent,#5E7A63) 0 calc(1.1mm*var(--bg-scale,1)),transparent calc(1.1mm*var(--bg-scale,1)) calc(2.4mm*var(--bg-scale,1)),var(--bg-accent,#5E7A63) calc(2.4mm*var(--bg-scale,1)) calc(2.8mm*var(--bg-scale,1)),transparent calc(2.8mm*var(--bg-scale,1)) calc(13mm*var(--bg-scale,1))),
+    /* 柱（各層を貫く縦材） */
+    repeating-linear-gradient(90deg,transparent 0 calc(2.4mm*var(--bg-scale,1)),var(--bg-accent,#5E7A63) calc(2.4mm*var(--bg-scale,1)) calc(3.1mm*var(--bg-scale,1)),transparent calc(3.1mm*var(--bg-scale,1)) calc(5.9mm*var(--bg-scale,1)),var(--bg-accent,#5E7A63) calc(5.9mm*var(--bg-scale,1)) calc(6.6mm*var(--bg-scale,1)),transparent calc(6.6mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1))),
+    linear-gradient(rgba(94,122,99,.14),rgba(94,122,99,.14));
+  background-size:100% 100%,100% 100%,100% 100%}
+/* 緑釉の銀化（表面が虹色に光る風化）を淡い光斑で表す */
+.bg-rokaku::after{content:"";position:absolute;inset:0;opacity:calc(.3*var(--bg-opacity,1));pointer-events:none;background:
+  radial-gradient(ellipse at 78% 24%,rgba(255,255,255,.6),transparent 58%),
+  radial-gradient(ellipse at 62% 78%,rgba(206,222,206,.5),transparent 55%)}
+/* 連子窓（れんじまど・直櫺窓）：楼閣の窓に並ぶ縦格子を下帯に。緑釉の銀化を全面に淡く敷く */
+.bg-renji::before{content:"";position:absolute;inset:0;opacity:calc(.5*var(--bg-opacity,1));pointer-events:none;background:
+  radial-gradient(ellipse at 24% 28%,rgba(255,255,255,.6),transparent 58%),
+  radial-gradient(ellipse at 72% 70%,rgba(203,220,205,.5),transparent 56%)}
+.bg-renji::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(10mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);
+  background-repeat:repeat-x;
+  background-image:
+    linear-gradient(var(--bg-accent,#5E7A63),var(--bg-accent,#5E7A63)),
+    repeating-linear-gradient(90deg,transparent 0 calc(1.5mm*var(--bg-scale,1)),var(--bg-accent,#5E7A63) calc(1.5mm*var(--bg-scale,1)) calc(2.1mm*var(--bg-scale,1)),transparent calc(2.1mm*var(--bg-scale,1)) calc(3.6mm*var(--bg-scale,1))),
+    linear-gradient(var(--bg-accent,#5E7A63),var(--bg-accent,#5E7A63));
+  background-size:100% calc(.8mm*var(--bg-scale,1)),100% calc(6.2mm*var(--bg-scale,1)),100% calc(.8mm*var(--bg-scale,1));
+  background-position:0 0,0 calc(1.3mm*var(--bg-scale,1)),0 calc(8.2mm*var(--bg-scale,1))}
+
 /* ===== 東南アジアの美術様式 ===== */
 /* バティック更紗（ジャワ・パラン風の斜め流水） */
 .bg-batik::before{content:"";position:absolute;inset:0;opacity:calc(.5*var(--bg-opacity,1));background:
@@ -400,6 +449,7 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 .swatch.bg-seika{background:#FBFBF7}.swatch.bg-karakusa{background:#FBFBF7}.swatch.bg-gosai{background:#FDFCF7}
 .swatch.bg-funsai{background:#F9EFEC}.swatch.bg-kinsai{background:#221D18}.swatch.bg-amime{background:#F7F6F0}
 .swatch.bg-batik{background:#F5EEDD}.swatch.bg-khmer{background:#FBF6EA}.swatch.bg-songket{background:#F7F0DF}
+.swatch.bg-tokyou{background:#EDEBE5}.swatch.bg-rokaku{background:#E6EBE3}.swatch.bg-renji{background:#E9EEE7}
 .swatch.bg-girih{background:#F6F4EC}.swatch.bg-iznik{background:#FBFBF6}.swatch.bg-qali{background:#FBF6EC}
 .swatch.bg-meander{background:#FAF9F3}.swatch.bg-marble{background:#F5F4F1}.swatch.bg-delft{background:#F8F8F3}
 .swatch.bg-rococo{background:#FBF6F3}.swatch.bg-navajo{background:#F4EDE0}.swatch.bg-artdeco{background:#F7F3E8}
@@ -1111,6 +1161,7 @@ const BG_CATS=[
   {id:"rule",label:"罫線・枠"},
   {id:"glaze",label:"釉薬の色（中国陶磁・洗練）"},
   {id:"pattern",label:"文様・華飾（中国陶磁・個性派）"},
+  {id:"arch",label:"建築（中国古代・漢の楼閣）"},
   {id:"sea",label:"東南アジア"},
   {id:"westasia",label:"西アジア"},
   {id:"europe",label:"ヨーロッパ"},
@@ -1134,6 +1185,8 @@ const BACKGROUNDS=[
   {id:"gosai",label:"五彩帯（万暦風）",cat:"pattern"},{id:"funsai",label:"粉彩桃霞（雍正風）",cat:"pattern"},
   {id:"kinsai",label:"黒地金彩（景徳鎮風）",cat:"pattern"},{id:"amime",label:"藍網目文",cat:"pattern"},
   {id:"seigaiha",label:"青海波（淡）",cat:"pattern"},
+  {id:"tokyou",label:"斗栱帯（組物・灰陶）",cat:"arch"},{id:"rokaku",label:"重層楼閣（陶楼・緑釉）",cat:"arch"},
+  {id:"renji",label:"連子窓（緑釉の銀化）",cat:"arch"},
   {id:"batik",label:"バティック更紗（ジャワ）",cat:"sea"},{id:"khmer",label:"蓮弁帯（クメール）",cat:"sea"},
   {id:"songket",label:"ソンケット金糸帯（マレー）",cat:"sea"},
   {id:"girih",label:"アラベスク幾何文（ギリフ）",cat:"westasia"},{id:"iznik",label:"イズニク枠（オスマン陶器）",cat:"westasia"},
@@ -1268,6 +1321,7 @@ const PRESET_FILL={white:[255,255,255],cream:[251,247,238],hairline:[255,255,255
   juyo:[203,216,220],ryusen:[191,211,196],kinyo:[139,149,172],tenmoku:[32,26,22],
   rokan:[142,43,39],ruri:[39,67,127],ouyu:[226,180,76],
   saito:[216,162,120],raimon:[246,243,234],totetsu:[239,235,226],gatou:[233,228,216],
+  tokyou:[237,235,229],rokaku:[230,235,227],renji:[233,238,231],
   seika:[251,251,247],karakusa:[251,251,247],gosai:[253,252,247],funsai:[249,239,236],
   kinsai:[34,29,24],amime:[247,246,240],
   batik:[245,238,221],khmer:[251,246,234],songket:[247,240,223],
