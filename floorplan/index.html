@@ -171,7 +171,7 @@
 <header>
   <h1>展覧会図面作成<small>プロトタイプ</small></h1>
   <label>印刷範囲(A3)の回転
-    <select id="sheetSel" title="印刷範囲(A3)を90度きざみで回転します。展示室図面はこの範囲内に最大サイズで配置されます">
+    <select id="sheetSel" title="印刷範囲(A3)を90度きざみで回転します。展示室図面もこの回転に合わせて一緒に回転し、縦横比も印刷範囲に対応します">
       <option value="0" selected>0°(横)</option>
       <option value="90">90°(縦)</option>
       <option value="180">180°(横)</option>
@@ -245,6 +245,7 @@ const GRID = 500;            // グリッド 500mm
 const WALL_T = 150;          // 壁厚 150mm
 const SHEET = {w: 42000, h: 29700}; // 図面範囲(mm)。A3実寸×100を基準に回転(0/90/180/270)で切替
 const A3_LANDSCAPE = [420, 297];    // A3実寸(mm)。回転が90/270のときは幅高を入れ替える
+const BASE_SHEET_W = A3_LANDSCAPE[0]*100, BASE_SHEET_H = A3_LANDSCAPE[1]*100; // 常にA3横基準(展示室図面のサイズ計算用)
 
 /* ---- レイヤー構成 ----
    最背面: 展示室図面(state.rooms) → 壁 → ケース・展示台 → 作品 → テキスト(最前面)
@@ -253,13 +254,13 @@ const layerVis = {room:true, furniture:true, work:true, text:true};
 const layerOf = o => o.type==="work" ? 1 : o.type==="text" ? 2 : 0;
 
 /* 展示室図面のデフォルト4面。img は読み込んだ図面画像(dataURL)。
-   rot は画像自体の回転角(0/90/180/270。スキャンが横向き等の補正用) */
+   回転は個別には持たず、印刷範囲(state.sheet.rot)と共通の値を使う */
 function defaultRooms(){
   return {current:"", list:[
-    {id:"r1a1", name:"展示室1-A（旧第1）", img:null, scale:100, dx:0, dy:0, op:70, rot:0},
-    {id:"r1a2", name:"展示室1-A（旧第2）", img:null, scale:100, dx:0, dy:0, op:70, rot:0},
-    {id:"r1b",  name:"展示室1-B",          img:null, scale:100, dx:0, dy:0, op:70, rot:0},
-    {id:"r2b",  name:"展示室2-B",          img:null, scale:100, dx:0, dy:0, op:70, rot:0},
+    {id:"r1a1", name:"展示室1-A（旧第1）", img:null, scale:100, dx:0, dy:0, op:70},
+    {id:"r1a2", name:"展示室1-A（旧第2）", img:null, scale:100, dx:0, dy:0, op:70},
+    {id:"r1b",  name:"展示室1-B",          img:null, scale:100, dx:0, dy:0, op:70},
+    {id:"r2b",  name:"展示室2-B",          img:null, scale:100, dx:0, dy:0, op:70},
   ]};
 }
 
@@ -475,16 +476,20 @@ function render(){
   for (let y=0; y<=SHEET.h; y+=GRID)
     el("line",{x1:0,y1:y,x2:SHEET.w,y2:y,stroke: y%(GRID*4)?"var(--grid)":"var(--grid-major)","stroke-width":y%(GRID*4)?6:10}, g);
 
-  // 展示室図面(最背面レイヤー)。rotは画像自体の向き補正(0/90/180/270)で、
-  // 画像の中心(x+w/2, y+h/2)を軸に回転させる(位置・倍率設定はそのまま活かせる)
+  // 展示室図面(最背面レイヤー)。回転は印刷範囲(state.sheet.rot)と共通の1つの値を使い、
+  // 個別には設定させない(「印刷範囲と図面を個別に回転させない」)。
+  // 画像の基準サイズは常にA3横基準(BASE_SHEET_W/H)で固定し、印刷範囲と同じ角度だけ
+  // 回転させることで、90/270度でも回転後の見た目の縦横比が印刷範囲と自動的に一致する。
+  // 回転の中心は「印刷範囲の中心」に合わせるので、位置(dx,dy)を0のままにしておけば
+  // 回転させても図面は常に印刷範囲の中央にきれいに収まる
   const room = state.rooms?.list.find(r=>r.id===state.rooms.current);
   if (layerVis.room && room?.img){
-    const rx = room.dx||0, ry = room.dy||0;
-    const rw = SHEET.w*(room.scale??100)/100, rh = SHEET.h*(room.scale??100)/100;
-    const rrot = normRot(room.rot);
+    const rot = normRot(state.sheet?.rot);
+    const rw = BASE_SHEET_W*(room.scale??100)/100, rh = BASE_SHEET_H*(room.scale??100)/100;
+    const rx = SHEET.w/2 - rw/2 + (room.dx||0), ry = SHEET.h/2 - rh/2 + (room.dy||0);
     el("image",{href:room.img, x:rx, y:ry, width:rw, height:rh,
       preserveAspectRatio:"xMinYMin meet", opacity:(room.op??70)/100,
-      transform: rrot ? `rotate(${rrot} ${rx+rw/2} ${ry+rh/2})` : "",
+      transform: rot ? `rotate(${rot} ${rx+rw/2} ${ry+rh/2})` : "",
       "pointer-events":"none"}, svg);
   }
 
@@ -608,13 +613,12 @@ function renderSide(){
         rhtml += `<div class="field"><label>倍率% / 透明度%</label><div class="pair">
           <input id="rScale" type="number" step="5" value="${cur.scale??100}">
           <input id="rOp" type="number" step="5" min="0" max="100" value="${cur.op??70}"></div></div>
-        <div class="field"><label>位置 X / Y (mm)</label><div class="pair">
+        <div class="field"><label>中心からのずれ X / Y (mm)</label><div class="pair">
           <input id="rDx" type="number" step="100" value="${cur.dx||0}">
           <input id="rDy" type="number" step="100" value="${cur.dy||0}"></div></div>
-        <div class="field"><label>画像の回転</label>
-          <select id="rRot" title="スキャンが横向き・上下逆等のとき90度きざみで補正します">
-            ${[0,90,180,270].map(d=>`<option value="${d}" ${normRot(cur.rot)===d?"selected":""}>${d}°</option>`).join("")}
-          </select></div>`;
+        <div class="note">回転はヘッダーの「印刷範囲(A3)の回転」と共通です。
+          図面は常に印刷範囲の中心に合わせて一緒に回転するので、ずれが0のままなら
+          回転させても位置合わせし直す必要はありません</div>`;
       } else {
         rhtml += `<div class="note">※PDFはPNG/JPG画像に変換してから読み込んでください</div>`;
       }
@@ -642,8 +646,6 @@ function renderSide(){
       const inp = document.getElementById(id);
       if (inp) inp.oninput = e => { cur[key] = +e.target.value||0; render(); };
     }
-    const rRot = document.getElementById("rRot");
-    if (rRot) rRot.onchange = e => { pushUndo(); cur.rot = normRot(+e.target.value); render(); };
   }
   else if (wall){
     const len = Math.hypot(wall.x2-wall.x1, wall.y2-wall.y1);
@@ -1087,7 +1089,8 @@ document.getElementById("fileInput").onchange = async ev=>{
     else if (state.sheet?.preset) state.sheet = {rot: /p$/.test(state.sheet.preset) ? 90 : 0}; // a3l/a4l→0°, a3p/a4p→90°
     else state.sheet = {rot: 0};
     if (!state.rooms) state.rooms = defaultRooms();
-    for (const r of state.rooms.list) if (r.rot == null) r.rot = 0; // 旧形式の展示室図面には回転が無い
+    // 旧形式(rot:0/90/180/270を個別に持つ展示室図面)を読み込んでも、回転は
+    // 印刷範囲(state.sheet.rot)側に一本化したため r.rot の値は無視してよい
     if (state.scalePct == null) state.scalePct = 100; // 0%も有効な値なので !state.scalePct にしない
     if (!state.workList) state.workList = [];
     if (!state.images) state.images = {};
