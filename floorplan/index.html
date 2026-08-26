@@ -915,15 +915,22 @@ svg.addEventListener("pointerdown", ev=>{
       // 未選択のものをクリックしたら単独選択。選択済みならグループ全体をドラッグ
       if (!selectedIds.has(id)) selectOnly(id);
       pushUndo();
-      const items = [];
-      let primary = null;
+      const items = [];       // 移動対象のオブジェクト {obj, ox, oy}
+      const wallItems = [];   // 移動対象の壁(始点・終点をまとめて平行移動) {wall, ox1,oy1,ox2,oy2, ox,oy}
+      let primary = null;     // ドラッグ量の基準点(オブジェクト・壁共通で {ox,oy} を持つ)
       for (const o of state.objects){
         if (!selectedIds.has(o.id)) continue;
         const it = {obj:o, ox:o.x, oy:o.y};
         items.push(it);
         if (o.id === id) primary = it;
       }
-      if (primary) drag = {mode:"move", start:{x:p.x,y:p.y}, items, primary};
+      for (const w of state.walls){
+        if (!selectedIds.has(w.id)) continue;
+        const it = {wall:w, ox1:w.x1, oy1:w.y1, ox2:w.x2, oy2:w.y2, ox:w.x1, oy:w.y1};
+        wallItems.push(it);
+        if (w.id === id) primary = it;
+      }
+      if (primary) drag = {mode:"move", start:{x:p.x,y:p.y}, items, wallItems, primary};
       render(); renderSide();
     }
   } else if (multiKey){
@@ -969,6 +976,10 @@ svg.addEventListener("pointermove", ev=>{
     const ny = snapMove(pr.oy + (p.y - drag.start.y), ev.altKey);
     const dx = nx - pr.ox, dy = ny - pr.oy;
     for (const it of drag.items){ it.obj.x = it.ox + dx; it.obj.y = it.oy + dy; }
+    for (const it of drag.wallItems || []){
+      it.wall.x1 = it.ox1 + dx; it.wall.y1 = it.oy1 + dy;
+      it.wall.x2 = it.ox2 + dx; it.wall.y2 = it.oy2 + dy;
+    }
     render();
   }
   else if (drag.mode === "marquee"){
