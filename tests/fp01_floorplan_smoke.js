@@ -82,16 +82,19 @@ async function run() {
   await page.waitForTimeout(100);
   t.eq(await page.locator('line.wall-line').count(), 2, 'Ctrl+YでもRedoできる');
 
-  // --- 用紙(A3横/縦): シート矩形(最初のrect)の寸法が切り替わる ---
+  // --- 印刷範囲(A3)の回転: 90度きざみでシート矩形(最初のrect)の寸法が切り替わる ---
   const sheetW = () => page.$eval('svg#plan > rect', r => +r.getAttribute('width'));
-  t.eq(await sheetW(), 42000, '既定はA3横でシート幅42000mm');
-  await page.selectOption('#sheetSel', 'a3p');
+  t.eq(await sheetW(), 42000, '既定は0°(A3横)でシート幅42000mm');
+  await page.selectOption('#sheetSel', '90');
   await page.waitForTimeout(100);
-  t.eq(await sheetW(), 29700, 'A3縦に切り替えるとシート幅29700mm');
+  t.eq(await sheetW(), 29700, '90°(A3縦)に切り替えるとシート幅29700mm');
+  await page.selectOption('#sheetSel', '180');
+  await page.waitForTimeout(100);
+  t.eq(await sheetW(), 42000, '180°は0°と同じ寸法(A3横)になる');
   await page.click('#undoBtn');
   await page.waitForTimeout(100);
-  t.eq(await sheetW(), 42000, '用紙切替もUndoで戻る');
-  t.eq(await page.$eval('#sheetSel', s => s.value), 'a3l', 'Undo後は用紙セレクトも同期される');
+  t.eq(await sheetW(), 29700, '回転のUndoで1つ前(90°)に戻る');
+  t.eq(await page.$eval('#sheetSel', s => s.value), '90', 'Undo後は回転セレクトも同期される');
 
   t.noErrors(errors);
   await context.close();
