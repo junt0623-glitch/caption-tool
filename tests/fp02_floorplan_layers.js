@@ -105,8 +105,10 @@ async function run() {
   await page.selectOption('#roomSel', 'r1a1');
   await page.waitForTimeout(100);
   await page.setInputFiles('#roomFile', FIXTURE_PNG);
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(300);
   t.eq(await page.locator('svg#plan > image').count(), 1, '図面画像が最背面に描画される');
+  t.ok(await page.$eval('svg#plan > image', i => i.getAttribute('href').startsWith('data:image/jpeg')),
+    '図面画像は圧縮(JPEG化)されてから保存される(フリーズ対策)');
   t.ok(await page.$eval('svg#plan', s => {
     const img = s.querySelector(':scope > image');
     const obj = s.querySelector('g.obj');

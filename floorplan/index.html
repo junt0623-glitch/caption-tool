@@ -604,11 +604,14 @@ function renderSide(){
     };
     const rBtn = document.getElementById("roomImgBtn"), rFile = document.getElementById("roomFile");
     if (rBtn) rBtn.onclick = ()=> rFile.click();
-    if (rFile) rFile.onchange = e => {
+    if (rFile) rFile.onchange = async e => {
       const f = e.target.files[0]; if (!f) return;
-      const rd = new FileReader();
-      rd.onload = ()=>{ pushUndo(); cur.img = rd.result; render(); renderSide(); };
-      rd.readAsDataURL(f);
+      document.getElementById("hint").textContent = "図面画像を読み込み中…";
+      try{
+        const dataUrl = await compressRoomImage(f);
+        pushUndo(); cur.img = dataUrl; render(); renderSide();
+      }catch(err){ alert("図面画像の読み込みに失敗しました: " + err.message); }
+      e.target.value = "";
     };
     const rDel = document.getElementById("roomImgDel");
     if (rDel) rDel.onclick = ()=>{ pushUndo(); cur.img = null; render(); renderSide(); };
@@ -660,11 +663,14 @@ function renderSide(){
     if (pNo) pNo.oninput = e => { obj.no = normNo(e.target.value) || e.target.value.trim(); render(); renderList(); };
     const pImgBtn = document.getElementById("pImgBtn"), pImgFile = document.getElementById("pImgFile");
     if (pImgBtn) pImgBtn.onclick = ()=> pImgFile.click();
-    if (pImgFile) pImgFile.onchange = e => {
+    if (pImgFile) pImgFile.onchange = async e => {
       const f = e.target.files[0]; if (!f) return;
-      const rd = new FileReader();
-      rd.onload = ()=>{ pushUndo(); obj.img = rd.result; render(); renderSide(); };
-      rd.readAsDataURL(f);
+      document.getElementById("hint").textContent = "画像を読み込み中…";
+      try{
+        const dataUrl = await compressImage(f);
+        pushUndo(); obj.img = dataUrl; render(); renderSide();
+      }catch(err){ alert("画像の読み込みに失敗しました: " + err.message); }
+      e.target.value = "";
     };
     const pImgDel = document.getElementById("pImgDel");
     if (pImgDel) pImgDel.onclick = ()=>{ pushUndo(); delete obj.img; render(); renderSide(); };
@@ -724,23 +730,29 @@ function parseWorkList(text){
   }
   return list;
 }
-/* 表示用に軽く圧縮(長辺512px・JPEG)してdataURL化する */
-function compressImage(file){
+/* 画像を長辺maxEdge px・JPEGに圧縮してdataURL化する。
+   スキャン画像やスマホ写真はそのまま読み込むと数千px×数十MBのdataURLになり、
+   render()は毎回SVGを作り直す(=毎フレームhrefを再デコード)ため、
+   圧縮せず生のdataURLを使うと操作中にブラウザがフリーズする。
+   必ずこの関数を通してからstateに保存すること */
+function compressImage(file, maxEdge=512, quality=0.72){
   return new Promise((res, rej)=>{
     const img = new Image();
     img.onload = ()=>{
-      const MAX = 512, r = Math.min(1, MAX/Math.max(img.width, img.height));
+      const r = Math.min(1, maxEdge/Math.max(img.width, img.height));
       const c = document.createElement("canvas");
       c.width = Math.max(1, Math.round(img.width*r));
       c.height = Math.max(1, Math.round(img.height*r));
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(img.src);
-      res(c.toDataURL("image/jpeg", 0.72));
+      res(c.toDataURL("image/jpeg", quality));
     };
-    img.onerror = ()=>{ URL.revokeObjectURL(img.src); rej(new Error("画像を開けません")); };
+    img.onerror = ()=>{ URL.revokeObjectURL(img.src); rej(new Error("画像を開けません(壊れているか、画像ファイルではない可能性があります)")); };
     img.src = URL.createObjectURL(file);
   });
 }
+/* 展示室図面は拡大して見る前提のため作品サムネイルより高い解像度で圧縮する */
+function compressRoomImage(file){ return compressImage(file, 3000, 0.85); }
 
 function renderList(){
   const ul = document.getElementById("workList");
