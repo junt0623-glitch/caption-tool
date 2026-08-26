@@ -54,13 +54,27 @@ async function run() {
   await page.waitForTimeout(100);
   t.eq(await remainOf('c_alpha'), '残 2', '配置したケースを削除すると残数が戻る');
 
-  // --- 縮尺%: ケース・展示台の表示サイズが変わる ---
+  // --- 縮尺%(0〜150): ケース・展示台の表示サイズが変わる ---
   const alphaW = () => page.$eval('g[data-stock="c_alpha"] rect', r => +r.getAttribute('width'));
+  t.eq(await page.$eval('#scalePct', s => [s.min, s.max]), ['0', '150'], '縮尺入力の範囲は0〜150');
   t.eq(await alphaW(), 2400, '縮尺100%でα幅2400mm');
   await page.fill('#scalePct', '50');
   await page.dispatchEvent('#scalePct', 'change');
   await page.waitForTimeout(100);
   t.eq(await alphaW(), 1200, '縮尺50%でα幅1200mm(半分)');
+  await page.fill('#scalePct', '150');
+  await page.dispatchEvent('#scalePct', 'change');
+  await page.waitForTimeout(100);
+  t.eq(await alphaW(), 3600, '縮尺150%でα幅3600mm(1.5倍)');
+  await page.fill('#scalePct', '0');
+  await page.dispatchEvent('#scalePct', 'change');
+  await page.waitForTimeout(100);
+  t.eq(await page.$eval('#scalePct', s => s.value), '0', '縮尺0%を入力しても100%にリセットされない(falsy値のバグ回避)');
+  t.ok(await alphaW() > 0, '縮尺0%でも最小表示サイズが保たれ、幅0にはならない(クリックできなくなるのを防ぐ)');
+  await page.fill('#scalePct', '200'); // 範囲外の入力
+  await page.dispatchEvent('#scalePct', 'change');
+  await page.waitForTimeout(100);
+  t.eq(await page.$eval('#scalePct', s => s.value), '150', '範囲外(200%)を入力すると上限150%にクランプされる');
   await page.fill('#scalePct', '100');
   await page.dispatchEvent('#scalePct', 'change');
   await page.waitForTimeout(100);
