@@ -82,6 +82,27 @@ async function run() {
   await page.waitForTimeout(100);
   t.eq(await page.locator('line.wall-line').count(), 2, 'Ctrl+YでもRedoできる');
 
+  // --- 壁の選択とドラッグ移動(回帰テスト: 選択はできても移動できない不具合があった) ---
+  await page.click('.tool[data-tool="select"]');
+  await page.mouse.click(cx, cy + 150); // 1本目の壁(水平線)の中点付近をクリックして選択
+  await page.waitForTimeout(100);
+  t.ok((await page.locator('#props .field label').first().textContent()).includes('壁'),
+    '壁をクリックすると壁のプロパティ(長さ)が表示される(=選択できている)');
+  const wallBefore = await page.$eval('line.wall-line', l =>
+    ({ x1: +l.getAttribute('x1'), y1: +l.getAttribute('y1'), x2: +l.getAttribute('x2'), y2: +l.getAttribute('y2') }));
+  await page.mouse.move(cx, cy + 150);
+  await page.mouse.down();
+  await page.mouse.move(cx + 60, cy + 60, { steps: 5 });
+  await page.mouse.up();
+  await page.waitForTimeout(100);
+  const wallAfter = await page.$eval('line.wall-line', l =>
+    ({ x1: +l.getAttribute('x1'), y1: +l.getAttribute('y1'), x2: +l.getAttribute('x2'), y2: +l.getAttribute('y2') }));
+  t.ok(wallAfter.x1 !== wallBefore.x1 || wallAfter.y1 !== wallBefore.y1,
+    '選択した壁をドラッグすると実際に位置が動く');
+  const wdx = wallAfter.x1 - wallBefore.x1, wdy = wallAfter.y1 - wallBefore.y1;
+  t.eq([wallAfter.x2 - wallBefore.x2, wallAfter.y2 - wallBefore.y2], [wdx, wdy],
+    '始点・終点が同じ量だけ平行移動する(壁の向き・長さは保たれる)');
+
   // --- 印刷範囲(A3)の回転: 90度きざみでシート矩形(最初のrect)の寸法が切り替わる ---
   const sheetW = () => page.$eval('svg#plan > rect', r => +r.getAttribute('width'));
   t.eq(await sheetW(), 42000, '既定は0°(A3横)でシート幅42000mm');
