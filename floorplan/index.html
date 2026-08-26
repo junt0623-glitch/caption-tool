@@ -320,16 +320,63 @@ function clearSelect(){ selectedIds.clear(); selectedId = null; }
    (矩形なので見た目は0°と180°、90°と270°で同じになるが、回転の角度自体は保持する)。
    展示室図面の画像はこの範囲内に最大サイズで自動フィットする */
 function normRot(deg){ return ((Math.round((deg||0)/90)*90) % 360 + 360) % 360; }
-function applySheet(){
-  const rot = normRot(state.sheet?.rot);
-  const landscape = rot % 180 === 0;
+/* 指定の回転角でのシート寸法[w,h]を返す(副作用なし。SHEETを書き換えるのはapplySheet) */
+function sheetDimsForRot(rot){
+  const landscape = normRot(rot) % 180 === 0;
   const [pw, ph] = landscape ? A3_LANDSCAPE : [A3_LANDSCAPE[1], A3_LANDSCAPE[0]];
-  SHEET.w = pw * 100; SHEET.h = ph * 100;
+  return [pw*100, ph*100];
+}
+function applySheet(){
+  const [w,h] = sheetDimsForRot(state.sheet?.rot);
+  SHEET.w = w; SHEET.h = h;
 }
 function syncSheetUI(){
   document.getElementById("sheetSel").value = String(normRot(state.sheet?.rot));
   document.getElementById("scalePct").value = state.scalePct ?? 100;
   applySheet();
+}
+/* 0/90/180/270度限定の厳密なcos/sin(Math.cos/sinの浮動小数誤差を避け、
+   回転の往復で座標がわずかにずれるのを防ぐ) */
+function cosDeg(d){ d = normRot(d); return d===0?1 : d===90?0 : d===180?-1 : 0; }
+function sinDeg(d){ d = normRot(d); return d===0?0 : d===90?1 : d===180?0 : -1; }
+/* 印刷範囲の回転が変わったとき、壁・オブジェクトの座標を「見た目の配置を保ったまま」
+   新しい回転後のシート座標系に変換する。常にA3横基準(BASE_SHEET_W/H)の物理座標を
+   経由することで、展示室図面の回転(render()内)と同じ考え方で一貫させている:
+   1) 今の回転(fromRot)でのフレーム座標→物理座標(A3横基準)に戻す
+   2) 物理座標→新しい回転(toRot)でのフレーム座標に変換する */
+function remapPointForRotation(x, y, fromRot, toRot){
+  if (normRot(fromRot) === normRot(toRot)) return [x, y];
+  const [fw, fh] = sheetDimsForRot(fromRot);
+  const [tw, th] = sheetDimsForRot(toRot);
+  const fcx = fw/2, fcy = fh/2, tcx = tw/2, tcy = th/2;
+  const fc = cosDeg(fromRot), fs = sinDeg(fromRot);
+  // フレーム→物理(fromRotの逆回転)
+  const ux = x - fcx, uy = y - fcy;
+  const lx = ux*fc + uy*fs, ly = -ux*fs + uy*fc;
+  const px = lx + BASE_SHEET_W/2, py = ly + BASE_SHEET_H/2;
+  // 物理→新フレーム(toRotの順回転)
+  const tc = cosDeg(toRot), ts = sinDeg(toRot);
+  const plx = px - BASE_SHEET_W/2, ply = py - BASE_SHEET_H/2;
+  return [Math.round(tcx + plx*tc - ply*ts), Math.round(tcy + plx*ts + ply*tc)];
+}
+/* 印刷範囲の回転が変わったとき、壁・作品・ケース・展示台・テキストなど
+   配置済みのものすべてを新しい回転に合わせてまとめて回転させる
+   (展示室図面は個別に持たず既にstate.sheet.rotで回転しているので対象外)。
+   壁は始点・終点を remapPointForRotation で変換するだけで向きが保たれる。
+   オブジェクトは位置に加えて obj.rot にも回転差分を足し、向き自体も回す */
+function rotateContentWithSheet(fromRot, toRot){
+  if (normRot(fromRot) === normRot(toRot)) return;
+  const delta = normRot(toRot) - normRot(fromRot);
+  for (const w of state.walls){
+    [w.x1, w.y1] = remapPointForRotation(w.x1, w.y1, fromRot, toRot);
+    [w.x2, w.y2] = remapPointForRotation(w.x2, w.y2, fromRot, toRot);
+  }
+  for (const o of state.objects){
+    [o.x, o.y] = remapPointForRotation(o.x, o.y, fromRot, toRot);
+    // obj.rotは90度単位に限らない任意角度なので、normRot()(90度に丸める)ではなく
+    // 単純な0〜359の剰余で正規化する(rotateSelected()と同じ考え方)
+    o.rot = ((((o.rot||0) + delta) % 360) + 360) % 360;
+  }
 }
 /* 縮尺(0〜150%): 可動ケース・展示台の図面に対する表示サイズ倍率 */
 function fsc(){ return Math.min(150, Math.max(0, state.scalePct ?? 100)) / 100; }
@@ -1164,8 +1211,10 @@ document.getElementById("printBtn").onclick = ()=>{
 };
 document.getElementById("sheetSel").onchange = ev=>{
   pushUndo();
-  state.sheet = {rot: normRot(+ev.target.value)};
-  applySheet(); fitView(); render();
+  const fromRot = normRot(state.sheet?.rot), toRot = normRot(+ev.target.value);
+  rotateContentWithSheet(fromRot, toRot); // 壁・作品・ケース・展示台・テキストもまとめて回転
+  state.sheet = {rot: toRot};
+  applySheet(); fitView(); render(); renderSide();
 };
 document.getElementById("scalePct").onchange = ev=>{
   pushUndo();
