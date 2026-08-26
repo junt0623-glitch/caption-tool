@@ -128,6 +128,20 @@ async function run() {
     const obj = s.querySelector('g.obj');
     return img && obj && (img.compareDocumentPosition(obj) & Node.DOCUMENT_POSITION_FOLLOWING);
   }), '図面画像はオブジェクトより背面(先に描画)');
+
+  // --- 展示室図面の回転(90度きざみ、スキャンの向き補正用) ---
+  t.eq(await page.$eval('svg#plan > image', i => i.getAttribute('transform') || ''), '',
+    '回転0°のときはtransformが付かない');
+  await page.selectOption('#rRot', '90');
+  await page.waitForTimeout(100);
+  t.ok(/rotate\(90 /.test(await page.$eval('svg#plan > image', i => i.getAttribute('transform'))),
+    '回転90°を選ぶと90度分のrotate transformが付く');
+  await page.click('#undoBtn');
+  await page.waitForTimeout(100);
+  t.eq(await page.$eval('svg#plan > image', i => i.getAttribute('transform') || ''), '',
+    '画像の回転もUndoで戻る');
+  t.eq(await page.$eval('#rRot', s => s.value), '0', 'Undo後は回転セレクトも同期される');
+
   await page.uncheck('#layerBar input[data-layer="room"]');
   await page.waitForTimeout(100);
   t.eq(await page.locator('svg#plan > image').count(), 0, '図面レイヤーを隠すと画像が消える');
