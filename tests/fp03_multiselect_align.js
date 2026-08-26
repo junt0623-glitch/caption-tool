@@ -28,10 +28,12 @@ async function placeWork(page, px, py) {
 
 async function objs(page) {
   return await page.evaluate(() => window.__state ? null : (() => {
-    // stateは直接触れないのでDOMから復元
+    // stateは直接触れないのでDOMから復元(位置はtranslate、向きはrotateから)
     return [...document.querySelectorAll('g.obj')].map(g => {
-      const m = g.getAttribute('transform').match(/translate\(([-\d.]+),([-\d.]+)\)/);
-      return { id: +g.dataset.id, x: +m[1], y: +m[2], sel: g.classList.contains('selected') };
+      const t = g.getAttribute('transform');
+      const m = t.match(/translate\(([-\d.]+),([-\d.]+)\)/);
+      const r = t.match(/rotate\(([-\d.]+)\)/);
+      return { id: +g.dataset.id, x: +m[1], y: +m[2], rot: r ? +r[1] : 0, sel: g.classList.contains('selected') };
     });
   })());
 }
@@ -113,6 +115,54 @@ async function run() {
   const moved = (await objs(page)).find(o => o.id === target.id);
   const dx = Math.abs(moved.x - target.x);
   t.ok(dx > 0 && dx % 50 !== 0, `Altドラッグで50mm刻みでない微移動ができる(移動量${dx}mm)`);
+
+  // --- 複数選択したケース・展示台をまとめて回転できる ---
+  await page.keyboard.press('Escape');
+  const beforeFurniture = await objs(page);
+  const untouchedId = beforeFurniture[0].id; // 選択しない既存オブジェクト(回転が影響しないことの対照)
+
+  const caseBox = await page.locator('g[data-stock="c_alpha"] rect').boundingBox();
+  const dest1 = await planToClient(page, 8000, 20000);
+  await page.mouse.move(caseBox.x + caseBox.width / 2, caseBox.y + caseBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(dest1.x, dest1.y, { steps: 5 });
+  await page.mouse.up();
+  await page.waitForTimeout(80);
+  const afterCase = await objs(page);
+  const caseId = afterCase.find(o => !beforeFurniture.some(b => b.id === o.id)).id;
+
+  const fixBox = await page.locator('g[data-stock="p_120"] rect').boundingBox();
+  const dest2 = await planToClient(page, 12000, 20000);
+  await page.mouse.move(fixBox.x + fixBox.width / 2, fixBox.y + fixBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(dest2.x, dest2.y, { steps: 5 });
+  await page.mouse.up();
+  await page.waitForTimeout(80);
+  const afterFix = await objs(page);
+  const fixId = afterFix.find(o => !afterCase.some(b => b.id === o.id)).id;
+
+  await page.mouse.click(dest1.x, dest1.y);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(dest2.x, dest2.y);
+  await page.keyboard.up('Shift');
+  await page.waitForTimeout(60);
+  list = await objs(page);
+  t.eq(list.filter(o => o.sel).map(o => o.id).sort((a, b) => a - b), [caseId, fixId].sort((a, b) => a - b),
+    'ケースと展示台をShift+クリックでまとめて選択できる');
+  t.ok(await page.locator('#props [data-rotate]').count() > 0, '複数選択時に回転ボタンが表示される');
+
+  await page.click('#props [data-rotate="90"]');
+  await page.waitForTimeout(80);
+  list = await objs(page);
+  t.eq([list.find(o => o.id === caseId).rot, list.find(o => o.id === fixId).rot], [90, 90],
+    '↻90°ボタンで選択したケース・展示台がどちらも90度回転する');
+
+  await page.click('#props [data-rotate="-15"]');
+  await page.waitForTimeout(80);
+  list = await objs(page);
+  t.eq([list.find(o => o.id === caseId).rot, list.find(o => o.id === fixId).rot], [75, 75],
+    '↺15°ボタンでさらに戻せる(90→75度、各オブジェクトの現在の向きに角度を加算する仕様)');
+  t.eq(list.find(o => o.id === untouchedId).rot, 0, '選択していない他のオブジェクトの向きは変わらない');
 
   t.noErrors(errors);
   await context.close();
