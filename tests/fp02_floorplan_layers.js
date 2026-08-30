@@ -40,6 +40,8 @@ async function run() {
   const remainOf = key => page.$eval(`g[data-stock="${key}"] text:nth-of-type(2)`, e => e.textContent);
   t.eq(await remainOf('c_alpha'), '残 2', 'αの残数は2');
   t.eq(await remainOf('p_120'), '残 30', '展示台1.2×0.9の残数は30');
+  t.eq(await remainOf('p_153'), '残 27', '展示台1.53×0.9の残数は27');
+  t.eq(await remainOf('p_180'), '残 24', '展示台1.8×0.9の残数は24');
 
   // --- 取り出すと残数が減り、削除で在庫に戻る ---
   const alphaBox = await page.locator('g[data-stock="c_alpha"] rect').boundingBox();
