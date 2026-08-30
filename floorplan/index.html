@@ -159,8 +159,47 @@
   .stock text.lbl{fill:var(--ink);text-anchor:middle;pointer-events:none}
 
   /* 印刷 */
+  /* 画像フォルダ(モーダル) */
+  #libModal{
+    position:fixed;inset:0;background:rgba(28,28,30,.55);
+    display:flex;align-items:center;justify-content:center;z-index:50;
+  }
+  #libModal[hidden]{display:none}
+  #libBox{
+    background:var(--paper);border-radius:8px;width:min(760px,92vw);max-height:86vh;
+    display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.3);
+  }
+  #libBox header{
+    background:transparent;color:var(--ink);border-bottom:1px solid var(--line);
+    padding:12px 16px;gap:10px;flex-wrap:nowrap;
+  }
+  #libBox h3{font-size:14px;font-weight:600;flex:1}
+  #libBox .sub{font-size:11px;color:#8c887c;font-weight:400}
+  /* flex:1(basis 0)にすると中身が高さに寄与せずグリッドが潰れるため basis は auto */
+  #libGrid{
+    flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 16px;display:grid;gap:12px;
+    grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+  }
+  #libGrid .empty{grid-column:1/-1;color:#8c887c;font-size:13px;padding:24px 4px;text-align:center;line-height:1.7}
+  .libcard{
+    border:1px solid var(--line);border-radius:6px;background:#fff;overflow:hidden;
+    display:flex;flex-direction:column;cursor:pointer;
+  }
+  .libcard:hover{border-color:var(--accent)}
+  .libcard.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+  .libcard img{width:100%;height:104px;object-fit:contain;background:var(--panel);display:block}
+  .libcard .nm{font-size:11px;padding:5px 6px;word-break:break-all;line-height:1.4}
+  .libcard .nm b{color:var(--accent)}
+  .libcard .rm{
+    border:none;border-top:1px solid var(--line);background:#fff;color:#c33;
+    font-size:11px;padding:4px;cursor:pointer;
+  }
+  .libcard .rm:hover{background:#c33;color:#fff}
+  #libFoot{border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:8px;align-items:center}
+  #libFoot .note{flex:1;margin:0;font-size:11px;color:#8c887c}
+
   @media print{
-    header,#toolbar,#side,#zoomCtrl,#hint{display:none!important}
+    header,#toolbar,#side,#zoomCtrl,#hint,#libModal{display:none!important}
     body{background:#fff}
     #canvasWrap{position:fixed;inset:0;background:#fff}
   }
@@ -186,7 +225,7 @@
   <button class="hbtn" id="redoBtn" title="やり直し (Ctrl+Y / Ctrl+Shift+Z)">↪ やり直し</button>
   <div class="spacer"></div>
   <button class="hbtn" id="wlBtn" title="作品リスト(CSV)を読み込み。「番号」列の番号が図面に表示されます">📋 作品リスト</button>
-  <button class="hbtn" id="imgsBtn" title="作品画像を一括読み込み。ファイル名の番号とリストの番号を対応付けます">🖼 作品画像</button>
+  <button class="hbtn" id="imgsBtn" title="画像フォルダを開く。あらかじめ画像を入れておき、図面上の作品をダブルクリックして選べます">🗂 画像フォルダ</button>
   <input type="file" id="wlInput" accept=".csv,.tsv,.txt" hidden>
   <input type="file" id="imgsInput" accept="image/*" multiple hidden>
   <button class="hbtn" id="loadBtn">📂 読み込み</button>
@@ -231,6 +270,23 @@
     <div id="workListWrap"><ul id="workList"></ul></div>
   </aside>
 </main>
+
+<!-- 画像フォルダ。ヘッダーの「🗂 画像フォルダ」で一覧・追加、
+     図面上の作品をダブルクリックすると選択モードで開く -->
+<div id="libModal" hidden>
+  <div id="libBox">
+    <header>
+      <h3 id="libTitle">画像フォルダ</h3>
+      <button class="sbtn" id="libAddBtn" style="flex:none;width:auto">＋ 画像を追加</button>
+      <button class="sbtn" id="libClose" style="flex:none;width:auto">閉じる</button>
+    </header>
+    <div id="libGrid"></div>
+    <div id="libFoot">
+      <div class="note" id="libNote"></div>
+      <button class="sbtn" id="libClear" style="flex:none;width:auto">選択中の作品から画像を外す</button>
+    </div>
+  </div>
+</div>
 
 <script>
 "use strict";
@@ -297,11 +353,43 @@ let state = {
   scalePct: 100,           // ケース・展示台の表示縮尺(0〜150%)
   rooms: defaultRooms(),
   workList: [],            // 作品リスト(CSV) [{no,title,artist}]
-  images: {},              // 作品画像 番号→dataURL(512pxに圧縮済み)
+  library: [],             // 画像フォルダ [{id,name,no,img}] アップロード済み画像。JSON保存に含まれる
+  images: {},              // 旧形式の作品画像 番号→dataURL(読み込み時にlibraryへ移行する)
   stock: defaultStock(),
   walls: [],               // {id,x1,y1,x2,y2}
-  objects: []              // {id,type:'work'|'case'|'fixture'|'text', x,y,w,h,rot, no,label,stockKey,img}
+  objects: []              // {id,type:'work'|'case'|'fixture'|'text', x,y,w,h,rot, no,label,stockKey,imgId,img}
 };
+let libSeq = 1;            // 画像フォルダのID採番
+
+/* 作品に表示する画像を決める。優先順位:
+   1) imgId … 図面上でダブルクリックして画像フォルダから明示的に選んだもの(最優先)
+   2) img   … 旧形式の個別指定画像
+   3) 番号一致 … 画像フォルダ内でファイル名の番号が作品番号と一致するもの(一括読込の自動対応)
+   4) state.images … 旧形式の一括読込画像 */
+function libItem(id){ return state.library.find(it=>it.id===id) || null; }
+function workImage(o){
+  if (o.imgId){ const it = libItem(o.imgId); if (it) return it.img; }
+  if (o.img) return o.img;
+  const key = String(o.no ?? "");
+  if (key){
+    const byNo = state.library.find(it=>it.no && it.no === key);
+    if (byNo) return byNo.img;
+    if (state.images[key]) return state.images[key];
+  }
+  return null;
+}
+/* 番号に対応する画像(作品リストのサムネイル用。配置前の作品にも使う) */
+function imageForNo(no){
+  const key = String(no ?? ""); if (!key) return null;
+  const byNo = state.library.find(it=>it.no && it.no === key);
+  return byNo ? byNo.img : (state.images[key] || null);
+}
+/* 画像フォルダに1件追加(同名ファイルは上書きせず別エントリとして持つ) */
+function addToLibrary(name, img){
+  const item = {id: "L" + (libSeq++), name, no: normNo(name), img};
+  state.library.push(item);
+  return item;
+}
 let tool = "select";
 let selectedIds = new Set();  // 複数選択。selectedId は主選択(プロパティ表示・整列の基準)
 let selectedId = null;
@@ -478,17 +566,21 @@ function snapWallPoint(p, excludeId){
 function today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 
 /* ---- 履歴 ----
-   画像(state.images / rooms.img / objects.img)はサイズが大きいので履歴から除外し、
-   Undo/Redoをまたいで現在の画像を維持する(画像の読み込み自体は履歴で戻らない) */
+   画像(state.library / state.images / rooms.img / objects.img)はサイズが大きいので
+   履歴から除外し、Undo/Redoをまたいで現在の画像を維持する
+   (画像フォルダへの追加・削除自体は履歴で戻らない。一方で作品への画像の割り当ては
+   obj.imgId という短い文字列なので通常どおりUndoできる) */
 function snapshot(){
-  return JSON.stringify(state, (k,v)=> (k==="images" || k==="img") ? undefined : v);
+  return JSON.stringify(state, (k,v)=> (k==="images" || k==="img" || k==="library") ? undefined : v);
 }
 function applySnapshot(json){
   const images = state.images || {};
+  const library = state.library || [];
   const roomImgs = {}; for (const r of state.rooms?.list||[]) roomImgs[r.id] = r.img;
   const objImgs = {};  for (const o of state.objects||[]) if (o.img) objImgs[o.id] = o.img;
   state = JSON.parse(json);
   state.images = images;
+  state.library = library;
   for (const r of state.rooms?.list||[]) if (r.id in roomImgs) r.img = roomImgs[r.id];
   for (const o of state.objects||[]) if (objImgs[o.id]) o.img = objImgs[o.id];
 }
@@ -592,7 +684,7 @@ function render(){
 
     if (o.type === "work"){
       el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"#fff",stroke:"var(--ink)","stroke-width":20}, grp);
-      const img = state.images[String(o.no)] || o.img;
+      const img = workImage(o);
       if (img)
         el("image",{href:img,x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,
           preserveAspectRatio:"xMidYMid meet","pointer-events":"none"}, grp);
@@ -740,10 +832,14 @@ function renderSide(){
       html += `<div class="field"><label>幅 × 奥行 (mm)</label><div class="pair">
         <input id="pW" type="number" step="10" value="${obj.w}">
         <input id="pH" type="number" step="10" value="${obj.h}"></div></div>`;
-      html += `<div class="field"><label>画像(個別指定。一括読込より優先されません)</label><div class="pair">
-        <button class="sbtn" id="pImgBtn">${obj.img?"画像を差し替え":"📂 画像を選択"}</button>
-        ${obj.img?`<button class="sbtn" id="pImgDel">外す</button>`:""}
-        </div></div><input type="file" id="pImgFile" accept="image/*" hidden>`;
+      const curImg = workImage(obj);
+      html += `<div class="field"><label>画像</label>
+        ${curImg?`<img src="${curImg}" alt="" style="width:100%;max-height:120px;object-fit:contain;background:var(--panel);border:1px solid var(--line);border-radius:4px;margin-bottom:6px">`:""}
+        <div class="pair">
+          <button class="sbtn" id="pImgBtn">🗂 画像フォルダから選ぶ</button>
+          ${(obj.imgId||obj.img)?`<button class="sbtn" id="pImgDel">外す</button>`:""}
+        </div>
+        <div class="note" style="margin-top:6px">図面上の作品をダブルクリックしても選べます</div></div>`;
     } else if (obj.type === "fixture" || obj.type === "case"){
       html += `<div class="field"><label>${obj.type==="case"?"可動ケース":"展示台"}</label>
         <input value="${esc(obj.label||"")} — ${obj.w/1000}×${obj.h/1000}m" readonly></div>
@@ -765,19 +861,10 @@ function renderSide(){
     pR.oninput = e => { obj.rot = +e.target.value||0; render(); };
     const pNo = document.getElementById("pNo");
     if (pNo) pNo.oninput = e => { obj.no = normNo(e.target.value) || e.target.value.trim(); render(); renderList(); };
-    const pImgBtn = document.getElementById("pImgBtn"), pImgFile = document.getElementById("pImgFile");
-    if (pImgBtn) pImgBtn.onclick = ()=> pImgFile.click();
-    if (pImgFile) pImgFile.onchange = async e => {
-      const f = e.target.files[0]; if (!f) return;
-      document.getElementById("hint").textContent = "画像を読み込み中…";
-      try{
-        const dataUrl = await compressImage(f);
-        pushUndo(); obj.img = dataUrl; render(); renderSide();
-      }catch(err){ alert("画像の読み込みに失敗しました: " + err.message); }
-      e.target.value = "";
-    };
+    const pImgBtn = document.getElementById("pImgBtn");
+    if (pImgBtn) pImgBtn.onclick = ()=> openLibrary(obj);
     const pImgDel = document.getElementById("pImgDel");
-    if (pImgDel) pImgDel.onclick = ()=>{ pushUndo(); delete obj.img; render(); renderSide(); };
+    if (pImgDel) pImgDel.onclick = ()=>{ pushUndo(); delete obj.imgId; delete obj.img; render(); renderSide(); };
     document.getElementById("delBtn").onclick = deleteSelected;
   }
   renderList();
@@ -866,8 +953,9 @@ function renderList(){
     // 作品リスト(CSV)を読み込み済み: リストの番号を軸に配置状況を表示
     ul.innerHTML = state.workList.map(w=>{
       const key = String(w.no);
-      const img = state.images[key];
       const placed = placedByNo.get(key);
+      // 配置済みならその作品に実際に表示されている画像を、未配置なら番号一致の画像を出す
+      const img = placed ? workImage(placed) : imageForNo(key);
       return `<li data-no="${esc(key)}" class="${placed && selectedIds.has(placed.id)?"sel":""}">
         <span class="num">${esc(w.no)}</span>
         ${img?`<img class="thumb" src="${img}" alt="">`:""}
@@ -912,6 +1000,7 @@ function deleteSelected(){
 let drag = null; // {mode:'wall'|'move'|'pan', ...}
 const pointers = new Map(); // アクティブなポインタ(ピンチズーム判定用)
 let pinch = null;           // {d,cx,cy} 直前フレームの2本指間距離と中点
+let lastTap = {id:null, t:0}; // 自前のダブルクリック判定用(直前に押したオブジェクトと時刻)
 
 /* ---- 壁のコピー&ペースト(Ctrl+C / Ctrl+V) ---- */
 const PASTE_OFFSET = 500; // 貼り付けるたびに少しずらす量(mm)。原本にぴったり重ならないように
@@ -968,6 +1057,25 @@ svg.addEventListener("pointerdown", ev=>{
       render(); renderSide();
     }
     return;
+  }
+
+  // 作品をダブルクリック(タッチならダブルタップ) → 画像フォルダから画像を選ぶ。
+  // render()がpointerdownのたびにSVGを作り直す(=down時とup時で要素が別物になる)ため、
+  // ブラウザのclick/dblclickイベントは発火しない。そこで自前で二度押しを判定する
+  if (tool === "select" && hit){
+    const hitId = +hit.dataset.id;
+    const now = Date.now();
+    if (lastTap.id === hitId && now - lastTap.t < 400){
+      const o = state.objects.find(x=>x.id === hitId);
+      if (o && o.type === "work"){
+        lastTap = {id:null, t:0};
+        drag = null; // 1回目のクリックで始まっていた移動を打ち切る
+        selectOnly(o.id); render(); renderSide();
+        openLibrary(o);
+        return;
+      }
+    }
+    lastTap = {id: hitId, t: now};
   }
 
   if (tool === "wall"){
@@ -1158,6 +1266,11 @@ document.querySelectorAll("#layerBar input").forEach(cb=>{
 /* ---- キーボード ---- */
 window.addEventListener("keydown", ev=>{
   if (ev.target.matches("input,textarea")) return;
+  // 画像フォルダを開いている間はEscapeで閉じるだけ(図面側の操作は受け付けない)
+  if (!document.getElementById("libModal").hidden){
+    if (ev.key==="Escape"){ ev.preventDefault(); closeLibrary(); }
+    return;
+  }
   if ((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==="z" && !ev.shiftKey){ ev.preventDefault(); undo(); }
   else if ((ev.ctrlKey||ev.metaKey) && (ev.key.toLowerCase()==="y" || (ev.key.toLowerCase()==="z" && ev.shiftKey))){ ev.preventDefault(); redo(); }
   else if ((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==="a"){ // 全オブジェクト選択
@@ -1198,6 +1311,18 @@ document.getElementById("fileInput").onchange = async ev=>{
     if (state.scalePct == null) state.scalePct = 100; // 0%も有効な値なので !state.scalePct にしない
     if (!state.workList) state.workList = [];
     if (!state.images) state.images = {};
+    // 画像フォルダ。旧形式(番号→dataURLのstate.imagesだけを持つファイル)は
+    // ここでlibraryへ移して、以後は画像フォルダから選べるようにする
+    if (!Array.isArray(state.library)) state.library = [];
+    libSeq = 1;
+    for (const it of state.library){
+      const n = +String(it.id||"").replace(/\D/g, "");
+      if (n >= libSeq) libSeq = n + 1;
+    }
+    for (const [no, img] of Object.entries(state.images)){
+      if (!img || state.library.some(it=>it.no === no)) continue;
+      addToLibrary(`${no}.jpg`, img);
+    }
     // 在庫(可動ケース・展示台)の総数はアプリ側の設定であり、ファイルごとに
     // 保存された古い総数を引きずらないよう、読み込み時は常に現在のdefaultStock()で
     // 上書きする(総数を変更しても、既存の保存ファイルを開くと反映されない不具合の修正)。
@@ -1280,20 +1405,93 @@ document.getElementById("wlInput").onchange = async ev=>{
   ev.target.value = "";
 };
 
-/* 作品画像の一括読み込み: ファイル名の番号→リストの番号に対応付け、圧縮して保存 */
-document.getElementById("imgsBtn").onclick = ()=> document.getElementById("imgsInput").click();
+/* ---- 画像フォルダ(モーダル) ----
+   pickTarget が null なら「一覧・管理」モード、作品オブジェクトなら「その作品に
+   割り当てる画像を選ぶ」モード(図面上でダブルクリックしたとき) */
+let pickTarget = null;
+function openLibrary(target){
+  pickTarget = target || null;
+  document.getElementById("libModal").hidden = false;
+  renderLibrary();
+}
+function closeLibrary(){
+  pickTarget = null;
+  document.getElementById("libModal").hidden = true;
+}
+function renderLibrary(){
+  const grid = document.getElementById("libGrid");
+  const picking = !!pickTarget;
+  document.getElementById("libTitle").innerHTML = picking
+    ? `作品 <b style="color:var(--accent)">${esc(pickTarget.no ?? "")}</b> に使う画像を選ぶ <span class="sub">(クリックで決定)</span>`
+    : `画像フォルダ <span class="sub">(ここに入れた画像は図面と一緒に保存されます)</span>`;
+  document.getElementById("libClear").hidden = !picking;
+  document.getElementById("libNote").textContent = picking
+    ? "画像フォルダに入っている画像から選べます"
+    : `${state.library.length}件。図面上の作品をダブルクリックすると、ここから画像を選べます`;
+
+  if (!state.library.length){
+    grid.innerHTML = `<div class="empty">画像フォルダは空です。<br>
+      「＋ 画像を追加」から画像をまとめて入れておくと、図面上の作品を<br>
+      ダブルクリックして選べるようになります。<br>
+      ファイル名を作品番号(例: 10001.jpg)にしておくと、その番号の作品に自動で対応します。</div>`;
+    return;
+  }
+  const curId = picking ? pickTarget.imgId : null;
+  grid.innerHTML = state.library.map(it=>`
+    <div class="libcard${it.id===curId?" sel":""}" data-lib="${it.id}">
+      <img src="${it.img}" alt="">
+      <div class="nm">${it.no?`<b>${esc(it.no)}</b> `:""}${esc(it.name)}</div>
+      <button class="rm" data-rm="${it.id}">フォルダから削除</button>
+    </div>`).join("");
+
+  grid.querySelectorAll("[data-lib]").forEach(card=>{
+    card.onclick = ev=>{
+      if (ev.target.closest("[data-rm]")) return; // 削除ボタンは別処理
+      if (!pickTarget) return;                    // 一覧モードでは選択しない
+      pushUndo();
+      pickTarget.imgId = card.dataset.lib;
+      delete pickTarget.img;                      // 旧形式の個別画像より優先させる
+      closeLibrary(); render(); renderSide();
+    };
+  });
+  grid.querySelectorAll("[data-rm]").forEach(b=>{
+    b.onclick = ev=>{
+      ev.stopPropagation();
+      const id = b.dataset.rm;
+      const used = state.objects.filter(o=>o.imgId===id).length;
+      if (used && !confirm(`この画像は${used}件の作品で使われています。フォルダから削除しますか?`)) return;
+      state.library = state.library.filter(it=>it.id!==id);
+      for (const o of state.objects) if (o.imgId===id) delete o.imgId;
+      renderLibrary(); render(); renderSide();
+    };
+  });
+}
+document.getElementById("imgsBtn").onclick = ()=> openLibrary(null);
+document.getElementById("libClose").onclick = closeLibrary;
+document.getElementById("libModal").onclick = ev=>{ if (ev.target.id === "libModal") closeLibrary(); };
+document.getElementById("libAddBtn").onclick = ()=> document.getElementById("imgsInput").click();
+document.getElementById("libClear").onclick = ()=>{
+  if (!pickTarget) return;
+  pushUndo();
+  delete pickTarget.imgId; delete pickTarget.img;
+  closeLibrary(); render(); renderSide();
+};
+
+/* 画像フォルダへの追加(複数可)。圧縮してからstate.libraryに入れる。
+   ファイル名に番号があれば、その番号の作品に自動で対応づく */
 document.getElementById("imgsInput").onchange = async ev=>{
   const files = [...ev.target.files]; if (!files.length) return;
-  let ok = 0, skipped = [];
+  const note = document.getElementById("libNote");
+  let ok = 0, failed = 0;
   for (const f of files){
-    const no = normNo(f.name);
-    if (!no){ skipped.push(f.name); continue; }
-    try{ state.images[no] = await compressImage(f); ok++; }
-    catch(e){ skipped.push(f.name); }
+    if (note) note.textContent = `読み込み中… ${ok + failed + 1}/${files.length}`;
+    try{ addToLibrary(f.name, await compressImage(f)); ok++; }
+    catch(e){ failed++; }
   }
+  if (!document.getElementById("libModal").hidden) renderLibrary();
   render(); renderSide();
   document.getElementById("hint").textContent =
-    `作品画像 ${ok}/${files.length} 件を読み込みました` + (skipped.length ? `(番号なし/失敗: ${skipped.length}件)` : "");
+    `画像フォルダに ${ok}件 追加しました` + (failed ? `(失敗: ${failed}件)` : "");
   ev.target.value = "";
 };
 document.getElementById("undoBtn").onclick = undo;
