@@ -277,8 +277,8 @@ function defaultStock(){
     {key:"c_yhb",    cat:"case", name:"横長非免震背景", w:1800, h:1000, total:2},
     {key:"c_andon",  cat:"case", name:"行燈免震",       w:1000, h:1000, total:5},
     {key:"c_nozoki", cat:"case", name:"のぞき",         w:1800, h:1000, total:5},
-    {key:"p_153",    cat:"ped",  name:"1.53×0.9",       w:1530, h:900,  total:18},
-    {key:"p_180",    cat:"ped",  name:"1.8×0.9",        w:1800, h:900,  total:12},
+    {key:"p_153",    cat:"ped",  name:"1.53×0.9",       w:1530, h:900,  total:27},
+    {key:"p_180",    cat:"ped",  name:"1.8×0.9",        w:1800, h:900,  total:24},
     {key:"p_090",    cat:"ped",  name:"0.9×0.9",        w:900,  h:900,  total:7},
     {key:"p_200",    cat:"ped",  name:"2.0×2.0",        w:2000, h:2000, total:2},
     {key:"p_120",    cat:"ped",  name:"1.2×0.9",        w:1200, h:900,  total:30},
@@ -630,7 +630,10 @@ function renderSide(){
   // 複数選択中は整列ツールを表示
   if (selectedIds.size >= 2){
     const n = state.objects.filter(o=>selectedIds.has(o.id)).length;
+    const wallsInSel = state.walls.filter(w=>selectedIds.has(w.id));
     props.innerHTML = `<div class="note">${selectedIds.size}個を選択中(整列対象: ${n}個)</div>
+      ${wallsInSel.length ? `<div class="field"><button class="sbtn" id="copyWallsBtn" style="width:100%">
+        📋 選択した壁(${wallsInSel.length}本)をコピー(Ctrl+C)</button></div>` : ""}
       <div class="field"><label>整列</label>
         <div class="algrid">
           <button class="sbtn" data-align="left" title="左端をそろえる">⇤ 左</button>
@@ -658,6 +661,8 @@ function renderSide(){
       <button class="del" id="delBtn">選択をまとめて削除</button>`;
     props.querySelectorAll("[data-align]").forEach(b=> b.onclick = ()=> alignSelected(b.dataset.align));
     props.querySelectorAll("[data-rotate]").forEach(b=> b.onclick = ()=> rotateSelected(+b.dataset.rotate));
+    const copyWallsBtn = document.getElementById("copyWallsBtn");
+    if (copyWallsBtn) copyWallsBtn.onclick = copySelectedWalls;
     document.getElementById("delBtn").onclick = deleteSelected;
     renderList();
     return;
@@ -719,7 +724,10 @@ function renderSide(){
   else if (wall){
     const len = Math.hypot(wall.x2-wall.x1, wall.y2-wall.y1);
     props.innerHTML = `<div class="field"><label>壁 — 長さ</label><input value="${(len/1000).toFixed(2)} m" readonly></div>
+      <div class="field"><button class="sbtn" id="copyWallBtn" style="width:100%">📋 この壁をコピー(Ctrl+C)</button></div>
+      <div class="note">貼り付けはCtrl+V。少しずらした位置に複製されます</div>
       <button class="del" id="delBtn">この壁を削除</button>`;
+    document.getElementById("copyWallBtn").onclick = copySelectedWalls;
     document.getElementById("delBtn").onclick = deleteSelected;
   }
   else {
@@ -904,6 +912,31 @@ function deleteSelected(){
 let drag = null; // {mode:'wall'|'move'|'pan', ...}
 const pointers = new Map(); // アクティブなポインタ(ピンチズーム判定用)
 let pinch = null;           // {d,cx,cy} 直前フレームの2本指間距離と中点
+
+/* ---- 壁のコピー&ペースト(Ctrl+C / Ctrl+V) ---- */
+const PASTE_OFFSET = 500; // 貼り付けるたびに少しずらす量(mm)。原本にぴったり重ならないように
+let wallClipboard = [];   // コピーした壁の形状(x1,y1,x2,y2の相対配置をそのまま保持)
+let pasteCount = 0;       // 同じコピー内容から連続で貼り付けた回数(ずらし幅に使う)
+function copySelectedWalls(){
+  const walls = state.walls.filter(w=>selectedIds.has(w.id));
+  if (!walls.length) return;
+  wallClipboard = walls.map(w=>({x1:w.x1, y1:w.y1, x2:w.x2, y2:w.y2}));
+  pasteCount = 0;
+}
+function pasteWalls(){
+  if (!wallClipboard.length) return;
+  pasteCount++;
+  const off = PASTE_OFFSET * pasteCount;
+  pushUndo();
+  const newIds = [];
+  for (const w of wallClipboard){
+    const nw = {id:idSeq++, x1:w.x1+off, y1:w.y1+off, x2:w.x2+off, y2:w.y2+off};
+    state.walls.push(nw);
+    newIds.push(nw.id);
+  }
+  selectedIds = new Set(newIds); selectedId = newIds[newIds.length-1]; // 貼り付けたものを選択状態にする
+  render(); renderSide();
+}
 
 svg.addEventListener("pointerdown", ev=>{
   svg.setPointerCapture(ev.pointerId);
@@ -1133,6 +1166,8 @@ window.addEventListener("keydown", ev=>{
     selectedId = [...selectedIds].pop() ?? null;
     render(); renderSide();
   }
+  else if ((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==="c"){ ev.preventDefault(); copySelectedWalls(); }
+  else if ((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==="v"){ ev.preventDefault(); pasteWalls(); }
   else if (ev.key==="Delete" || ev.key==="Backspace"){ deleteSelected(); }
   else if (ev.key==="Escape"){ clearSelect(); setTool("select"); render(); renderSide(); }
 });
