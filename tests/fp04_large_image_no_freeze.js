@@ -76,18 +76,25 @@ async function run() {
   t.eq(await page.$eval('svg#plan > image', i => i.getAttribute('opacity')), '0.7',
     '最後に設定した透明度70%が反映されている(=UIが固まらず処理を追えている)');
 
-  // --- 個別の作品画像(pImgFile)でも同様にフリーズしないこと ---
+  // --- 画像フォルダに入れる作品画像でも同様にフリーズしないこと ---
+  // 巨大画像を「番号つきファイル名」で画像フォルダに追加し、同じ番号の作品に自動対応させる
+  const numberedPath = path.join(os.tmpdir(), '10001.png');
+  fs.copyFileSync(bigPngPath, numberedPath);
   const svgBox = await page.locator('svg#plan').boundingBox();
   await page.click('.tool[data-tool="work"]');
   await page.mouse.click(svgBox.x + svgBox.width / 2, svgBox.y + svgBox.height / 2);
   await page.waitForTimeout(100);
+  await page.fill('#pNo', '10001');
+  await page.dispatchEvent('#pNo', 'input');
+  await page.waitForTimeout(100);
   const t2 = Date.now();
-  await page.setInputFiles('#pImgFile', bigPngPath);
+  await page.setInputFiles('#imgsInput', numberedPath);
   await page.waitForSelector('g.obj image', { timeout: 10000 });
   const workLoadMs = Date.now() - t2;
   t.ok(workLoadMs < 10000, `作品への巨大画像の読み込みも10秒以内に完了する(実際 ${workLoadMs}ms)`);
   const workHref = await page.$eval('g.obj image', i => i.getAttribute('href'));
   t.ok(workHref.startsWith('data:image/jpeg'), '作品画像も圧縮されてJPEGとして保存される');
+  fs.unlinkSync(numberedPath);
 
   t.noErrors(errors);
   await context.close();
