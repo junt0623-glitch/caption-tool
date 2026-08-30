@@ -1198,7 +1198,12 @@ document.getElementById("fileInput").onchange = async ev=>{
     if (state.scalePct == null) state.scalePct = 100; // 0%も有効な値なので !state.scalePct にしない
     if (!state.workList) state.workList = [];
     if (!state.images) state.images = {};
-    if (!state.stock) state.stock = defaultStock();
+    // 在庫(可動ケース・展示台)の総数はアプリ側の設定であり、ファイルごとに
+    // 保存された古い総数を引きずらないよう、読み込み時は常に現在のdefaultStock()で
+    // 上書きする(総数を変更しても、既存の保存ファイルを開くと反映されない不具合の修正)。
+    // 配置済みオブジェクトはstockKeyだけを見て残数を数え直すので、この上書きに
+    // 追従できないデータが混ざる心配はない
+    state.stock = defaultStock();
     idSeq = Math.max(0, ...state.walls.map(w=>w.id), ...state.objects.map(o=>o.id)) + 1;
     clearSelect(); syncSheetUI(); render(); renderSide();
   }catch(e){ alert("読み込みに失敗しました: " + e.message); }
