@@ -91,6 +91,27 @@
 - tests/fp08_image_library.js が一連の流れ(事前アップロード→ダブルクリック選択→
   保存→読み込みで復元)の回帰テスト
 
+## ポインタ操作(タッチ対応の注意点)
+- **pointerdownはsvg、pointermove/up/cancelはwindowで受ける**。
+  「押し始めは図面の上、その後は画面のどこでも追いかける」という形にすることで、
+  ポインタ捕捉(setPointerCapture)が効かない環境でも動く。
+  move/up/cancelをsvgだけで受けてはいけない: 指を図面の外に出したときや
+  捕捉に失敗したときにupがsvgに届かず、`pointers` Mapに古い指が残る。
+  残ると次のタッチが「2本目の指(ピンチ)」と誤判定され、
+  **以後どこを触っても無反応になる**(再読み込みするまで直らない)
+- **`svg.setPointerCapture()` は必ず try/catch で囲む**。iOS Safariでは例外を
+  投げることがあり、pointerdownの先頭で落ちると選択・移動・在庫からの取り出しが
+  まるごと実行されない。これも「タッチしても反応しない」に見える
+- 指の後始末は `releasePointer()` に一本化する。タブを離れたとき(blur/visibilitychange)も
+  `pointers` を空にする(upが届かないまま戻ってくることがあるため)
+- CSSは `touch-action:none` だけでは足りない。iOS Safariは長押しの選択・コピーメニューや
+  ダブルタップ拡大で指を横取りする(pointercancelになる)ので、
+  `-webkit-user-select:none` / `-webkit-touch-callout:none` /
+  `-webkit-tap-highlight-color:transparent` も指定する
+- tests/fp13_touch_ipad.js が回帰テスト。この環境ではWebKitを動かせないため、
+  Chromiumのタッチ操作に加えて `setPointerCapture` を例外を投げる実装に差し替え、
+  iOS Safariで起きる状況を作って検証している
+
 ## 選択・移動・整列
 - 単一選択: クリック。ドラッグで移動(既定50mm刻み=FINE、**Altキーでスナップ無し=1mm自由**)
 - 複数選択: Shift/Ctrl/Cmd+クリックでトグル追加、空白を Shift+ドラッグで範囲選択(マーキー、

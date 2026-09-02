@@ -69,7 +69,16 @@
 
   /* キャンバス領域 */
   #canvasWrap{flex:1;position:relative;overflow:hidden;background:#dad7cc}
-  svg#plan{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+  /* iOS Safari対策: touch-actionだけでは、長押しの選択・コピーメニューや
+     ダブルタップ拡大といったブラウザ側のジェスチャに指を横取りされ、
+     図面の操作が途中で打ち切られる(pointercancel)ことがある */
+  svg#plan{
+    position:absolute;inset:0;width:100%;height:100%;
+    touch-action:none;-ms-touch-action:none;
+    -webkit-user-select:none;user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-tap-highlight-color:transparent;
+  }
   #zoomCtrl{
     position:absolute;left:12px;bottom:12px;display:flex;gap:4px;
     background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:4px;
@@ -1185,8 +1194,17 @@ function pasteWalls(){
   render(); renderSide();
 }
 
+/* 指(ポインタ)1本ぶんの後始末。pointerup/pointercancelのどちらからも必ず通す */
+function releasePointer(id){
+  pointers.delete(id);
+  if (pointers.size < 2) pinch = null;
+}
 svg.addEventListener("pointerdown", ev=>{
-  svg.setPointerCapture(ev.pointerId);
+  // iOS Safariでは setPointerCapture が例外を投げることがある。ここで落ちると
+  // pointerdownの残りの処理(選択・移動・在庫からの取り出し)がまるごと動かず、
+  // 「タッチしても何も反応しない」状態になるので、失敗しても先へ進める。
+  // 捕捉できなくても move/up は window で拾うので動作に支障はない
+  try{ svg.setPointerCapture(ev.pointerId); }catch{}
   pointers.set(ev.pointerId, {x:ev.clientX, y:ev.clientY});
   if (pointers.size === 2){
     // 2本目の指が触れたらピンチ開始。描きかけの壁は破棄する
@@ -1313,7 +1331,13 @@ svg.addEventListener("pointerdown", ev=>{
   }
 });
 
-svg.addEventListener("pointermove", ev=>{
+/* move/up/cancel は svg ではなく window で受ける。
+   「押し始めは図面の上、その後は画面のどこでも追いかける」という一般的な形にすることで、
+   ポインタ捕捉(setPointerCapture)が効かない環境でも動く。
+   svgだけで受けていると、指を図面の外に出したときや捕捉に失敗したときに
+   pointersに古い指が残り、次のタッチが「2本目の指(ピンチ)」と誤判定されて
+   以後どこを触っても反応しなくなる(iOS Safariで起きる) */
+window.addEventListener("pointermove", ev=>{
   if (pointers.has(ev.pointerId)) pointers.set(ev.pointerId, {x:ev.clientX, y:ev.clientY});
   if (pinch && pointers.size >= 2){
     const [p1,p2] = [...pointers.values()];
@@ -1368,9 +1392,8 @@ svg.addEventListener("pointermove", ev=>{
   }
 });
 
-svg.addEventListener("pointerup", ev=>{
-  pointers.delete(ev.pointerId);
-  if (pointers.size < 2) pinch = null;
+window.addEventListener("pointerup", ev=>{
+  releasePointer(ev.pointerId);
   if (drag?.mode === "wall"){
     const w = drag.wall;
     if (w.x1===w.x2 && w.y1===w.y2){ state.walls.pop(); undoStack.pop(); } // 長さ0は破棄
@@ -1390,10 +1413,15 @@ svg.addEventListener("pointerup", ev=>{
   }
   drag = null;
 });
-svg.addEventListener("pointercancel", ev=>{
-  pointers.delete(ev.pointerId);
-  if (pointers.size < 2) pinch = null;
+window.addEventListener("pointercancel", ev=>{
+  releasePointer(ev.pointerId);
   drag = null;
+});
+// タブを離れる・アプリを切り替えるなどで up が届かないことがあるため、
+// 戻ってきたときに「押しっぱなしの指」が残らないようにする
+window.addEventListener("blur", ()=>{ pointers.clear(); pinch = null; drag = null; });
+document.addEventListener("visibilitychange", ()=>{
+  if (document.hidden){ pointers.clear(); pinch = null; drag = null; }
 });
 
 svg.addEventListener("wheel", ev=>{
