@@ -236,10 +236,18 @@
   #stockFoot{border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:8px;align-items:center}
   #stockFoot .note{flex:1;margin:0;font-size:11px;color:#8c887c}
 
+  /* 既定はA3横。印刷ボタンを押すと#pageStyleが印刷範囲の向きに合わせて上書きする。
+     ここにも書いておくのは、印刷プレビューが開いた時点で用紙をA3と分からせるため */
+  @page{size:A3 landscape;margin:0}
+
   @media print{
     header,#toolbar,#side,#zoomCtrl,#hint,#libModal,#stockModal{display:none!important}
     body{background:#fff}
-    #canvasWrap{position:fixed;inset:0;background:#fff}
+    /* 用紙をmm実寸で指定する。inset:0のように「紙いっぱい」にすると、
+       プリンター側の用紙がA4のままだとA4サイズで出てしまうため、
+       A3の物理サイズを明示して常にA3の大きさで印刷されるようにする */
+    #canvasWrap{position:fixed;left:0;top:0;right:auto;bottom:auto;
+      width:420mm;height:297mm;background:#fff}
     /* 在庫パレットは印刷範囲の外にある編集用のUIなので用紙には出さない */
     #plan .stock{display:none!important}
     /* 印刷範囲の外にはみ出したものが用紙の余白部分に写り込まないようクリップする */
@@ -1470,9 +1478,14 @@ document.getElementById("pngBtn").onclick = ()=>{
 };
 document.getElementById("printBtn").onclick = ()=>{
   const prev = {...view};
-  // 用紙の向きを印刷範囲(A3横/縦)に合わせ、余白0にすることで紙いっぱいに出す
+  // 用紙の向きを印刷範囲(A3横/縦)に合わせ、余白0にすることで紙いっぱいに出す。
+  // 描画領域はA3の物理サイズ(mm)で固定する。紙いっぱい(inset:0)にすると
+  // プリンター側の用紙がA4のままのときにA4の大きさで出てしまうため
+  const landscape = SHEET.w >= SHEET.h;
+  const [pw, ph] = landscape ? A3_LANDSCAPE : [A3_LANDSCAPE[1], A3_LANDSCAPE[0]];
   document.getElementById("pageStyle").textContent =
-    `@page{size:A3 ${SHEET.w >= SHEET.h ? "landscape" : "portrait"};margin:0}`;
+    `@page{size:A3 ${landscape ? "landscape" : "portrait"};margin:0}` +
+    `@media print{#canvasWrap{width:${pw}mm;height:${ph}mm}}`;
   // applyView()は画面の縦横比に合わせてviewBoxを左右(上下)に広げるため、
   // そのまま印刷すると印刷範囲の外にある在庫パレット等まで用紙に写り込む。
   // 印刷時は印刷範囲そのものをviewBoxにして、紙に等倍で収まるようにする
