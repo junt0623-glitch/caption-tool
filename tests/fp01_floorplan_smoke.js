@@ -104,7 +104,7 @@ async function run() {
     '始点・終点が同じ量だけ平行移動する(壁の向き・長さは保たれる)');
 
   // --- 印刷範囲(A3)の回転: 90度きざみでシート矩形(最初のrect)の寸法が切り替わる ---
-  const sheetW = () => page.$eval('svg#plan > rect', r => +r.getAttribute('width'));
+  const sheetW = () => page.$eval('svg#plan .sheet-root > rect', r => +r.getAttribute('width'));
   t.eq(await sheetW(), 42000, '既定は0°(A3横)でシート幅42000mm');
   await page.selectOption('#sheetSel', '90');
   await page.waitForTimeout(100);

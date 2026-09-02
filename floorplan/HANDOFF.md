@@ -182,6 +182,23 @@
   更新されない不具合になる(tests/fp10_save_filename_date.js が回帰テスト)
 - JSON保存/読み込み(旧形式と互換)、PNG書き出し、印刷
 
+## 印刷
+- **印刷では印刷範囲(A3)だけが用紙いっぱいに出る**。仕組みは3つの組み合わせ:
+  1. 印刷時のviewBoxは `0 0 SHEET.w SHEET.h`(印刷範囲そのもの)を直接セットする。
+     **applyView()を使ってはいけない**: 画面の縦横比に合わせてviewBoxを左右(縦なら上下)に
+     広げるため、印刷範囲の外に並べてある在庫パレットが用紙に写り込む
+     (A3縦のときは左右に12000mm以上も広がっていた。これが実際の不具合)
+  2. `<style id="pageStyle">` に `@page{size:A3 landscape|portrait;margin:0}` を
+     印刷ボタンを押した時点で差し込む。向きは SHEET.w/h から決めるので、
+     印刷範囲を90/270度に回してもその向きの用紙が選ばれる
+  3. render()の描画物はすべて `g.sheet-root` にまとめ、@media printで
+     `clip-path:url(#sheetClip)`(印刷範囲と同じ矩形)を掛ける。
+     画面編集中はクリップしないので、印刷範囲の外にも自由に物を置ける
+- 在庫パレット(`.stock`)は編集用UIなので @media print で display:none にする
+- render()内で新しい要素を足すときは親を `svg` ではなく `root` にすること
+  (`svg` 直下に足すとクリップの外になり、印刷範囲の外にはみ出しても切れずに印刷される)
+- tests/fp11_print_area.js が回帰テスト
+
 ## 座標系・単位
 - 内部座標はmm。SHEETはA3実寸(mm)×100(state.sheet.rotの0/90/180/270で横縦を切替。
   旧形式JSON(state.sheet.preset: "a3l"/"a3p"等)は読み込み時にrotへ変換する)
