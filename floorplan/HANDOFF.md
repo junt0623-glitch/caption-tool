@@ -101,12 +101,23 @@
   切り取らずに全体を見せる(`cover` にしないこと)。名前は2行で打ち切って
   カードの高さを揃え、行が等間隔に並ぶようにしている。
   `auto-fill`(画面幅で列数が変わる)には戻さないこと
-- **正方形は `.thumb` の `padding-top:100%`(%指定のpaddingは幅が基準)で作る**。
-  `img` に `aspect-ratio:1/1` を直接指定する書き方はiOS Safariで高さが潰れ、
-  サムネイルが細長い帯になって何の画像か分からなくなる(実際に起きた不具合)。
-  画像は `.thumb` の中に `position:absolute; inset 0; width/height:100%` で敷く
-- tests/fp08 が列数・正方形・object-fit・行間隔に加え、
-  「imgにaspect-ratioを指定していないこと」「枠のpadding-topで正方形にしていること」
+- **「自分の幅から高さを決める」書き方を使わないこと**。`img{aspect-ratio:1/1}` も
+  `.thumb{padding-top:100%}` も、iOS Safariでは行の高さを測る段階で幅が確定しておらず
+  高さ0とみなされ、**サムネイルが数ピクセルの細長い帯に潰れる**(2回続けてやった失敗)。
+  Chromiumでは正しく出るので、この不具合は実機のSafariでしか見えない
+- 代わりに、**1マスの大きさを画面幅から直接計算した `--lib-cell` で決め打ちする**。
+  `#libBox` で `--lib-w:min(900px,94vw)` と
+  `--lib-cell:calc((var(--lib-w) - 32px - 56px)/5)`(左右余白と列間の隙間を引いて5等分)を定義し、
+  `.thumb{height:var(--lib-cell)}` と `#libGrid{grid-auto-rows:calc(var(--lib-cell) + 60px)}`
+  に使う。幅の確定を待たないのでどの環境でも潰れない。
+  `.thumb` には保険の `min-height` も付けてある
+- 行の高さも決め打ちにしないと、カードがはみ出して「フォルダから削除」ボタンが切れる。
+  +60pxは名前2行(2.9em)と削除ボタンと枠線のぶん。`.nm`/`.rm`/`.thumb` は
+  すべて `flex:0 0 auto` にして縮まないようにする
+- 画像は `.thumb` の中に `position:absolute` で敷き、`object-fit:contain` で全体を見せる
+- モーダルの幅を変えるときは `--lib-w` と `--lib-cell` の式(32px/56px/5)も合わせること
+- tests/fp08 が列数・正方形・object-fit・行間隔・削除ボタンが切れないことに加え、
+  「aspect-ratioもpadding-top:100%も使っていないこと」「行の高さがpx決め打ちであること」
   も検証している(iOS Safariでしか出ない不具合をChromiumで防ぐため)
 - 旧形式JSON(番号→dataURLの `state.images` だけを持つファイル)は読み込み時に
   library へ移行する。`state.images` 自体は互換のため残してある
