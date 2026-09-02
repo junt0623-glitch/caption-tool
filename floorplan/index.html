@@ -1368,6 +1368,9 @@ window.addEventListener("keydown", ev=>{
 
 /* ---- 保存 / 読み込み / 書き出し ---- */
 document.getElementById("saveBtn").onclick = ()=>{
+  // 保存日はページを開いた時刻でも読み込んだファイルの値でもなく、
+  // 「今まさに保存した日」でなければならない(ファイル名にも入る)
+  state.meta.date = today();
   const blob = new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
