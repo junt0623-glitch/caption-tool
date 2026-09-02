@@ -96,6 +96,12 @@
   クリックした画像が `obj.imgId` に入る(右パネルの「🗂 画像フォルダから選ぶ」も同じ)
 - 表示する画像の決定は必ず `workImage(o)` を通す。優先順位は
   `imgId`(明示選択) → `img`(旧形式の個別指定) → 番号一致 → `state.images`(旧形式)
+- **一覧の見え方**: `#libGrid` は `repeat(5,1fr)` の5列固定。サムネイルは
+  `aspect-ratio:1/1` + `object-fit:contain` の正方形枠で、縦長・横長の作品でも
+  切り取らずに全体を見せる(`cover` にしないこと)。名前は2行で打ち切って
+  カードの高さを揃え、行が等間隔に並ぶようにしている。
+  `auto-fill`(画面幅で列数が変わる)には戻さないこと。tests/fp08 が
+  列数・正方形・object-fit・行間隔を検証している
 - 旧形式JSON(番号→dataURLの `state.images` だけを持つファイル)は読み込み時に
   library へ移行する。`state.images` 自体は互換のため残してある
 - **ダブルクリックはブラウザの dblclick イベントでは取れない**。render() が

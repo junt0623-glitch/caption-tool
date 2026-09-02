@@ -23,6 +23,18 @@ async function makeColorPng(page, outPath, color) {
   fs.writeFileSync(outPath, Buffer.from(dataUrl.split(',')[1], 'base64'));
 }
 
+// 縦横比を指定してPNGを作る(一覧の見え方の検証で、縦長・横長を混ぜるために使う)
+async function makeSizedPng(page, outPath, w, h, color) {
+  const dataUrl = await page.evaluate(([w, h, c]) => {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = c; ctx.fillRect(0, 0, w, h);
+    return cv.toDataURL('image/png');
+  }, [w, h, color]);
+  fs.writeFileSync(outPath, Buffer.from(dataUrl.split(',')[1], 'base64'));
+}
+
 async function run() {
   const t = mkRunner('fp08 画像フォルダ');
   const browser = await chromium.launch(launchOpts);
@@ -112,6 +124,65 @@ async function run() {
   await page.click('#imgsBtn');
   await page.waitForTimeout(150);
   t.eq(await page.locator('.libcard').count(), 2, '画像フォルダの中身も復元される');
+
+  // --- 一覧の見え方: 横5列 / 正方形 / 切り取らない / 縦は等間隔 ---
+  // 縦長・横長が混ざっていても、どれも同じ大きさの正方形の枠に収まって見えること
+  const shapes = [];
+  for (const [name, w, h] of [['30001.png', 100, 400], ['30002.png', 400, 100], ['30003.png', 200, 200]]) {
+    const fp = path.join(os.tmpdir(), name);
+    await makeSizedPng(page, fp, w, h, '#3366cc');
+    shapes.push(fp);
+  }
+  // 3行になるよう、合計12枚まで増やす
+  const filler = [];
+  for (let i = 4; i <= 12; i++) {
+    const fp = path.join(os.tmpdir(), `3000${i}.png`.replace('3000', '300'));
+    await makeSizedPng(page, fp, 120, 120, '#66aa66');
+    filler.push(fp);
+  }
+  await page.setInputFiles('#imgsInput', [...shapes, ...filler]);
+  await page.waitForTimeout(1200);
+
+  const grid = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('.libcard')];
+    const rects = cards.map(c => c.getBoundingClientRect());
+    const tops = [...new Set(rects.map(r => Math.round(r.top)))].sort((a, b) => a - b);
+    const inFirstRow = rects.filter(r => Math.round(r.top) === tops[0]).length;
+    const imgs = cards.map(c => {
+      const r = c.querySelector('img').getBoundingClientRect();
+      return { w: Math.round(r.width), h: Math.round(r.height) };
+    });
+    return {
+      rows: tops.length, inFirstRow, imgs,
+      gaps: tops.slice(1).map((v, i) => v - tops[i]),
+      fit: getComputedStyle(cards[0].querySelector('img')).objectFit,
+    };
+  });
+  t.eq(grid.inFirstRow, 5, 'サムネイルは横5列に並ぶ');
+  t.ok(grid.rows >= 3, '12枚入れると3行以上になる(前提確認)');
+  t.eq(grid.fit, 'contain', '画像は切り取らず全体を表示する(object-fit: contain)');
+  t.ok(grid.imgs.every(i => Math.abs(i.w - i.h) <= 1),
+    `サムネイルの枠は正方形(実際: ${grid.imgs[0].w}×${grid.imgs[0].h})`);
+  t.ok(new Set(grid.imgs.map(i => i.w)).size === 1,
+    '縦長・横長が混ざっていても、すべて同じ大きさの枠に収まる');
+  t.ok(Math.max(...grid.gaps) - Math.min(...grid.gaps) <= 2,
+    `行の間隔が均等(実際: ${grid.gaps.join(', ')}px)`);
+
+  // 画面を広げても5列のまま(自動で列数が増える指定だと、ここで6列以上になる)
+  await page.setViewportSize({ width: 1700, height: 900 });
+  await page.waitForTimeout(200);
+  const wideCols = await page.evaluate(() => {
+    const rects = [...document.querySelectorAll('.libcard')].map(c => c.getBoundingClientRect());
+    const top = Math.min(...rects.map(r => Math.round(r.top)));
+    return rects.filter(r => Math.round(r.top) === top).length;
+  });
+  t.eq(wideCols, 5, '画面を広げても横5列のまま');
+  t.eq((await page.$eval('#libGrid', e => getComputedStyle(e).gridTemplateColumns)).split(' ').length, 5,
+    '列数は5で固定されている(画面幅で増減しない)');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.waitForTimeout(200);
+
+  for (const f of [...shapes, ...filler]) fs.unlinkSync(f);
 
   t.noErrors(errors);
   await context.close();

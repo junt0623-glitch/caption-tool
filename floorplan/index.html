@@ -175,7 +175,7 @@
   }
   #libModal[hidden]{display:none}
   #libBox{
-    background:var(--paper);border-radius:8px;width:min(760px,92vw);max-height:86vh;
+    background:var(--paper);border-radius:8px;width:min(900px,94vw);max-height:86vh;
     display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.3);
   }
   #libBox header{
@@ -184,10 +184,12 @@
   }
   #libBox h3{font-size:14px;font-weight:600;flex:1}
   #libBox .sub{font-size:11px;color:#8c887c;font-weight:400}
-  /* flex:1(basis 0)にすると中身が高さに寄与せずグリッドが潰れるため basis は auto */
+  /* flex:1(basis 0)にすると中身が高さに寄与せずグリッドが潰れるため basis は auto。
+     列数は5列で固定し、カードの高さも揃うので縦にも等間隔に並ぶ */
   #libGrid{
-    flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 16px;display:grid;gap:12px;
-    grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+    flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 16px;display:grid;gap:14px;
+    grid-template-columns:repeat(5,1fr);
+    align-content:start;
   }
   #libGrid .empty{grid-column:1/-1;color:#8c887c;font-size:13px;padding:24px 4px;text-align:center;line-height:1.7}
   .libcard{
@@ -196,8 +198,18 @@
   }
   .libcard:hover{border-color:var(--accent)}
   .libcard.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
-  .libcard img{width:100%;height:104px;object-fit:contain;background:var(--panel);display:block}
-  .libcard .nm{font-size:11px;padding:5px 6px;word-break:break-all;line-height:1.4}
+  /* サムネイルは正方形の枠に収める。object-fit:contain なので、
+     縦長・横長の作品でも切り取られずに全体が見える(余白は枠の色で埋まる) */
+  .libcard img{
+    width:100%;aspect-ratio:1/1;object-fit:contain;
+    background:var(--panel);display:block;padding:4px;
+  }
+  /* 名前は2行で打ち切り、カードの高さを揃える(揃わないと行がガタつく) */
+  .libcard .nm{
+    font-size:11px;padding:5px 6px;word-break:break-all;line-height:1.4;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    min-height:2.8em;
+  }
   .libcard .nm b{color:var(--accent)}
   .libcard .rm{
     border:none;border-top:1px solid var(--line);background:#fff;color:#c33;
