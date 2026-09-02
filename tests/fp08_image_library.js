@@ -149,13 +149,16 @@ async function run() {
     const tops = [...new Set(rects.map(r => Math.round(r.top)))].sort((a, b) => a - b);
     const inFirstRow = rects.filter(r => Math.round(r.top) === tops[0]).length;
     const imgs = cards.map(c => {
-      const r = c.querySelector('img').getBoundingClientRect();
+      const r = c.querySelector('.thumb').getBoundingClientRect();
       return { w: Math.round(r.width), h: Math.round(r.height) };
     });
     return {
       rows: tops.length, inFirstRow, imgs,
+      thumbs: cards.filter(c => c.querySelector('.thumb img')).length,
       gaps: tops.slice(1).map((v, i) => v - tops[i]),
-      fit: getComputedStyle(cards[0].querySelector('img')).objectFit,
+      fit: getComputedStyle(cards[0].querySelector('.thumb img')).objectFit,
+      imgAspect: getComputedStyle(cards[0].querySelector('.thumb img')).aspectRatio,
+      padTop: getComputedStyle(cards[0].querySelector('.thumb')).paddingTop,
     };
   });
   t.eq(grid.inFirstRow, 5, 'サムネイルは横5列に並ぶ');
@@ -165,6 +168,12 @@ async function run() {
     `サムネイルの枠は正方形(実際: ${grid.imgs[0].w}×${grid.imgs[0].h})`);
   t.ok(new Set(grid.imgs.map(i => i.w)).size === 1,
     '縦長・横長が混ざっていても、すべて同じ大きさの枠に収まる');
+  t.eq(grid.thumbs, grid.imgs.length, '画像は正方形の枠(.thumb)の中に入っている');
+  // iOS Safariでは img に aspect-ratio を直接指定すると高さが潰れて細長い帯になる。
+  // 正方形は枠側の padding-top:100% で作ること(この2つが崩れると同じ不具合が再発する)
+  t.eq(grid.imgAspect, 'auto', 'imgにaspect-ratioは指定しない(iOS Safariで潰れるため)');
+  t.ok(Math.abs(parseFloat(grid.padTop) - grid.imgs[0].w) <= 1,
+    `正方形は枠のpadding-top:100%(幅と同じ高さ)で作っている(実際: ${grid.padTop})`);
   t.ok(Math.max(...grid.gaps) - Math.min(...grid.gaps) <= 2,
     `行の間隔が均等(実際: ${grid.gaps.join(', ')}px)`);
 

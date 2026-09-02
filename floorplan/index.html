@@ -199,10 +199,17 @@
   .libcard:hover{border-color:var(--accent)}
   .libcard.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
   /* サムネイルは正方形の枠に収める。object-fit:contain なので、
-     縦長・横長の作品でも切り取られずに全体が見える(余白は枠の色で埋まる) */
-  .libcard img{
-    width:100%;aspect-ratio:1/1;object-fit:contain;
-    background:var(--panel);display:block;padding:4px;
+     縦長・横長の作品でも切り取られずに全体が見える(余白は枠の色で埋まる)。
+     正方形は「padding-top:100%(%指定のpaddingは幅が基準)」で作る。
+     img に aspect-ratio を直接指定する書き方はiOS Safariで高さが潰れて
+     細長い帯になってしまったため使わないこと */
+  .libcard .thumb{
+    position:relative;width:100%;padding-top:100%;
+    background:var(--panel);overflow:hidden;flex:none;
+  }
+  .libcard .thumb img{
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    object-fit:contain;display:block;padding:4px;
   }
   /* 名前は2行で打ち切り、カードの高さを揃える(揃わないと行がガタつく) */
   .libcard .nm{
@@ -1865,7 +1872,7 @@ function renderLibrary(){
   const curId = picking ? pickTarget.imgId : null;
   grid.innerHTML = state.library.map(it=>`
     <div class="libcard${it.id===curId?" sel":""}" data-lib="${it.id}">
-      <img src="${it.img}" alt="">
+      <div class="thumb"><img src="${it.img}" alt=""></div>
       <div class="nm">${it.no?`<b>${esc(it.no)}</b> `:""}${esc(it.name)}</div>
       <button class="rm" data-rm="${it.id}">フォルダから削除</button>
     </div>`).join("");

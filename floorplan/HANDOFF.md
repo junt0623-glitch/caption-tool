@@ -97,11 +97,17 @@
 - 表示する画像の決定は必ず `workImage(o)` を通す。優先順位は
   `imgId`(明示選択) → `img`(旧形式の個別指定) → 番号一致 → `state.images`(旧形式)
 - **一覧の見え方**: `#libGrid` は `repeat(5,1fr)` の5列固定。サムネイルは
-  `aspect-ratio:1/1` + `object-fit:contain` の正方形枠で、縦長・横長の作品でも
+  正方形の枠 `.thumb` に `object-fit:contain` の画像を入れ、縦長・横長の作品でも
   切り取らずに全体を見せる(`cover` にしないこと)。名前は2行で打ち切って
   カードの高さを揃え、行が等間隔に並ぶようにしている。
-  `auto-fill`(画面幅で列数が変わる)には戻さないこと。tests/fp08 が
-  列数・正方形・object-fit・行間隔を検証している
+  `auto-fill`(画面幅で列数が変わる)には戻さないこと
+- **正方形は `.thumb` の `padding-top:100%`(%指定のpaddingは幅が基準)で作る**。
+  `img` に `aspect-ratio:1/1` を直接指定する書き方はiOS Safariで高さが潰れ、
+  サムネイルが細長い帯になって何の画像か分からなくなる(実際に起きた不具合)。
+  画像は `.thumb` の中に `position:absolute; inset 0; width/height:100%` で敷く
+- tests/fp08 が列数・正方形・object-fit・行間隔に加え、
+  「imgにaspect-ratioを指定していないこと」「枠のpadding-topで正方形にしていること」
+  も検証している(iOS Safariでしか出ない不具合をChromiumで防ぐため)
 - 旧形式JSON(番号→dataURLの `state.images` だけを持つファイル)は読み込み時に
   library へ移行する。`state.images` 自体は互換のため残してある
 - **ダブルクリックはブラウザの dblclick イベントでは取れない**。render() が
