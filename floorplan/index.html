@@ -499,6 +499,7 @@ let state = {
   scalePct: 100,           // ケース・展示台の表示縮尺(0〜150%)
   rooms: defaultRooms(),
   workList: [],            // 作品リスト(CSV) [{no,title,artist}]
+  workStartNo: "",         // 作品ツールの開始番号。この番号以降を順番に配置する(空なら最初から)
   library: [],             // 画像フォルダ [{id,name,no,img}] アップロード済み画像。JSON保存に含まれる
   usedElsewhere: {},       // 他の展示室(別の図面)での使用台数 stockKey→台数。残数から差し引く
   images: {},              // 旧形式の作品画像 番号→dataURL(読み込み時にlibraryへ移行する)
@@ -530,6 +531,27 @@ function imageForNo(no){
   const key = String(no ?? ""); if (!key) return null;
   const byNo = state.library.find(it=>it.no && it.no === key);
   return byNo ? byNo.img : (state.images[key] || null);
+}
+/* すでに図面上に置かれている作品番号 */
+function placedWorkNos(){
+  return new Set(state.objects.filter(o=>o.type==="work").map(o=>String(o.no)));
+}
+/* 作品ツールでこれから配置する番号の並び。
+   画像フォルダにある画像の番号を小さい順に並べ、「開始番号(state.workStartNo)」以上で
+   まだ配置していないものを返す。画像フォルダが空なら作品リストの番号で代用する。
+   これを先頭から1つずつ取り出して置いていくので、「任意の番号から順番に配置」ができる */
+function workQueue(){
+  const placed = placedWorkNos();
+  const from = state.workStartNo;
+  const pick = nos => {
+    const uniq = [...new Set(nos.map(n=>String(n)).filter(n=>n !== ""))]
+      .filter(n=>!placed.has(n))
+      .sort((a,b)=> (+a) - (+b));
+    return (from == null || from === "") ? uniq : uniq.filter(n=> +n >= +from);
+  };
+  const fromLib = pick(state.library.map(it=>it.no));
+  if (fromLib.length) return fromLib;
+  return pick(state.workList.map(w=>w.no));
 }
 /* 画像フォルダに1件追加(同名ファイルは上書きせず別エントリとして持つ) */
 function addToLibrary(name, img){
@@ -883,7 +905,40 @@ function render(){
 }
 
 /* ---- サイドパネル ---- */
+/* 作品ツールを選んでいる間、右パネルの先頭に出す「これから置く番号」の案内。
+   開始番号を入れると、画像フォルダの番号のうちその番号以降を順番に配置していく */
+function workQueueHtml(){
+  if (tool !== "work") return "";
+  const q = workQueue();
+  const src = state.library.length ? "画像フォルダ" : (state.workList.length ? "作品リスト" : "");
+  const next = q.slice(0, 6).map(n=>esc(n)).join(" → ");
+  return `<div class="field"><label>作品の配置 — 開始番号</label>
+      <input id="workStart" type="text" inputmode="numeric" placeholder="(いちばん小さい番号から)"
+        value="${esc(state.workStartNo ?? "")}">
+    </div>
+    <div class="note" id="workQueueNote">${
+      !src ? "画像フォルダに画像を入れるか、作品リストを読み込むと、その番号を順番に配置できます"
+      : q.length ? `${src}の番号を順番に配置します(残り${q.length}件)<br>次に置く番号: <b>${next}</b>${q.length>6?" …":""}`
+      : `この開始番号以降で、まだ配置していない番号がありません`
+    }</div>
+    <div class="note">図面をクリックするたびに次の番号を置きます。終わったら「選択/移動」に戻してください</div>`;
+}
+
 function renderSide(){
+  renderSideBody();
+  if (tool !== "work") return;
+  // 作品ツールのときは、選択中のものが何であれ先頭に「次に置く番号」を出す
+  const props = document.getElementById("props");
+  props.insertAdjacentHTML("afterbegin", workQueueHtml());
+  const inp = document.getElementById("workStart");
+  inp.onchange = ev=>{
+    state.workStartNo = normNo(ev.target.value); // 全角数字や「No.12」等も拾う
+    renderSide();
+    document.getElementById("workStart")?.focus();
+  };
+}
+
+function renderSideBody(){
   const props = document.getElementById("props");
 
   // 複数選択中は整列ツールを表示
@@ -1264,17 +1319,23 @@ svg.addEventListener("pointerdown", ev=>{
   }
   if (tool === "work"){
     pushUndo();
-    // 作品リストの未配置の先頭番号を自動で割り当てる(リストが無ければ連番)
-    const used = new Set(state.objects.filter(o=>o.type==="work").map(o=>String(o.no)));
-    let no = state.workList.find(w=>!used.has(String(w.no)))?.no;
+    // 画像フォルダ(なければ作品リスト)の番号を、開始番号から順番に割り当てる。
+    // どちらも空なら、これまでどおり連番を振る
+    // 画像は番号一致で自動的に出るので imgId は結びつけない
+    // (結びつけると、あとで番号を直しても画像が追従しなくなる)
+    let no = workQueue()[0];
     if (no == null){
+      const used = placedWorkNos();
       const nums = [...used].map(Number).filter(n=>!isNaN(n));
-      no = (nums.length ? Math.max(...nums) : 0) + 1;
+      no = String((nums.length ? Math.max(...nums) : 0) + 1);
     }
     const o = {id:idSeq++, type:"work", no, x:snap(p.x), y:snap(p.y), rot:0, w:1200, h:900};
     state.objects.push(o);
     selectOnly(o.id);
-    setTool("select");
+    // 続けて置ける番号が残っているうちは作品ツールのまま(クリックのたびに次の番号を置く)。
+    // 置く番号が尽きたら選択ツールに戻す。番号の当てが無いとき(画像フォルダも
+    // 作品リストも空)は1個置いて戻る従来どおりの動きになる
+    if (!workQueue().length) setTool("select");
     render(); renderSide();
     return;
   }
@@ -1436,11 +1497,12 @@ function setTool(t){
   const hints = {
     select:"クリック選択/ドラッグ移動(50mm刻み、Altで自由)。Shift+クリックで複数選択、Shift+空白ドラッグで範囲選択→整列",
     wall:"ドラッグで壁を描画(Shiftで自由角度、既存の壁の端点に近づけると連結)",
-    work:"クリックで作品を配置(作品リストの未配置の番号が自動で付きます)",
+    work:"クリックで作品を配置。画像フォルダ(なければ作品リスト)の番号を順番に付けます。開始する番号は右パネルで指定できます",
     text:"クリックでテキストを配置",
     erase:"クリックしたオブジェクトを削除(ケース・展示台は在庫に戻ります)"
   };
   document.getElementById("hint").textContent = hints[t];
+  renderSide(); // 作品ツールのときは右パネルに「開始番号」と次に置く番号を出す
 }
 document.querySelectorAll(".tool").forEach(b=> b.onclick = ()=> setTool(b.dataset.tool));
 
@@ -1637,6 +1699,7 @@ function applyPlanText(text){
     // 印刷範囲(state.sheet.rot)側に一本化したため r.rot の値は無視してよい
     if (state.scalePct == null) state.scalePct = 100; // 0%も有効な値なので !state.scalePct にしない
     if (!state.workList) state.workList = [];
+    if (state.workStartNo == null) state.workStartNo = "";
     if (!state.images) state.images = {};
     // 画像フォルダ。旧形式(番号→dataURLのstate.imagesだけを持つファイル)は
     // ここでlibraryへ移して、以後は画像フォルダから選べるようにする
