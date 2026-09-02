@@ -175,7 +175,11 @@
   }
   #libModal[hidden]{display:none}
   #libBox{
-    background:var(--paper);border-radius:8px;width:min(900px,94vw);max-height:86vh;
+    /* 一覧の1マスの大きさを、画面幅から直接計算できるようにしておく。
+       (箱の幅 − 左右の余白32px − 列間の隙間14px×4)÷ 5列 */
+    --lib-w:min(900px,94vw);
+    --lib-cell:calc((var(--lib-w) - 32px - 56px) / 5);
+    background:var(--paper);border-radius:8px;width:var(--lib-w);max-height:86vh;
     display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.3);
   }
   #libBox header{
@@ -189,6 +193,10 @@
   #libGrid{
     flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 16px;display:grid;gap:14px;
     grid-template-columns:repeat(5,1fr);
+    /* 行の高さも「サムネイル + 名前と削除ボタンのぶん60px」で確定させる。
+       中身の高さから自動で決めさせると、環境によって潰れたり
+       ボタンが切れたりするため、ここで決め打ちにしている */
+    grid-auto-rows:calc(var(--lib-cell) + 60px);
     align-content:start;
   }
   #libGrid .empty{grid-column:1/-1;color:#8c887c;font-size:13px;padding:24px 4px;text-align:center;line-height:1.7}
@@ -198,29 +206,33 @@
   }
   .libcard:hover{border-color:var(--accent)}
   .libcard.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
-  /* サムネイルは正方形の枠に収める。object-fit:contain なので、
-     縦長・横長の作品でも切り取られずに全体が見える(余白は枠の色で埋まる)。
-     正方形は「padding-top:100%(%指定のpaddingは幅が基準)」で作る。
-     img に aspect-ratio を直接指定する書き方はiOS Safariで高さが潰れて
-     細長い帯になってしまったため使わないこと */
+  /* サムネイルの枠。object-fit:contain なので、縦長・横長の作品でも
+     切り取られずに全体が見える(余った部分は枠の色で埋まる)。
+
+     **枠の高さは「列の幅」ではなく画面幅から計算した --lib-cell で直接指定する。**
+     `aspect-ratio:1/1` や `padding-top:100%` のように *自分の幅* から高さを
+     決める書き方は、iOS Safariだと行の高さを測る段階で幅が確定しておらず
+     高さ0とみなされ、サムネイルが数ピクセルの細長い帯に潰れる(実際に起きた不具合)。
+     高さを画面幅から直に決めれば、幅の確定を待たずに済むのでどの環境でも潰れない。
+     min-heightは、calcが効かない環境でも最低限の大きさを確保するための保険 */
   .libcard .thumb{
-    position:relative;width:100%;padding-top:100%;
-    background:var(--panel);overflow:hidden;flex:none;
+    position:relative;width:100%;
+    height:var(--lib-cell);min-height:96px;
+    background:var(--panel);overflow:hidden;flex:0 0 auto;
   }
   .libcard .thumb img{
     position:absolute;top:0;left:0;width:100%;height:100%;
     object-fit:contain;display:block;padding:4px;
   }
-  /* 名前は2行で打ち切り、カードの高さを揃える(揃わないと行がガタつく) */
+  /* 名前は2行ぶんの高さで打ち切り、カードの高さを揃える(揃わないと行がガタつく) */
   .libcard .nm{
     font-size:11px;padding:5px 6px;word-break:break-all;line-height:1.4;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-    min-height:2.8em;
+    height:2.9em;overflow:hidden;flex:0 0 auto;
   }
   .libcard .nm b{color:var(--accent)}
   .libcard .rm{
     border:none;border-top:1px solid var(--line);background:#fff;color:#c33;
-    font-size:11px;padding:4px;cursor:pointer;
+    font-size:11px;padding:4px;cursor:pointer;flex:0 0 auto;
   }
   .libcard .rm:hover{background:#c33;color:#fff}
   #libFoot{border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:8px;align-items:center}

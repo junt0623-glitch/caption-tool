@@ -158,22 +158,34 @@ async function run() {
       gaps: tops.slice(1).map((v, i) => v - tops[i]),
       fit: getComputedStyle(cards[0].querySelector('.thumb img')).objectFit,
       imgAspect: getComputedStyle(cards[0].querySelector('.thumb img')).aspectRatio,
-      padTop: getComputedStyle(cards[0].querySelector('.thumb')).paddingTop,
+      thumbAspect: getComputedStyle(cards[0].querySelector('.thumb')).aspectRatio,
+      thumbPadTop: getComputedStyle(cards[0].querySelector('.thumb')).paddingTop,
+      autoRows: getComputedStyle(document.getElementById('libGrid')).gridAutoRows,
+      // 削除ボタンがカードの中に収まっているか(はみ出すと切れて押せない)
+      rmInside: cards.every(c => {
+        const b = c.getBoundingClientRect(), r = c.querySelector('.rm').getBoundingClientRect();
+        return r.bottom <= b.bottom + 1 && r.height > 0;
+      }),
     };
   });
   t.eq(grid.inFirstRow, 5, 'サムネイルは横5列に並ぶ');
   t.ok(grid.rows >= 3, '12枚入れると3行以上になる(前提確認)');
   t.eq(grid.fit, 'contain', '画像は切り取らず全体を表示する(object-fit: contain)');
-  t.ok(grid.imgs.every(i => Math.abs(i.w - i.h) <= 1),
+  // 数pxのズレはスクロールバーぶん(枠の高さは画面幅から計算しているため)。見た目は正方形
+  t.ok(grid.imgs.every(i => Math.abs(i.w - i.h) <= 4),
     `サムネイルの枠は正方形(実際: ${grid.imgs[0].w}×${grid.imgs[0].h})`);
   t.ok(new Set(grid.imgs.map(i => i.w)).size === 1,
     '縦長・横長が混ざっていても、すべて同じ大きさの枠に収まる');
   t.eq(grid.thumbs, grid.imgs.length, '画像は正方形の枠(.thumb)の中に入っている');
-  // iOS Safariでは img に aspect-ratio を直接指定すると高さが潰れて細長い帯になる。
-  // 正方形は枠側の padding-top:100% で作ること(この2つが崩れると同じ不具合が再発する)
+  t.ok(grid.rmInside, '「フォルダから削除」ボタンがカードの中に収まっている(切れていない)');
+  // iOS Safariでは「自分の幅から高さを決める」書き方(aspect-ratio / padding-top:100%)だと
+  // 行の高さを測る段階で幅が確定せず、サムネイルが数ピクセルの帯に潰れる。
+  // 高さは画面幅から計算した値で直接指定すること。この3つが崩れると同じ不具合が再発する
   t.eq(grid.imgAspect, 'auto', 'imgにaspect-ratioは指定しない(iOS Safariで潰れるため)');
-  t.ok(Math.abs(parseFloat(grid.padTop) - grid.imgs[0].w) <= 1,
-    `正方形は枠のpadding-top:100%(幅と同じ高さ)で作っている(実際: ${grid.padTop})`);
+  t.eq(grid.thumbAspect, 'auto', '枠にもaspect-ratioは指定しない');
+  t.eq(parseFloat(grid.thumbPadTop) || 0, 0, '枠の高さをpadding-top:100%で作らない');
+  t.ok(/^\d/.test(grid.autoRows) && parseFloat(grid.autoRows) > 100,
+    `行の高さはpxで決め打ちにする(実際: ${grid.autoRows})`);
   t.ok(Math.max(...grid.gaps) - Math.min(...grid.gaps) <= 2,
     `行の間隔が均等(実際: ${grid.gaps.join(', ')}px)`);
 
