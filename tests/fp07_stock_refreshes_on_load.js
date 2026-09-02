@@ -51,10 +51,10 @@ async function run() {
   await page.setInputFiles('#fileInput', filePath);
   await page.waitForTimeout(200);
 
-  const remainOf = key => page.$eval(`g[data-stock="${key}"] text:nth-of-type(2)`, e => e.textContent);
-  t.eq(await remainOf('p_153'), '残 26', '1.53×0.9の総数が最新の27に更新され、配置済み1台ぶん残26になる');
-  t.eq(await remainOf('p_180'), '残 24', '1.8×0.9の総数も保存ファイルの古い12ではなく最新の24になる');
-  t.eq(await remainOf('c_alpha'), '残 2', '変更していない項目(α)の総数はそのまま2');
+  const remainOf = key => page.$eval(`g[data-stock="${key}"] .stock-remain`, e => e.textContent);
+  t.eq(await remainOf('p_153'), '残 26 / 27', '1.53×0.9の総数が最新の27に更新され、配置済み1台ぶん残26になる');
+  t.eq(await remainOf('p_180'), '残 24 / 24', '1.8×0.9の総数も保存ファイルの古い12ではなく最新の24になる');
+  t.eq(await remainOf('c_alpha'), '残 2 / 2', '変更していない項目(α)の総数はそのまま2');
   t.eq(await page.locator('g.obj').count(), 1, '配置済みだった展示台1台はそのまま復元される');
 
   t.noErrors(errors);

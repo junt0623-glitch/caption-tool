@@ -198,8 +198,46 @@
   #libFoot{border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:8px;align-items:center}
   #libFoot .note{flex:1;margin:0;font-size:11px;color:#8c887c}
 
+  /* 在庫パネル(モーダル) */
+  #stockModal{
+    position:fixed;inset:0;background:rgba(28,28,30,.55);
+    display:flex;align-items:center;justify-content:center;z-index:50;
+  }
+  #stockModal[hidden]{display:none}
+  #stockBox{
+    background:var(--paper);border-radius:8px;width:min(680px,94vw);max-height:86vh;
+    display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.3);
+  }
+  #stockBox header{
+    background:transparent;color:var(--ink);border-bottom:1px solid var(--line);
+    padding:12px 16px;gap:10px;flex-wrap:nowrap;
+  }
+  #stockBox h3{font-size:14px;font-weight:600;flex:1}
+  #stockBox .sub{font-size:11px;color:#8c887c;font-weight:400;display:block;margin-top:2px}
+  #stockWrap{flex:1 1 auto;min-height:0;overflow-y:auto;padding:0 16px}
+  #stockTable{width:100%;border-collapse:collapse;font-size:13px}
+  #stockTable th,#stockTable td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right}
+  #stockTable th{
+    position:sticky;top:0;background:var(--paper);font-size:11px;color:#6d6a60;
+    font-weight:600;text-align:right;
+  }
+  #stockTable th:first-child,#stockTable td:first-child{text-align:left}
+  #stockTable td.size{color:#8c887c;font-size:11px;text-align:left}
+  #stockTable tr.cat td{
+    background:var(--panel);font-size:11px;color:#6d6a60;font-weight:600;text-align:left;
+  }
+  #stockTable input{
+    width:64px;padding:3px 6px;border:1px solid var(--line);border-radius:4px;
+    font-size:13px;font-family:inherit;text-align:right;background:#fff;
+  }
+  #stockTable td.remain{font-weight:600;color:var(--accent)}
+  #stockTable td.remain.zero{color:#999}
+  #stockTable td.remain.over{color:#c33}
+  #stockFoot{border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:8px;align-items:center}
+  #stockFoot .note{flex:1;margin:0;font-size:11px;color:#8c887c}
+
   @media print{
-    header,#toolbar,#side,#zoomCtrl,#hint,#libModal{display:none!important}
+    header,#toolbar,#side,#zoomCtrl,#hint,#libModal,#stockModal{display:none!important}
     body{background:#fff}
     #canvasWrap{position:fixed;inset:0;background:#fff}
   }
@@ -226,6 +264,7 @@
   <div class="spacer"></div>
   <button class="hbtn" id="wlBtn" title="作品リスト(CSV)を読み込み。「番号」列の番号が図面に表示されます">📋 作品リスト</button>
   <button class="hbtn" id="imgsBtn" title="画像フォルダを開く。あらかじめ画像を入れておき、図面上の作品をダブルクリックして選べます">🗂 画像フォルダ</button>
+  <button class="hbtn" id="stockBtn" title="ケース・展示台の使用数と残数を確認。他の展示室で使った台数もここで入力します">📦 在庫</button>
   <input type="file" id="wlInput" accept=".csv,.tsv,.txt" hidden>
   <input type="file" id="imgsInput" accept="image/*" multiple hidden>
   <button class="hbtn" id="loadBtn">📂 読み込み</button>
@@ -288,6 +327,21 @@
   </div>
 </div>
 
+<!-- 在庫パネル。この図面での使用数と、他の展示室(別の図面)で使った台数を突き合わせて残数を出す -->
+<div id="stockModal" hidden>
+  <div id="stockBox">
+    <header>
+      <h3>ケース・展示台の在庫 <span class="sub">「他の図面」に別の展示室で使った台数を入れると残数に反映されます</span></h3>
+      <button class="sbtn" id="stockClose" style="flex:none;width:auto">閉じる</button>
+    </header>
+    <div id="stockWrap"><table id="stockTable"></table></div>
+    <div id="stockFoot">
+      <div class="note" id="stockNote"></div>
+      <button class="sbtn" id="stockResetOther" style="flex:none;width:auto">「他の図面」をすべて0に戻す</button>
+    </div>
+  </div>
+</div>
+
 <script>
 "use strict";
 /* ============================================================
@@ -321,17 +375,19 @@ function defaultRooms(){
 }
 
 /* 可動ケース・展示台の在庫。種類ごと1つだけパレット表示し、取り出すと残数が減る。
-   残数 = total - 配置済みインスタンス数(stockKeyで対応付け) */
+   残数 = total − この図面での使用数 − 他の図面での使用数(state.usedElsewhere)
+   back:true は「背景つき」ケース。長辺の1本を太い線で描いて背景板を表す */
 function defaultStock(){
   return [
     {key:"c_alpha",  cat:"case", name:"α",              w:2400, h:1800, total:2},
-    {key:"c_beta",   cat:"case", name:"β",              w:2400, h:1200, total:10},
-    {key:"c_180",    cat:"case", name:"180角",          w:1800, h:1800, total:2},
-    {key:"c_ym",     cat:"case", name:"横長免震",       w:1800, h:1000, total:5},
-    {key:"c_ymb",    cat:"case", name:"横長免震背景",   w:1800, h:1000, total:1},
-    {key:"c_yh",     cat:"case", name:"横長非免震",     w:1800, h:1000, total:1},
-    {key:"c_yhb",    cat:"case", name:"横長非免震背景", w:1800, h:1000, total:2},
+    {key:"c_beta",   cat:"case", name:"β",              w:2400, h:1200, total:3},
+    {key:"c_180",    cat:"case", name:"180角",          w:1800, h:1800, total:4},
+    {key:"c_ym",     cat:"case", name:"横長免震",       w:1800, h:1000, total:3},
+    {key:"c_ymb",    cat:"case", name:"横長免震背景",   w:1800, h:1000, total:3, back:true},
+    {key:"c_yh",     cat:"case", name:"横長非免震",     w:1800, h:1000, total:2},
+    {key:"c_yhb",    cat:"case", name:"横長非免震背景", w:1800, h:1000, total:3, back:true},
     {key:"c_andon",  cat:"case", name:"行燈免震",       w:1000, h:1000, total:5},
+    {key:"c_andonh", cat:"case", name:"行燈非免震",     w:1000, h:1000, total:1},
     {key:"c_nozoki", cat:"case", name:"のぞき",         w:1800, h:1000, total:5},
     {key:"p_153",    cat:"ped",  name:"1.53×0.9",       w:1530, h:900,  total:27},
     {key:"p_180",    cat:"ped",  name:"1.8×0.9",        w:1800, h:900,  total:24},
@@ -340,10 +396,18 @@ function defaultStock(){
     {key:"p_120",    cat:"ped",  name:"1.2×0.9",        w:1200, h:900,  total:30},
   ];
 }
+function stockDef(key){ return state.stock.find(t=>t.key===key) || null; }
+/* この図面で使っている台数 */
+function stockUsed(key){ return state.objects.filter(o=>o.stockKey===key).length; }
+/* 他の展示室(別の図面)で使っている台数。ユーザーが在庫パネルで手入力する */
+function stockElsewhere(key){ return Math.max(0, Math.round(+(state.usedElsewhere?.[key]) || 0)); }
+/* 残数。他図面ぶんを引くのでマイナスにもなり得る(取りすぎの警告として見せる) */
 function stockRemain(key){
-  const s = state.stock.find(t=>t.key===key);
-  return s ? s.total - state.objects.filter(o=>o.stockKey===key).length : 0;
+  const s = stockDef(key);
+  return s ? s.total - stockUsed(key) - stockElsewhere(key) : 0;
 }
+/* 背景つきケースかどうか(配置済みオブジェクトは stockKey から引く) */
+function isBackCase(o){ return !!stockDef(o.stockKey)?.back; }
 
 /* ---- 状態 ---- */
 let idSeq = 1;
@@ -354,6 +418,7 @@ let state = {
   rooms: defaultRooms(),
   workList: [],            // 作品リスト(CSV) [{no,title,artist}]
   library: [],             // 画像フォルダ [{id,name,no,img}] アップロード済み画像。JSON保存に含まれる
+  usedElsewhere: {},       // 他の展示室(別の図面)での使用台数 stockKey→台数。残数から差し引く
   images: {},              // 旧形式の作品画像 番号→dataURL(読み込み時にlibraryへ移行する)
   stock: defaultStock(),
   walls: [],               // {id,x1,y1,x2,y2}
@@ -613,6 +678,13 @@ function el(name, attrs, parent){
   return e;
 }
 
+/* 背景つきケースの表現: 長辺(幅の側)のうち1本を通常の3倍の太さで描く。
+   ケースは幅w×奥行hで、長辺は幅の側。奥(上端)を背景板と見なして太くする */
+function drawBackEdge(g, w, h, col, baseWidth=25){
+  el("line",{x1:-w/2, y1:-h/2, x2:w/2, y2:-h/2,
+    stroke:col, "stroke-width":baseWidth*3, "stroke-linecap":"square"}, g);
+}
+
 function render(){
   svg.innerHTML = "";
 
@@ -649,28 +721,32 @@ function render(){
     if (selectedIds.has(w.id)) ln.style.stroke = "var(--accent)"; // inline styleでCSSクラスに勝たせる
   }
 
-  // 在庫パレット(印刷範囲の外): ケースは左・展示台は右に種類ごと1つ+残数を縦一列で表示。
-  // クリック(ドラッグ)で1台取り出す。残0はグレー表示
+  // 在庫パレット(印刷範囲の外): ケースは左・展示台は右に種類ごと1つ+使用数/残数を縦一列で表示。
+  // クリック(ドラッグ)で1台取り出す。残0以下はグレー表示(取りすぎはマイナス表示で警告)
   const f = fsc();
   if (layerVis.furniture){
     let ly = 400, ry = 400;
-    const GAPP = 500;
+    const GAPP = 620; // 使用数の行を足したぶん間隔を広げる
     for (const s of state.stock){
-      const remain = stockRemain(s.key);
+      const remain = stockRemain(s.key), used = stockUsed(s.key), elsewhere = stockElsewhere(s.key);
       const isCase = s.cat === "case";
       const [w,h] = dispSize(s);
       const x = isCase ? -2400 : SHEET.w + 2400;
       const y = (isCase ? ly : ry) + h/2;
       const col = isCase ? "var(--case)" : "var(--fixture)";
-      const g = el("g",{class:"stock"+(remain?"":" empty"),"data-stock":s.key,
+      const g = el("g",{class:"stock"+(remain>0?"":" empty"),"data-stock":s.key,
         transform:`translate(${x},${y})`}, svg);
-      el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:col,"fill-opacity":remain?.18:.05,
-        stroke:col,"stroke-width":25,"stroke-dasharray":remain?"":"120 80"}, g);
-      const lbl = el("text",{class:"lbl","font-size":240,y:-40}, g);
+      el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:col,"fill-opacity":remain>0?.18:.05,
+        stroke:col,"stroke-width":25,"stroke-dasharray":remain>0?"":"120 80"}, g);
+      if (s.back) drawBackEdge(g, w, h, col); // 背景つきは長辺の1本を太線で
+      const lbl = el("text",{class:"lbl stock-name","font-size":240,y:-40}, g);
       lbl.textContent = s.name;
-      const cnt = el("text",{class:"lbl","font-size":220,y:250,fill:remain?"var(--accent)":"#999",
-        "font-weight":600}, g);
-      cnt.textContent = `残 ${remain}`;
+      // この図面での使用数(+他図面での使用数があれば併記)
+      const useT = el("text",{class:"lbl stock-used","font-size":200,y:230,fill:"#6d6a60"}, g);
+      useT.textContent = elsewhere ? `使用 ${used} (他 ${elsewhere})` : `使用 ${used}`;
+      const cnt = el("text",{class:"lbl stock-remain","font-size":220,y:470,
+        fill:remain>0?"var(--accent)":(remain<0?"#c33":"#999"),"font-weight":600}, g);
+      cnt.textContent = `残 ${remain} / ${s.total}`;
       if (isCase) ly += h + GAPP; else ry += h + GAPP;
     }
   }
@@ -702,6 +778,7 @@ function render(){
       const col = o.type === "case" ? "var(--case)" : "var(--fixture)";
       el("rect",{class:"body",x:-w/2,y:-h/2,width:w,height:h,fill:col,
         "fill-opacity":o.type==="case"?.18:.25,stroke:col,"stroke-width":o.type==="case"?25:20}, grp);
+      if (isBackCase(o)) drawBackEdge(grp, w, h, col); // 背景つきケースは長辺の1本を太線で
       const lbl = el("text",{class:"lbl","font-size":Math.max(120, 240*f)}, grp);
       lbl.textContent = o.label || (o.type==="case"?"ケース":"展示台");
     }
@@ -1266,9 +1343,13 @@ document.querySelectorAll("#layerBar input").forEach(cb=>{
 /* ---- キーボード ---- */
 window.addEventListener("keydown", ev=>{
   if (ev.target.matches("input,textarea")) return;
-  // 画像フォルダを開いている間はEscapeで閉じるだけ(図面側の操作は受け付けない)
+  // モーダルを開いている間はEscapeで閉じるだけ(図面側の操作は受け付けない)
   if (!document.getElementById("libModal").hidden){
     if (ev.key==="Escape"){ ev.preventDefault(); closeLibrary(); }
+    return;
+  }
+  if (!document.getElementById("stockModal").hidden){
+    if (ev.key==="Escape"){ ev.preventDefault(); closeStock(); }
     return;
   }
   if ((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==="z" && !ev.shiftKey){ ev.preventDefault(); undo(); }
@@ -1329,6 +1410,8 @@ document.getElementById("fileInput").onchange = async ev=>{
     // 配置済みオブジェクトはstockKeyだけを見て残数を数え直すので、この上書きに
     // 追従できないデータが混ざる心配はない
     state.stock = defaultStock();
+    // 他の展示室での使用台数(在庫パネルの手入力)は図面ごとの情報なので保存値をそのまま使う
+    if (!state.usedElsewhere || typeof state.usedElsewhere !== "object") state.usedElsewhere = {};
     idSeq = Math.max(0, ...state.walls.map(w=>w.id), ...state.objects.map(o=>o.id)) + 1;
     clearSelect(); syncSheetUI(); render(); renderSide();
   }catch(e){ alert("読み込みに失敗しました: " + e.message); }
@@ -1466,6 +1549,62 @@ function renderLibrary(){
     };
   });
 }
+/* ---- 在庫パネル ----
+   この図面での使用数と、他の展示室(別の図面)での使用数を並べて残数を出す。
+   「他の図面」の入力は state.usedElsewhere[stockKey] に入り、JSON保存にも含まれる */
+function openStock(){
+  document.getElementById("stockModal").hidden = false;
+  renderStock();
+}
+function closeStock(){ document.getElementById("stockModal").hidden = true; }
+function renderStock(){
+  if (!state.usedElsewhere) state.usedElsewhere = {};
+  const rows = [];
+  let lastCat = null;
+  for (const s of state.stock){
+    if (s.cat !== lastCat){
+      lastCat = s.cat;
+      rows.push(`<tr class="cat"><td colspan="5">${s.cat==="case"?"可動ケース":"展示台"}</td></tr>`);
+    }
+    const used = stockUsed(s.key), other = stockElsewhere(s.key), remain = stockRemain(s.key);
+    const cls = remain > 0 ? "" : (remain < 0 ? " over" : " zero");
+    rows.push(`<tr>
+      <td>${esc(s.name)}${s.back?' <span style="color:#8c887c;font-size:11px">(背景)</span>':""}
+        <div class="size">${s.w/1000}×${s.h/1000}m</div></td>
+      <td>${s.total}</td>
+      <td>${used}</td>
+      <td><input type="number" min="0" step="1" data-other="${s.key}" value="${other}"></td>
+      <td class="remain${cls}">${remain}</td>
+    </tr>`);
+  }
+  document.getElementById("stockTable").innerHTML =
+    `<thead><tr><th>種類</th><th>総数</th><th>この図面</th><th>他の図面</th><th>残</th></tr></thead>
+     <tbody>${rows.join("")}</tbody>`;
+
+  const over = state.stock.filter(s=>stockRemain(s.key) < 0);
+  document.getElementById("stockNote").textContent = over.length
+    ? `⚠ 台数が足りていません: ${over.map(s=>s.name).join("、")}`
+    : "「この図面」は今開いている図面での使用数です(自動)";
+
+  document.getElementById("stockTable").querySelectorAll("[data-other]").forEach(inp=>{
+    inp.onchange = e=>{
+      pushUndo();
+      const v = Math.max(0, Math.round(+e.target.value || 0));
+      state.usedElsewhere[inp.dataset.other] = v;
+      e.target.value = v;
+      renderStock(); render(); renderSide();
+    };
+  });
+}
+document.getElementById("stockBtn").onclick = openStock;
+document.getElementById("stockClose").onclick = closeStock;
+document.getElementById("stockModal").onclick = ev=>{ if (ev.target.id === "stockModal") closeStock(); };
+document.getElementById("stockResetOther").onclick = ()=>{
+  pushUndo();
+  state.usedElsewhere = {};
+  renderStock(); render(); renderSide();
+};
+
 document.getElementById("imgsBtn").onclick = ()=> openLibrary(null);
 document.getElementById("libClose").onclick = closeLibrary;
 document.getElementById("libModal").onclick = ev=>{ if (ev.target.id === "libModal") closeLibrary(); };
