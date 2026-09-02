@@ -182,6 +182,28 @@
   更新されない不具合になる(tests/fp10_save_filename_date.js が回帰テスト)
 - JSON保存/読み込み(旧形式と互換)、PNG書き出し、印刷
 
+## Googleドライブからの読み込み
+- ヘッダーの「☁ ドライブ」でGoogle Pickerを開き、選んだファイルをDrive APIで
+  取得して読み込む。JSONなら図面データ、CSV/TSV/TXTなら作品リストとして扱う
+  (振り分けは `isWorkListName()`。拡張子とMIMEタイプの両方を見る)
+- **取り込み処理はローカルファイルと共通**: `applyPlanText(text)` と
+  `applyWorkListBlob(blob)` にまとめてあり、ファイル入力もドライブも同じ関数を通る。
+  読み込みの仕様を変えるときは必ずこの2つを直すこと(片方だけ直すと経路で挙動がズレる)
+- スコープは `drive.file` のみ。**Pickerで選んだファイルしか読めない**ので、
+  ドライブ全体を見にいくことはない。広いスコープ(drive.readonly等)に変えないこと
+- クライアントIDとAPIキーは利用者ごとに違うので、アプリには埋め込まず
+  設定画面(`#driveModal`)で入力させ `localStorage["floorplan.driveConfig"]` に保存する。
+  **アクセストークンは保存しない**(メモリ上の `driveToken` だけ。失敗時はnullに戻して取り直す)
+- GoogleのJS(gsi/client, apis.google.com)は「☁ ドライブ」を押したときだけ
+  `loadScriptOnce()` で読み込む。起動時に読むとオフラインや file:// で余計な失敗が出る
+- **file:// では使えない**(OAuthの生成元がURLでないと成立しないため)。
+  設定画面はその場合に案内を出す。GitHub Pagesのページから使うこと
+- 設定ミス(IDの誤り・生成元の登録漏れ)が失敗原因の大半なので、
+  失敗時はconfirmで設定画面を開き直せるようにしてある。
+  設定済みでも Shift+クリック で設定画面を開ける
+- tests/fp12_google_drive.js が回帰テスト。GoogleのJSと Drive API を
+  page.route() で偽物に差し替え、認証〜選択〜取り込みの流れを検証している
+
 ## 印刷
 - **印刷では印刷範囲(A3)だけが用紙いっぱいに出る**。仕組みは3つの組み合わせ:
   1. 印刷時のviewBoxは `0 0 SHEET.w SHEET.h`(印刷範囲そのもの)を直接セットする。

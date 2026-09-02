@@ -236,12 +236,37 @@
   #stockFoot{border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:8px;align-items:center}
   #stockFoot .note{flex:1;margin:0;font-size:11px;color:#8c887c}
 
+  /* Googleドライブの接続設定 */
+  #driveModal{
+    position:fixed;inset:0;background:rgba(28,28,30,.55);
+    display:flex;align-items:center;justify-content:center;z-index:50;
+  }
+  #driveModal[hidden]{display:none}
+  #driveBox{
+    background:var(--paper);border-radius:8px;width:min(620px,94vw);max-height:86vh;
+    display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.3);
+  }
+  #driveBox header{
+    background:transparent;color:var(--ink);border-bottom:1px solid var(--line);
+    padding:12px 16px;gap:10px;flex-wrap:nowrap;
+  }
+  #driveBody{padding:14px 16px;overflow:auto;font-size:12px;line-height:1.7;color:#55524a}
+  #driveBody label{display:block;margin:10px 0 4px;font-weight:600;color:var(--ink)}
+  #driveBody input[type=text]{
+    width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px;
+    font-family:inherit;font-size:13px;background:#fff;
+  }
+  #driveBody ol{margin:6px 0 0 1.3em}
+  #driveBody code{background:#efece2;padding:1px 4px;border-radius:3px;font-size:11px}
+  #driveFoot{border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:8px;align-items:center}
+  #driveFoot .note{flex:1;margin:0;font-size:11px;color:#8c887c}
+
   /* 既定はA3横。印刷ボタンを押すと#pageStyleが印刷範囲の向きに合わせて上書きする。
      ここにも書いておくのは、印刷プレビューが開いた時点で用紙をA3と分からせるため */
   @page{size:A3 landscape;margin:0}
 
   @media print{
-    header,#toolbar,#side,#zoomCtrl,#hint,#libModal,#stockModal{display:none!important}
+    header,#toolbar,#side,#zoomCtrl,#hint,#libModal,#stockModal,#driveModal{display:none!important}
     body{background:#fff}
     /* 用紙をmm実寸で指定する。inset:0のように「紙いっぱい」にすると、
        プリンター側の用紙がA4のままだとA4サイズで出てしまうため、
@@ -282,6 +307,7 @@
   <input type="file" id="wlInput" accept=".csv,.tsv,.txt" hidden>
   <input type="file" id="imgsInput" accept="image/*" multiple hidden>
   <button class="hbtn" id="loadBtn">📂 読み込み</button>
+  <button class="hbtn" id="driveBtn" title="Googleドライブから図面データ(JSON)や作品リスト(CSV)を直接読み込みます。Shiftを押しながらで接続設定">☁ ドライブ</button>
   <button class="hbtn" id="saveBtn">💾 保存 (JSON)</button>
   <button class="hbtn" id="pngBtn">🖼 PNG書き出し</button>
   <button class="hbtn primary" id="printBtn">🖨 印刷実行</button>
@@ -352,6 +378,39 @@
     <div id="stockFoot">
       <div class="note" id="stockNote"></div>
       <button class="sbtn" id="stockResetOther" style="flex:none;width:auto">「他の図面」をすべて0に戻す</button>
+    </div>
+  </div>
+</div>
+
+<div id="driveModal" hidden>
+  <div id="driveBox">
+    <header>
+      <h3>Googleドライブの接続設定 <span class="sub">最初に1回だけ設定します</span></h3>
+      <button class="sbtn" id="driveClose" style="flex:none;width:auto">閉じる</button>
+    </header>
+    <div id="driveBody">
+      <p>Googleドライブから直接読み込むには、ご自身のGoogleアカウントで
+      「このアプリからドライブを読む許可」を作る必要があります。
+      下の2つをGoogle Cloudコンソールで取得して貼り付けてください。</p>
+      <ol>
+        <li><a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloudコンソール</a>でプロジェクトを新規作成</li>
+        <li>「APIとサービス」→「ライブラリ」で <code>Google Drive API</code> と <code>Google Picker API</code> を有効化</li>
+        <li>「OAuth同意画面」を作成（ユーザーの種類は「外部」、テストユーザーにご自分のアドレスを追加）</li>
+        <li>「認証情報」→「OAuthクライアントID」→ 種類は「ウェブアプリケーション」。
+          <b>承認済みのJavaScript生成元</b>に下のURLを追加します</li>
+        <li>同じ「認証情報」→「APIキー」を作成</li>
+      </ol>
+      <p>このページの生成元（そのままコピーしてください）：<br><code id="driveOrigin"></code></p>
+      <label for="driveClientId">OAuthクライアントID</label>
+      <input type="text" id="driveClientId" placeholder="000000000000-xxxxxxxx.apps.googleusercontent.com" spellcheck="false">
+      <label for="driveApiKey">APIキー</label>
+      <input type="text" id="driveApiKey" placeholder="AIza..." spellcheck="false">
+      <p style="margin-top:10px">読み取りの範囲は「このアプリで選んだファイルだけ」です。
+      ドライブ全体を見にいくことはありません。入力した値はこのブラウザの中だけに保存されます。</p>
+    </div>
+    <div id="driveFoot">
+      <div class="note" id="driveNote"></div>
+      <button class="sbtn" id="driveSave" style="flex:none;width:auto">保存してドライブを開く</button>
     </div>
   </div>
 </div>
@@ -1374,6 +1433,10 @@ window.addEventListener("keydown", ev=>{
     if (ev.key==="Escape"){ ev.preventDefault(); closeStock(); }
     return;
   }
+  if (!document.getElementById("driveModal").hidden){
+    if (ev.key==="Escape"){ ev.preventDefault(); closeDriveSettings(); }
+    return;
+  }
   if ((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==="z" && !ev.shiftKey){ ev.preventDefault(); undo(); }
   else if ((ev.ctrlKey||ev.metaKey) && (ev.key.toLowerCase()==="y" || (ev.key.toLowerCase()==="z" && ev.shiftKey))){ ev.preventDefault(); redo(); }
   else if ((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==="a"){ // 全オブジェクト選択
@@ -1389,6 +1452,136 @@ window.addEventListener("keydown", ev=>{
 });
 
 /* ---- 保存 / 読み込み / 書き出し ---- */
+/* ---- Googleドライブから直接読み込む ----
+   Google Picker(ファイル選択画面)で選んだファイルをDrive APIで取得し、
+   ローカルファイルのときと同じ applyPlanText / applyWorkListBlob に流す。
+
+   ・権限は drive.file スコープのみ。「Pickerで選んだファイル」しか読めないので、
+     ドライブ全体を見にいくことはない
+   ・クライアントIDとAPIキーは利用者ごとに違う(こちらでは用意できない)ため、
+     設定画面で入力してもらい localStorage に保存する
+   ・GoogleのJSはドライブを使うときだけ読み込む(オフラインや file:// でも
+     アプリ本体は今までどおり動かすため。読み込みは初回だけ) */
+const DRIVE_CFG_KEY = "floorplan.driveConfig";
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+let driveToken = null;
+
+function driveCfg(){
+  try{ return JSON.parse(localStorage.getItem(DRIVE_CFG_KEY)) || {}; }
+  catch{ return {}; }
+}
+function loadScriptOnce(src){
+  return new Promise((ok, ng)=>{
+    const found = document.querySelector(`script[data-ext="${src}"]`);
+    if (found){
+      if (found.dataset.loaded) return ok();
+      found.addEventListener("load", ()=>ok());
+      found.addEventListener("error", ()=>ng(new Error("読み込めませんでした: " + src)));
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = src; s.dataset.ext = src;
+    s.onload = ()=>{ s.dataset.loaded = "1"; ok(); };
+    s.onerror = ()=> ng(new Error("読み込めませんでした: " + src));
+    document.head.appendChild(s);
+  });
+}
+/* アクセストークンを取る。すでに取得済みならそのまま使い回す(毎回同意画面を出さない) */
+function driveAuth(clientId){
+  return new Promise((ok, ng)=>{
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: DRIVE_SCOPE,
+      callback: res => res.access_token ? ok(res.access_token)
+        : ng(new Error(res.error_description || res.error || "許可が得られませんでした")),
+      error_callback: err => ng(new Error(err?.message || "許可の画面が閉じられました")),
+    });
+    client.requestAccessToken({prompt: driveToken ? "" : "consent"});
+  });
+}
+/* ファイル選択画面。選ばれたら {id,name,mimeType}、閉じられたら null */
+function drivePick(token, apiKey){
+  return new Promise(ok=>{
+    const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
+      .setIncludeFolders(true)
+      .setMimeTypes("application/json,text/csv,text/tab-separated-values,text/plain");
+    new google.picker.PickerBuilder()
+      .setOAuthToken(token).setDeveloperKey(apiKey).setLocale("ja")
+      .addView(view)
+      .setCallback(d=>{
+        if (d.action === google.picker.Action.PICKED) ok(d.docs[0]);
+        else if (d.action === google.picker.Action.CANCEL) ok(null);
+      })
+      .build().setVisible(true);
+  });
+}
+async function driveFetchBlob(id, token){
+  const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`;
+  const res = await fetch(url, {headers:{Authorization:"Bearer " + token}});
+  if (!res.ok) throw new Error(`ドライブから取得できませんでした (${res.status})`);
+  return res.blob();
+}
+/* 拡張子とMIMEタイプで、図面データ(JSON)か作品リスト(CSV/TSV)かを振り分ける */
+function isWorkListName(doc){
+  return /\.(csv|tsv|txt)$/i.test(doc.name || "")
+    || /csv|tab-separated/.test(doc.mimeType || "");
+}
+async function openFromDrive(){
+  const cfg = driveCfg();
+  if (!cfg.clientId || !cfg.apiKey){ openDriveSettings(); return; }
+  const hint = document.getElementById("hint");
+  try{
+    hint.textContent = "Googleドライブに接続しています…";
+    await loadScriptOnce("https://accounts.google.com/gsi/client");
+    await loadScriptOnce("https://apis.google.com/js/api.js");
+    await new Promise((ok, ng)=> gapi.load("picker", {callback: ok, onerror: ()=>ng(new Error("ファイル選択画面を読み込めませんでした"))}));
+    driveToken = await driveAuth(cfg.clientId);
+    const doc = await drivePick(driveToken, cfg.apiKey);
+    if (!doc){ hint.textContent = "ドライブからの読み込みを中止しました"; return; }
+    hint.textContent = `${doc.name} を読み込んでいます…`;
+    const blob = await driveFetchBlob(doc.id, driveToken);
+    if (isWorkListName(doc)){
+      await applyWorkListBlob(blob);
+    } else {
+      applyPlanText(await blob.text());
+      hint.textContent = `${doc.name} を読み込みました`;
+    }
+  }catch(e){
+    hint.textContent = "";
+    driveToken = null; // 期限切れ等をひきずらないよう取り直させる
+    // 失敗の大半は設定(IDやキー、生成元の登録漏れ)なので、その場で開き直せるようにする
+    if (confirm("Googleドライブからの読み込みに失敗しました: " + e.message
+      + "\n\n接続設定を開き直しますか?")) openDriveSettings();
+  }
+}
+function openDriveSettings(){
+  const cfg = driveCfg();
+  document.getElementById("driveClientId").value = cfg.clientId || "";
+  document.getElementById("driveApiKey").value = cfg.apiKey || "";
+  document.getElementById("driveOrigin").textContent = location.origin;
+  document.getElementById("driveNote").textContent =
+    location.protocol === "file:"
+      ? "※このファイルをパソコンから直接開いています。Googleの認証はURL(https://…)からでないと使えないので、GitHub Pagesのページを開いてお試しください。"
+      : "";
+  document.getElementById("driveModal").hidden = false;
+}
+function closeDriveSettings(){ document.getElementById("driveModal").hidden = true; }
+// Shiftを押しながら押すと、設定済みでも接続設定を開き直せる
+document.getElementById("driveBtn").onclick = ev => ev.shiftKey ? openDriveSettings() : openFromDrive();
+document.getElementById("driveClose").onclick = closeDriveSettings;
+document.getElementById("driveSave").onclick = ()=>{
+  const clientId = document.getElementById("driveClientId").value.trim();
+  const apiKey = document.getElementById("driveApiKey").value.trim();
+  if (!clientId || !apiKey){
+    document.getElementById("driveNote").textContent = "クライアントIDとAPIキーの両方を入れてください";
+    return;
+  }
+  localStorage.setItem(DRIVE_CFG_KEY, JSON.stringify({clientId, apiKey}));
+  driveToken = null; // 設定を変えたら認証もやり直す
+  closeDriveSettings();
+  openFromDrive();
+};
+
 document.getElementById("saveBtn").onclick = ()=>{
   // 保存日はページを開いた時刻でも読み込んだファイルの値でもなく、
   // 「今まさに保存した日」でなければならない(ファイル名にも入る)
@@ -1400,10 +1593,10 @@ document.getElementById("saveBtn").onclick = ()=>{
   a.click(); URL.revokeObjectURL(a.href);
 };
 document.getElementById("loadBtn").onclick = ()=> document.getElementById("fileInput").click();
-document.getElementById("fileInput").onchange = async ev=>{
-  const f = ev.target.files[0]; if (!f) return;
-  try{
-    const data = JSON.parse(await f.text());
+/* 図面JSONの取り込み。ローカルファイルとGoogleドライブの両方から呼ぶので、
+   「どこから来たか」に依存しない形(テキスト1本)にしてある */
+function applyPlanText(text){
+    const data = JSON.parse(text);
     if (!data.walls || !data.objects) throw new Error("形式が違います");
     pushUndo();
     state = data;
@@ -1439,6 +1632,11 @@ document.getElementById("fileInput").onchange = async ev=>{
     if (!state.usedElsewhere || typeof state.usedElsewhere !== "object") state.usedElsewhere = {};
     idSeq = Math.max(0, ...state.walls.map(w=>w.id), ...state.objects.map(o=>o.id)) + 1;
     clearSelect(); syncSheetUI(); render(); renderSide();
+}
+document.getElementById("fileInput").onchange = async ev=>{
+  const f = ev.target.files[0]; if (!f) return;
+  try{
+    applyPlanText(await f.text());
   }catch(e){ alert("読み込みに失敗しました: " + e.message); }
   ev.target.value = "";
 };
@@ -1512,15 +1710,20 @@ document.getElementById("scalePct").onchange = ev=>{
 
 /* 作品リスト(CSV)の読み込み */
 document.getElementById("wlBtn").onclick = ()=> document.getElementById("wlInput").click();
+/* 作品リストの取り込み。図面JSONと同じく、ローカルファイルとGoogleドライブの
+   両方から呼べるよう Blob(File も Blob) を受け取る形にしてある */
+async function applyWorkListBlob(blob){
+  const list = parseWorkList(await decodeText(blob));
+  if (!list.length) throw new Error("「番号」の列が見つかりません(1列目か「番号」列に数字を入れてください)");
+  pushUndo();
+  state.workList = list;
+  render(); renderSide();
+  document.getElementById("hint").textContent = `作品リスト ${list.length}件を読み込みました`;
+}
 document.getElementById("wlInput").onchange = async ev=>{
   const f = ev.target.files[0]; if (!f) return;
   try{
-    const list = parseWorkList(await decodeText(f));
-    if (!list.length) throw new Error("「番号」の列が見つかりません(1列目か「番号」列に数字を入れてください)");
-    pushUndo();
-    state.workList = list;
-    render(); renderSide();
-    document.getElementById("hint").textContent = `作品リスト ${list.length}件を読み込みました`;
+    await applyWorkListBlob(f);
   }catch(e){ alert("作品リストの読み込みに失敗しました: " + e.message); }
   ev.target.value = "";
 };
