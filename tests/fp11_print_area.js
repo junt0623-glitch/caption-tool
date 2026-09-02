@@ -100,6 +100,50 @@ async function run() {
   t.eq(outside, await page.locator('g[data-stock]').count(),
     '在庫パレットは全種類が印刷範囲の外に置かれている');
 
+  // --- 用紙はA3の実寸で出る(プリンター側がA4のままでもA4に縮まない) ---
+  // 描画領域を「紙いっぱい(inset:0)」にすると、用紙がA4なら図面もA4の大きさで
+  // 出てしまう。mm実寸で指定しているので、印刷メディアでの大きさは常にA3になる。
+  const MM = 96 / 25.4; // 1mmあたりのCSSピクセル
+  const near = (a, b) => Math.abs(a - b) < 1;
+  const wrapSize = () => page.$eval('#canvasWrap', e => {
+    const r = e.getBoundingClientRect();
+    return [r.width, r.height];
+  });
+
+  await capturePrintState(page); // 直前の向きの指定が残っているので押し直す
+  await page.emulateMedia({ media: 'print' });
+  let [ww, wh] = await wrapSize();
+  t.ok(near(ww, 420 * MM) && near(wh, 297 * MM),
+    `A3横のとき印刷される領域はA3実寸(420×297mm)になる(実際: ${Math.round(ww / MM)}×${Math.round(wh / MM)}mm)`);
+
+  await page.emulateMedia({ media: 'screen' });
+  await page.selectOption('#sheetSel', '90');
+  await page.waitForTimeout(200);
+  await capturePrintState(page);
+  await page.emulateMedia({ media: 'print' });
+  [ww, wh] = await wrapSize();
+  t.ok(near(ww, 297 * MM) && near(wh, 420 * MM),
+    `A3縦のとき印刷される領域はA3縦の実寸(297×420mm)になる(実際: ${Math.round(ww / MM)}×${Math.round(wh / MM)}mm)`);
+  await page.emulateMedia({ media: 'screen' });
+  await page.selectOption('#sheetSel', '0');
+  await page.waitForTimeout(200);
+
+  // 実際にPDFに出して用紙サイズがA3(420×297mm)になっていることを確かめる
+  const mediaBox = async () => {
+    await capturePrintState(page);
+    const pdf = await page.pdf({ preferCSSPageSize: true });
+    const m = /MediaBox\s*\[([^\]]+)\]/.exec(pdf.toString('latin1'));
+    return m[1].trim().split(/\s+/).map(Number).slice(2).map(pt => pt / 72 * 25.4);
+  };
+  let [mw, mh] = await mediaBox();
+  t.ok(Math.abs(mw - 420) < 1 && Math.abs(mh - 297) < 1,
+    `印刷結果の用紙はA3横(実際: ${Math.round(mw)}×${Math.round(mh)}mm)`);
+  await page.selectOption('#sheetSel', '90');
+  await page.waitForTimeout(200);
+  [mw, mh] = await mediaBox();
+  t.ok(Math.abs(mw - 297) < 1 && Math.abs(mh - 420) < 1,
+    `A3縦の図面では用紙もA3縦(実際: ${Math.round(mw)}×${Math.round(mh)}mm)`);
+
   t.noErrors(errors);
   await context.close();
   await browser.close();
