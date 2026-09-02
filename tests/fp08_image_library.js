@@ -66,9 +66,6 @@ async function run() {
   const autoHref = await page.$eval('g.obj image', i => i.getAttribute('href'));
 
   // --- ダブルクリックで画像フォルダを開き、別の画像(番号なしの方)を選べる ---
-  // 作品ツールは配置後もそのまま(次の番号を続けて置けるように)なので、
-  // 図面上の作品を触る前に選択ツールへ戻す
-  await page.click('.tool[data-tool="select"]');
   await page.mouse.dblclick(cx, cy);
   await page.waitForTimeout(200);
   t.ok(!(await page.locator('#libModal').isHidden()), '作品をダブルクリックすると画像フォルダが開く');
