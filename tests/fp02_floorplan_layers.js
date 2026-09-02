@@ -122,40 +122,40 @@ async function run() {
   await page.waitForTimeout(100);
   await page.setInputFiles('#roomFile', FIXTURE_PNG);
   await page.waitForTimeout(300);
-  t.eq(await page.locator('svg#plan > image').count(), 1, '図面画像が最背面に描画される');
-  t.ok(await page.$eval('svg#plan > image', i => i.getAttribute('href').startsWith('data:image/jpeg')),
+  t.eq(await page.locator('svg#plan .sheet-root > image').count(), 1, '図面画像が最背面に描画される');
+  t.ok(await page.$eval('svg#plan .sheet-root > image', i => i.getAttribute('href').startsWith('data:image/jpeg')),
     '図面画像は圧縮(JPEG化)されてから保存される(フリーズ対策)');
   t.ok(await page.$eval('svg#plan', s => {
-    const img = s.querySelector(':scope > image');
+    const img = s.querySelector('.sheet-root > image');
     const obj = s.querySelector('g.obj');
     return img && obj && (img.compareDocumentPosition(obj) & Node.DOCUMENT_POSITION_FOLLOWING);
   }), '図面画像はオブジェクトより背面(先に描画)');
 
   // --- 展示室図面の回転は印刷範囲(ヘッダーの回転)と一本化されている ---
-  t.eq(await page.$eval('svg#plan > image', i => i.getAttribute('transform') || ''), '',
+  t.eq(await page.$eval('svg#plan .sheet-root > image', i => i.getAttribute('transform') || ''), '',
     '回転0°のときはtransformが付かない');
-  const roomBoxAt0 = await page.$eval('svg#plan > image', i =>
+  const roomBoxAt0 = await page.$eval('svg#plan .sheet-root > image', i =>
     ({ w: +i.getAttribute('width'), h: +i.getAttribute('height') }));
   t.eq(roomBoxAt0, { w: 42000, h: 29700 }, '回転0°の図面の基準サイズはA3横(42000×29700)');
 
   await page.selectOption('#sheetSel', '90'); // 個別の画像回転UIは無く、印刷範囲の回転がそのまま図面にも適用される
   await page.waitForTimeout(100);
-  t.ok(/rotate\(90 /.test(await page.$eval('svg#plan > image', i => i.getAttribute('transform'))),
+  t.ok(/rotate\(90 /.test(await page.$eval('svg#plan .sheet-root > image', i => i.getAttribute('transform'))),
     '印刷範囲を90°回転すると図面画像にも90度分のrotate transformが付く');
   // 縦横比も印刷範囲(90°=A3縦=29700×42000)に対応していることを、
   // 回転後の見た目のバウンディングボックスがSHEETと一致することで確認する
-  const rotatedBBox = await page.$eval('svg#plan > image', i => {
+  const rotatedBBox = await page.$eval('svg#plan .sheet-root > image', i => {
     const b = i.getBBox(); // preserveAspectRatioの影響を受けないSVG座標系での実サイズ
     return { w: Math.round(b.width), h: Math.round(b.height) };
   });
   t.eq(rotatedBBox, { w: 42000, h: 29700 }, '回転前の要素自体のサイズ(getBBox)はA3横基準のまま変わらない');
-  const sheetDims = await page.$eval('svg#plan > rect', r =>
+  const sheetDims = await page.$eval('svg#plan .sheet-root > rect', r =>
     ({ w: +r.getAttribute('width'), h: +r.getAttribute('height') }));
   t.eq(sheetDims, { w: 29700, h: 42000 }, '印刷範囲(90°)はA3縦(29700×42000)になっている');
   // 回転後、図面(の4隅)が実際に印刷範囲の矩形にちょうど重なることを、
   // rotate(deg cx cy) を自前で行列計算して確認する(getCTMはviewBoxの縮尺を
   // 含んだ画面ピクセル座標を返してしまい、plan-mm座標の比較には使えないため)
-  const corners = await page.$eval('svg#plan > image', i => {
+  const corners = await page.$eval('svg#plan .sheet-root > image', i => {
     const t = i.getAttribute('transform') || '';
     const m = t.match(/rotate\(([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\)/);
     const x = +i.getAttribute('x'), y = +i.getAttribute('y');
@@ -173,13 +173,13 @@ async function run() {
 
   await page.click('#undoBtn');
   await page.waitForTimeout(100);
-  t.eq(await page.$eval('svg#plan > image', i => i.getAttribute('transform') || ''), '',
+  t.eq(await page.$eval('svg#plan .sheet-root > image', i => i.getAttribute('transform') || ''), '',
     '印刷範囲の回転(=図面の回転)もUndoで戻る');
   t.eq(await page.$eval('#sheetSel', s => s.value), '0', 'Undo後は回転セレクトも同期される');
 
   await page.uncheck('#layerBar input[data-layer="room"]');
   await page.waitForTimeout(100);
-  t.eq(await page.locator('svg#plan > image').count(), 0, '図面レイヤーを隠すと画像が消える');
+  t.eq(await page.locator('svg#plan .sheet-root > image').count(), 0, '図面レイヤーを隠すと画像が消える');
   await page.check('#layerBar input[data-layer="room"]');
   await page.uncheck('#layerBar input[data-layer="furniture"]');
   await page.waitForTimeout(100);

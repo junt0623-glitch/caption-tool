@@ -57,11 +57,11 @@ async function run() {
   await page.waitForTimeout(100);
   const t0 = Date.now();
   await page.setInputFiles('#roomFile', bigPngPath);
-  await page.waitForSelector('svg#plan > image', { timeout: 10000 }); // フリーズしていればここでタイムアウトする
+  await page.waitForSelector('svg#plan .sheet-root > image', { timeout: 10000 }); // フリーズしていればここでタイムアウトする
   const loadMs = Date.now() - t0;
   t.ok(loadMs < 10000, `巨大画像の読み込みが10秒以内に完了する(実際 ${loadMs}ms)`);
 
-  const href = await page.$eval('svg#plan > image', i => i.getAttribute('href'));
+  const href = await page.$eval('svg#plan .sheet-root > image', i => i.getAttribute('href'));
   t.ok(href.startsWith('data:image/jpeg'), '圧縮されてJPEGとして保存される');
   t.ok(href.length < bigPngBytes, `保存されるdataURLは元画像より小さい(href ${href.length}字 < 元PNG ${bigPngBytes}バイト相当)`);
 
@@ -73,7 +73,7 @@ async function run() {
   }
   const interactMs = Date.now() - t1;
   t.ok(interactMs < 5000, `画像読み込み後も透明度スライダー操作が5秒以内に応答する(実際 ${interactMs}ms)`);
-  t.eq(await page.$eval('svg#plan > image', i => i.getAttribute('opacity')), '0.7',
+  t.eq(await page.$eval('svg#plan .sheet-root > image', i => i.getAttribute('opacity')), '0.7',
     '最後に設定した透明度70%が反映されている(=UIが固まらず処理を追えている)');
 
   // --- 画像フォルダに入れる作品画像でも同様にフリーズしないこと ---

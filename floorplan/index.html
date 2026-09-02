@@ -240,8 +240,14 @@
     header,#toolbar,#side,#zoomCtrl,#hint,#libModal,#stockModal{display:none!important}
     body{background:#fff}
     #canvasWrap{position:fixed;inset:0;background:#fff}
+    /* 在庫パレットは印刷範囲の外にある編集用のUIなので用紙には出さない */
+    #plan .stock{display:none!important}
+    /* 印刷範囲の外にはみ出したものが用紙の余白部分に写り込まないようクリップする */
+    #plan .sheet-root{clip-path:url(#sheetClip)}
   }
 </style>
+<!-- 印刷時に用紙サイズ(A3横/縦)を印刷範囲に合わせて差し込む。printBtnが書き換える -->
+<style id="pageStyle"></style>
 </head>
 <body>
 
@@ -688,11 +694,19 @@ function drawBackEdge(g, w, h, col, baseWidth=25){
 function render(){
   svg.innerHTML = "";
 
+  // 描画物はすべてこのグループに入れる。印刷時だけ@media printでsheetClipを掛け、
+  // 印刷範囲の外にあるもの(在庫パレットや範囲外に置いたケース等)が用紙に
+  // 写り込まないようにする(画面編集中はクリップしないので範囲外も自由に置ける)
+  const defs = el("defs",{}, svg);
+  const cp = el("clipPath",{id:"sheetClip"}, defs);
+  el("rect",{x:0,y:0,width:SHEET.w,height:SHEET.h}, cp);
+  const root = el("g",{class:"sheet-root"}, svg);
+
   // 用紙
-  el("rect",{x:0,y:0,width:SHEET.w,height:SHEET.h,fill:"var(--paper)",stroke:"var(--ink)","stroke-width":30}, svg);
+  el("rect",{x:0,y:0,width:SHEET.w,height:SHEET.h,fill:"var(--paper)",stroke:"var(--ink)","stroke-width":30}, root);
 
   // グリッド
-  const g = el("g",{}, svg);
+  const g = el("g",{}, root);
   for (let x=0; x<=SHEET.w; x+=GRID)
     el("line",{x1:x,y1:0,x2:x,y2:SHEET.h,stroke: x%(GRID*4)?"var(--grid)":"var(--grid-major)","stroke-width":x%(GRID*4)?6:10}, g);
   for (let y=0; y<=SHEET.h; y+=GRID)
@@ -712,12 +726,12 @@ function render(){
     el("image",{href:room.img, x:rx, y:ry, width:rw, height:rh,
       preserveAspectRatio:"xMinYMin meet", opacity:(room.op??70)/100,
       transform: rot ? `rotate(${rot} ${rx+rw/2} ${ry+rh/2})` : "",
-      "pointer-events":"none"}, svg);
+      "pointer-events":"none"}, root);
   }
 
   // 壁
   for (const w of state.walls){
-    const ln = el("line",{x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2,"stroke-width":WALL_T,class:"wall-line","data-id":w.id}, svg);
+    const ln = el("line",{x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2,"stroke-width":WALL_T,class:"wall-line","data-id":w.id}, root);
     if (selectedIds.has(w.id)) ln.style.stroke = "var(--accent)"; // inline styleでCSSクラスに勝たせる
   }
 
@@ -735,7 +749,7 @@ function render(){
       const y = (isCase ? ly : ry) + h/2;
       const col = isCase ? "var(--case)" : "var(--fixture)";
       const g = el("g",{class:"stock"+(remain>0?"":" empty"),"data-stock":s.key,
-        transform:`translate(${x},${y})`}, svg);
+        transform:`translate(${x},${y})`}, root);
       el("rect",{x:-w/2,y:-h/2,width:w,height:h,fill:col,"fill-opacity":remain>0?.18:.05,
         stroke:col,"stroke-width":25,"stroke-dasharray":remain>0?"":"120 80"}, g);
       if (s.back) drawBackEdge(g, w, h, col); // 背景つきは長辺の1本を太線で
@@ -756,7 +770,7 @@ function render(){
   for (const o of [...state.objects].sort((a,b)=>layerOf(a)-layerOf(b))){
     if (!layerShown(o)) continue;
     const grp = el("g",{class:"obj"+(selectedIds.has(o.id)?" selected":""),"data-id":o.id,
-      transform:`translate(${o.x},${o.y}) rotate(${o.rot||0})`}, svg);
+      transform:`translate(${o.x},${o.y}) rotate(${o.rot||0})`}, root);
 
     if (o.type === "work"){
       el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"#fff",stroke:"var(--ink)","stroke-width":20}, grp);
@@ -1456,7 +1470,14 @@ document.getElementById("pngBtn").onclick = ()=>{
 };
 document.getElementById("printBtn").onclick = ()=>{
   const prev = {...view};
-  view = {x:-300,y:-300,w:SHEET.w+600,h:SHEET.h+600}; applyView();
+  // 用紙の向きを印刷範囲(A3横/縦)に合わせ、余白0にすることで紙いっぱいに出す
+  document.getElementById("pageStyle").textContent =
+    `@page{size:A3 ${SHEET.w >= SHEET.h ? "landscape" : "portrait"};margin:0}`;
+  // applyView()は画面の縦横比に合わせてviewBoxを左右(上下)に広げるため、
+  // そのまま印刷すると印刷範囲の外にある在庫パレット等まで用紙に写り込む。
+  // 印刷時は印刷範囲そのものをviewBoxにして、紙に等倍で収まるようにする
+  view = {x:0, y:0, w:SHEET.w, h:SHEET.h};
+  svg.setAttribute("viewBox", `0 0 ${SHEET.w} ${SHEET.h}`);
   window.print();
   view = prev; applyView();
 };
