@@ -6,8 +6,8 @@
 //    画像フォルダが空なら作品リストの番号、どちらも無ければ従来どおりの連番。
 //  ・右パネルの「開始番号」を入れると、その番号以降だけを順番に配置する。
 //  ・すでに図面に置いてある番号は飛ばす。
-//  ・置ける番号が残っているうちは作品ツールのまま(クリックのたびに次を置ける)。
-//    尽きたら選択ツールに戻る。
+//  ・1つ置いたら必ず選択ツールに戻る(作品ツールのままだと、置いた作品を触ろうとした
+//    タップで次の作品が増えてしまうため)。次を置くときはもう一度「作品」を押す。
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -66,7 +66,14 @@ async function run() {
   const svgBox = await page.locator('svg#plan').boundingBox();
   const cy = svgBox.y + svgBox.height / 2;
   const spot = i => ({ x: svgBox.x + svgBox.width * 0.3 + i * 90, y: cy });
-  const placeAt = async i => { const s = spot(i); await page.mouse.click(s.x, s.y); await page.waitForTimeout(120); };
+  // 1つ置くたびに選択ツールへ戻るので、置くときは毎回「作品」を押し直す
+  const placeAt = async i => {
+    await page.click('.tool[data-tool="work"]');
+    await page.waitForTimeout(80);
+    const s = spot(i);
+    await page.mouse.click(s.x, s.y);
+    await page.waitForTimeout(120);
+  };
 
   // --- 開始番号の欄は作品ツールのときだけ出る ---
   t.eq(await page.locator('#workStart').count(), 0, '選択ツールのときは開始番号の欄は出ない');
@@ -89,18 +96,23 @@ async function run() {
 
   await placeAt(0);
   t.eq(await placedNos(page), ['10003'], '1つ目は開始番号の10003');
-  t.eq(await curTool(page), 'work', 'まだ置ける番号があるので作品ツールのまま');
+  t.eq(await curTool(page), 'select',
+    '1つ置いたら選択ツールに戻る(続けてタップしても作品が増えない)');
+  // 置いた直後に図面をタップしても、作品は増えない
+  const s0 = spot(5);
+  await page.mouse.click(s0.x, s0.y);
+  await page.waitForTimeout(120);
+  t.eq(await placedNos(page), ['10003'], '置いた直後にタップしても作品は増えない');
+
   await placeAt(1);
   await placeAt(2);
   t.eq(await placedNos(page), ['10003', '10004', '10005'],
-    'クリックするたびに次の番号が順番に置かれる');
+    '「作品」を押すたびに次の番号が順番に置かれる');
 
   // 画像フォルダの画像が番号一致で表示される
   t.eq(await page.locator('g.obj image').count(), 3,
     '置いた作品には画像フォルダの画像が番号で結びついて表示される');
 
-  // --- 置ける番号が尽きたら選択ツールに戻る ---
-  t.eq(await curTool(page), 'select', '番号を使い切ると選択ツールに戻る');
   t.eq(await page.locator('#workStart').count(), 0, '選択ツールに戻ると開始番号の欄も消える');
 
   // --- 開始番号を戻すと、まだ置いていない番号だけが残っている ---
@@ -159,7 +171,7 @@ async function run() {
     '番号の当てが無いときは、画像フォルダか作品リストを用意するよう案内する');
   await placeAt(0);
   t.eq(await placedNos(page), ['1'], '当てが無いときは連番(1から)を振る');
-  t.eq(await curTool(page), 'select', '当てが無いときは1つ置いて選択ツールに戻る(従来どおり)');
+  t.eq(await curTool(page), 'select', '当てが無いときも1つ置いて選択ツールに戻る');
 
   t.noErrors(errors);
   await context.close();
