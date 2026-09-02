@@ -325,7 +325,9 @@
 <body>
 
 <header>
-  <h1>展覧会図面作成<small>プロトタイプ</small></h1>
+  <!-- 版数。修正を出したのに直っていないという話のとき、
+       利用者の画面が古いままかどうかをここで見分ける。修正を公開するたびに上げる -->
+  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v14</span></small></h1>
   <label>印刷範囲(A3)の回転
     <select id="sheetSel" title="印刷範囲(A3)を90度きざみで回転します。展示室図面もこの回転に合わせて一緒に回転し、縦横比も印刷範囲に対応します">
       <option value="0" selected>0°(横)</option>
