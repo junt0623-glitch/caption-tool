@@ -120,6 +120,8 @@
     border-radius:4px;cursor:pointer;font-size:12px;
   }
   .sbtn:hover{border-color:var(--accent);color:var(--accent)}
+  /* 選択中の設定を示す(壁の「線の向き」など、いま効いている選択肢) */
+  .sbtn.on{border-color:var(--accent);color:#fff;background:var(--accent);font-weight:600}
   #props .note{font-size:11px;color:#8c887c;margin-bottom:8px}
   .algrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
   #props select{
@@ -336,7 +338,7 @@
 <header>
   <!-- 版数。修正を出したのに直っていないという話のとき、
        利用者の画面が古いままかどうかをここで見分ける。修正を公開するたびに上げる -->
-  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v15</span></small></h1>
+  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v16</span></small></h1>
   <label>印刷範囲(A3)の回転
     <select id="sheetSel" title="印刷範囲(A3)を90度きざみで回転します。展示室図面もこの回転に合わせて一緒に回転し、縦横比も印刷範囲に対応します">
       <option value="0" selected>0°(横)</option>
@@ -545,6 +547,7 @@ let state = {
   rooms: defaultRooms(),
   workList: [],            // 作品リスト(CSV) [{no,title,artist}]
   workStartNo: "",         // 作品ツールの開始番号。この番号以降を順番に配置する(空なら最初から)
+  wallAngle: "ortho",      // 壁を描くときの線の向き ortho=直交 / d45=45度きざみ / free=自由角度
   library: [],             // 画像フォルダ [{id,name,no,img}] アップロード済み画像。JSON保存に含まれる
   usedElsewhere: {},       // 他の展示室(別の図面)での使用台数 stockKey→台数。残数から差し引く
   images: {},              // 旧形式の作品画像 番号→dataURL(読み込み時にlibraryへ移行する)
@@ -777,6 +780,22 @@ function snapWallPoint(p, excludeId){
   }
   return best || {x:snap(p.x), y:snap(p.y), joined:false};
 }
+/* 壁の終点を「線の向き」の設定に合わせて丸める。
+   ortho=水平か垂直のどちらか / d45=45度きざみ / free=そのまま */
+function applyWallAngle(x1, y1, x2, y2, mode){
+  if (mode === "free") return [x2, y2];
+  if (mode === "d45"){
+    const dx = x2-x1, dy = y2-y1;
+    const len = Math.hypot(dx, dy);
+    if (!len) return [x2, y2];
+    const step = Math.PI/4;                       // 45度
+    const a = Math.round(Math.atan2(dy, dx)/step) * step;
+    // 45度ちょうどの向きは cos/sin が0か±1/√2。丸め誤差を避けて計算する
+    return [x1 + len*Math.cos(a), y1 + len*Math.sin(a)];
+  }
+  // ortho: 変化の大きい方の軸だけを残す
+  return Math.abs(x2-x1) > Math.abs(y2-y1) ? [x2, y1] : [x1, y2];
+}
 function today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 
 /* ---- 履歴 ----
@@ -969,11 +988,40 @@ function workQueueHtml(){
     <div class="note">1つ置くと「選択/移動」に戻ります。次の番号を置くときは、もう一度「作品」を押してください</div>`;
 }
 
+/* 壁ツールを選んでいる間、右パネルの先頭に出す「線の向き」の切り替え。
+   キーボードの無いiPadでも斜めの壁を描けるように、Shiftではなくボタンで選ぶ */
+const WALL_ANGLES = [
+  ["ortho", "直交",     "水平・垂直だけ"],
+  ["d45",   "45度きざみ", "斜めもきれいな角度で"],
+  ["free",  "自由角度",   "好きな向きに"],
+];
+function wallAngleMode(){ return state.wallAngle || "ortho"; }
+function wallAngleHtml(){
+  const cur = wallAngleMode();
+  return `<div class="field"><label>壁を描く — 線の向き</label>
+      <div class="pair" style="flex-wrap:wrap">
+        ${WALL_ANGLES.map(([k,name])=>
+          `<button class="sbtn${k===cur?" on":""}" data-wangle="${k}">${name}</button>`).join("")}
+      </div>
+    </div>
+    <div class="note">いまは「${WALL_ANGLES.find(a=>a[0]===cur)[2]}」で引きます。
+      ドラッグで壁を描き、既存の壁の端点に近づけるとそこに繋がります(繋がるときは向きの指定より優先)。
+      キーボードのShiftを押しながらだと、直交と自由角度を一時的に入れ替えられます</div>`;
+}
+
 function renderSide(){
   renderSideBody();
+  const props = document.getElementById("props");
+  // 壁ツールのときは、選択中のものが何であれ先頭に「線の向き」を出す
+  if (tool === "wall"){
+    props.insertAdjacentHTML("afterbegin", wallAngleHtml());
+    props.querySelectorAll("[data-wangle]").forEach(b=>{
+      b.onclick = ()=>{ state.wallAngle = b.dataset.wangle; renderSide(); };
+    });
+    return;
+  }
   if (tool !== "work") return;
   // 作品ツールのときは、選択中のものが何であれ先頭に「次に置く番号」を出す
-  const props = document.getElementById("props");
   props.insertAdjacentHTML("afterbegin", workQueueHtml());
   const inp = document.getElementById("workStart");
   inp.onchange = ev=>{
@@ -1462,9 +1510,13 @@ window.addEventListener("pointermove", ev=>{
   if (drag.mode === "wall"){
     const sp = snapWallPoint(p, drag.wall.id);
     let x2 = sp.x, y2 = sp.y;
-    if (!sp.joined && !ev.shiftKey){ // 端点連結時以外は直交スナップ、Shiftで自由角度
-      if (Math.abs(x2-drag.wall.x1) > Math.abs(y2-drag.wall.y1)) y2 = drag.wall.y1;
-      else x2 = drag.wall.x1;
+    // 既存の壁の端点に繋がるときは、向きの指定より連結を優先してそのまま使う
+    if (!sp.joined){
+      // Shiftは「直交と自由角度の一時的な入れ替え」。キーボードが無くても
+      // 右パネルのボタンで選べるので、Shiftはあくまで補助
+      let mode = wallAngleMode();
+      if (ev.shiftKey) mode = (mode === "ortho") ? "free" : "ortho";
+      [x2, y2] = applyWallAngle(drag.wall.x1, drag.wall.y1, x2, y2, mode);
     }
     drag.wall.x2 = x2; drag.wall.y2 = y2;
     render();
@@ -1541,7 +1593,7 @@ function setTool(t){
   document.querySelectorAll(".tool").forEach(b=>b.classList.toggle("active", b.dataset.tool===t));
   const hints = {
     select:"クリック選択/ドラッグ移動(50mm刻み、Altで自由)。Shift+クリックで複数選択、Shift+空白ドラッグで範囲選択→整列",
-    wall:"ドラッグで壁を描画(Shiftで自由角度、既存の壁の端点に近づけると連結)",
+    wall:"ドラッグで壁を描画。線の向き(直交/45度きざみ/自由角度)は右パネルで選べます。既存の壁の端点に近づけると連結します",
     work:"クリックで作品を1つ配置(置いたら選択/移動に戻ります)。画像フォルダ(なければ作品リスト)の番号が順番に付きます。開始する番号は右パネルで指定できます",
     text:"クリックでテキストを配置",
     erase:"クリックしたオブジェクトを削除(ケース・展示台は在庫に戻ります)"
@@ -1745,6 +1797,7 @@ function applyPlanText(text){
     if (state.scalePct == null) state.scalePct = 100; // 0%も有効な値なので !state.scalePct にしない
     if (!state.workList) state.workList = [];
     if (state.workStartNo == null) state.workStartNo = "";
+    if (!["ortho","d45","free"].includes(state.wallAngle)) state.wallAngle = "ortho";
     if (!state.images) state.images = {};
     // 画像フォルダ。旧形式(番号→dataURLのstate.imagesだけを持つファイル)は
     // ここでlibraryへ移して、以後は画像フォルダから選べるようにする
