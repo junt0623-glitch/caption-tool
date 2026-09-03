@@ -201,9 +201,18 @@
   }
   #libGrid .empty{grid-column:1/-1;color:#8c887c;font-size:13px;padding:24px 4px;text-align:center;line-height:1.7}
   .libcard{
+    position:relative;
     border:1px solid var(--line);border-radius:6px;background:#fff;overflow:hidden;
     display:flex;flex-direction:column;cursor:pointer;
   }
+  /* まとめて削除するための選択欄。指でも押しやすいよう当たり判定を広めにとる */
+  /* z-indexが無いと、あとに置かれるサムネイル(position:relative)に隠れて押せない */
+  .libcard .pick{
+    position:absolute;top:0;left:0;z-index:2;padding:6px;cursor:pointer;
+    background:rgba(255,255,255,.85);border-bottom-right-radius:6px;line-height:0;
+  }
+  .libcard .pick input{width:20px;height:20px;margin:0;cursor:pointer;accent-color:var(--accent)}
+  .libcard.marked{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
   .libcard:hover{border-color:var(--accent)}
   .libcard.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
   /* サムネイルの枠。object-fit:contain なので、縦長・横長の作品でも
@@ -327,7 +336,7 @@
 <header>
   <!-- 版数。修正を出したのに直っていないという話のとき、
        利用者の画面が古いままかどうかをここで見分ける。修正を公開するたびに上げる -->
-  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v14</span></small></h1>
+  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v15</span></small></h1>
   <label>印刷範囲(A3)の回転
     <select id="sheetSel" title="印刷範囲(A3)を90度きざみで回転します。展示室図面もこの回転に合わせて一緒に回転し、縦横比も印刷範囲に対応します">
       <option value="0" selected>0°(横)</option>
@@ -404,6 +413,9 @@
     <div id="libGrid"></div>
     <div id="libFoot">
       <div class="note" id="libNote"></div>
+      <button class="sbtn" id="libSelAll" style="flex:none;width:auto">すべて選択</button>
+      <button class="sbtn" id="libDelSel" style="flex:none;width:auto">選択したものを削除</button>
+      <button class="sbtn" id="libDelAll" style="flex:none;width:auto">すべて削除</button>
       <button class="sbtn" id="libClear" style="flex:none;width:auto">選択中の作品から画像を外す</button>
     </div>
   </div>
@@ -1856,13 +1868,16 @@ document.getElementById("wlInput").onchange = async ev=>{
    pickTarget が null なら「一覧・管理」モード、作品オブジェクトなら「その作品に
    割り当てる画像を選ぶ」モード(図面上でダブルクリックしたとき) */
 let pickTarget = null;
+let libSelected = new Set(); // まとめて削除するために選んだ画像のid(表示用。保存対象外)
 function openLibrary(target){
   pickTarget = target || null;
+  libSelected.clear(); // 開き直したら選択はいったん白紙に戻す
   document.getElementById("libModal").hidden = false;
   renderLibrary();
 }
 function closeLibrary(){
   pickTarget = null;
+  libSelected.clear();
   document.getElementById("libModal").hidden = true;
 }
 function renderLibrary(){
@@ -1881,11 +1896,15 @@ function renderLibrary(){
       「＋ 画像を追加」から画像をまとめて入れておくと、図面上の作品を<br>
       ダブルクリックして選べるようになります。<br>
       ファイル名を作品番号(例: 10001.jpg)にしておくと、その番号の作品に自動で対応します。</div>`;
+    libSelected.clear();
+    updateLibFoot(); // 空になったら一括操作のボタンも引っ込める
     return;
   }
   const curId = picking ? pickTarget.imgId : null;
   grid.innerHTML = state.library.map(it=>`
-    <div class="libcard${it.id===curId?" sel":""}" data-lib="${it.id}">
+    <div class="libcard${it.id===curId?" sel":""}${!picking&&libSelected.has(it.id)?" marked":""}" data-lib="${it.id}">
+      ${picking ? "" : `<label class="pick"><input type="checkbox" data-sel="${it.id}"
+        ${libSelected.has(it.id)?"checked":""} aria-label="削除するものとして選ぶ"></label>`}
       <div class="thumb"><img src="${it.img}" alt=""></div>
       <div class="nm">${it.no?`<b>${esc(it.no)}</b> `:""}${esc(it.name)}</div>
       <button class="rm" data-rm="${it.id}">フォルダから削除</button>
@@ -1893,7 +1912,7 @@ function renderLibrary(){
 
   grid.querySelectorAll("[data-lib]").forEach(card=>{
     card.onclick = ev=>{
-      if (ev.target.closest("[data-rm]")) return; // 削除ボタンは別処理
+      if (ev.target.closest("[data-rm]") || ev.target.closest(".pick")) return; // 別処理
       if (!pickTarget) return;                    // 一覧モードでは選択しない
       pushUndo();
       pickTarget.imgId = card.dataset.lib;
@@ -1901,18 +1920,58 @@ function renderLibrary(){
       closeLibrary(); render(); renderSide();
     };
   });
-  grid.querySelectorAll("[data-rm]").forEach(b=>{
-    b.onclick = ev=>{
-      ev.stopPropagation();
-      const id = b.dataset.rm;
-      const used = state.objects.filter(o=>o.imgId===id).length;
-      if (used && !confirm(`この画像は${used}件の作品で使われています。フォルダから削除しますか?`)) return;
-      state.library = state.library.filter(it=>it.id!==id);
-      for (const o of state.objects) if (o.imgId===id) delete o.imgId;
-      renderLibrary(); render(); renderSide();
+  grid.querySelectorAll("[data-sel]").forEach(cb=>{
+    cb.onchange = ()=>{
+      if (cb.checked) libSelected.add(cb.dataset.sel); else libSelected.delete(cb.dataset.sel);
+      cb.closest(".libcard").classList.toggle("marked", cb.checked);
+      updateLibFoot();
     };
   });
+  grid.querySelectorAll("[data-rm]").forEach(b=>{
+    b.onclick = ev=>{ ev.stopPropagation(); libDelete([b.dataset.rm]); };
+  });
+  updateLibFoot();
 }
+/* 画像フォルダの一括操作ボタンの表示を、選択件数に合わせて更新する */
+function updateLibFoot(){
+  const picking = !!pickTarget, n = libSelected.size, total = state.library.length;
+  const show = (id, on)=>{ document.getElementById(id).hidden = !on; };
+  // 画像を選ぶモード中は削除系を出さない(選ぶことに集中してもらう)
+  show("libSelAll", !picking && total > 0);
+  show("libDelSel", !picking && total > 0);
+  show("libDelAll", !picking && total > 0);
+  if (picking) return;
+  const allMarked = total > 0 && n === total;
+  document.getElementById("libSelAll").textContent = allMarked ? "選択を解除" : "すべて選択";
+  const del = document.getElementById("libDelSel");
+  del.textContent = n ? `選択した${n}件を削除` : "選択したものを削除";
+  del.disabled = n === 0;
+  del.style.opacity = n ? "" : ".5";
+  document.getElementById("libDelAll").textContent = `すべて削除 (${total}件)`;
+}
+/* 画像フォルダから指定のidをまとめて削除する。
+   画像は履歴(Undo)の対象外なので元に戻せない。必ず確認してから消す */
+function libDelete(ids){
+  const set = new Set(ids.filter(Boolean));
+  if (!set.size) return;
+  const used = state.objects.filter(o=>set.has(o.imgId)).length;
+  const msg = `画像${set.size}件をフォルダから削除します。`
+    + (used ? `\nうち${used}件は図面上の作品で使われています(その作品の画像指定も外れます)。` : "")
+    + `\nこの操作は元に戻せません。よろしいですか?`;
+  if (!confirm(msg)) return;
+  state.library = state.library.filter(it=>!set.has(it.id));
+  for (const o of state.objects) if (set.has(o.imgId)) delete o.imgId;
+  for (const id of set) libSelected.delete(id);
+  document.getElementById("hint").textContent = `画像${set.size}件を削除しました`;
+  renderLibrary(); render(); renderSide();
+}
+document.getElementById("libSelAll").onclick = ()=>{
+  if (libSelected.size === state.library.length) libSelected.clear();
+  else libSelected = new Set(state.library.map(it=>it.id));
+  renderLibrary();
+};
+document.getElementById("libDelSel").onclick = ()=> libDelete([...libSelected]);
+document.getElementById("libDelAll").onclick = ()=> libDelete(state.library.map(it=>it.id));
 /* ---- 在庫パネル ----
    この図面での使用数と、他の展示室(別の図面)での使用数を並べて残数を出す。
    「他の図面」の入力は state.usedElsewhere[stockKey] に入り、JSON保存にも含まれる */

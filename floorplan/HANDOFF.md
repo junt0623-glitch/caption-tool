@@ -116,6 +116,16 @@
   すべて `flex:0 0 auto` にして縮まないようにする
 - 画像は `.thumb` の中に `position:absolute` で敷き、`object-fit:contain` で全体を見せる
 - モーダルの幅を変えるときは `--lib-w` と `--lib-cell` の式(32px/56px/5)も合わせること
+- **まとめて削除**: 一覧モードでは各カードにチェック欄(`.pick`)が出る。
+  選んだidは `libSelected`(表示用のSet。保存対象外)に持ち、
+  「すべて選択 / 選択したN件を削除 / すべて削除」を `#libFoot` に置く。
+  削除は `libDelete(ids)` に一本化してあり、1件だけの削除ボタンもここを通る。
+  **画像は履歴(Undo)の対象外なので元に戻せない**。必ずconfirmで件数を出し、
+  図面で使われている画像があればその件数も知らせ、消したら該当作品の `imgId` も外す。
+  画像を選ぶモード(pickTargetあり)では削除系のボタンもチェック欄も出さない
+- `.pick` には `z-index` が要る。あとに置かれる `.thumb`(position:relative)に
+  隠れてチェックが押せなくなる
+- tests/fp15_library_bulk_delete.js が複数削除・一斉削除の回帰テスト
 - tests/fp08 が列数・正方形・object-fit・行間隔・削除ボタンが切れないことに加え、
   「aspect-ratioもpadding-top:100%も使っていないこと」「行の高さがpx決め打ちであること」
   も検証している(iOS Safariでしか出ない不具合をChromiumで防ぐため)
