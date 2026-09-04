@@ -1,7 +1,8 @@
 // tests/fp17_wall_style.js
-// 壁の太さと色を変えられることのテスト。
+// 壁の長さ・太さ・色を変えられることのテスト。
 //
 // 仕様:
+//  ・壁を選ぶと長さ(m)を数値で変えられる。始点はそのまま、今の向きのまま終点が動く。
 //  ・壁ツールの右パネルで太さ(mm)と色(6色)を選ぶと、これから描く壁に適用される。
 //  ・壁を選ぶと、その壁の太さと色をあとから変えられる。
 //  ・壁を複数選ぶと、選んだ壁すべてにまとめて適用される。
@@ -64,11 +65,48 @@ async function run() {
   t.eq(drawn[0].stroke, 'rgb(192, 57, 43)', '設定した色(赤)で描かれる');
   t.eq(await wallData(page), [{ t: 400, c: 'red' }], '太さと色が壁のデータに入る');
 
-  // --- 描いたあとから、選んだ壁の太さ・色を変えられる ---
+  // --- 描いたあとから、選んだ壁の長さ・太さ・色を変えられる ---
   await page.click('.tool[data-tool="select"]');
   await page.waitForTimeout(100);
   await page.evaluate(() => { selectOnly(state.walls[0].id); render(); renderSide(); });
   await page.waitForTimeout(150);
+
+  // 長さ: 始点はそのままで、今の向きのまま終点だけが動く
+  t.eq(await page.locator('#wallLen').count(), 1, '壁を選ぶと長さの欄が出る');
+  const before0 = await page.evaluate(() => ({ ...state.walls[0] }));
+  await page.fill('#wallLen', '6');
+  await page.dispatchEvent('#wallLen', 'change');
+  await page.waitForTimeout(150);
+  let w0 = await page.evaluate(() => ({ ...state.walls[0] }));
+  t.ok(Math.abs(Math.hypot(w0.x2 - w0.x1, w0.y2 - w0.y1) - 6000) < 1,
+    '入力した長さ(6m)ちょうどになる');
+  t.ok(w0.x1 === before0.x1 && w0.y1 === before0.y1, '始点は動かない');
+  t.ok(Math.abs(w0.y2 - w0.y1) < 1, '水平の壁は水平のまま(向きが変わらない)');
+  t.eq(await page.$eval('#wallLen', e => e.value), '6.00', '欄には今の長さが出る');
+
+  // 縮めることもでき、Undoで戻せる
+  await page.fill('#wallLen', '1.5');
+  await page.dispatchEvent('#wallLen', 'change');
+  await page.waitForTimeout(150);
+  w0 = await page.evaluate(() => ({ ...state.walls[0] }));
+  t.ok(Math.abs(Math.hypot(w0.x2 - w0.x1, w0.y2 - w0.y1) - 1500) < 1, '短くもできる');
+  await page.click('#undoBtn');
+  await page.waitForTimeout(150);
+  w0 = await page.evaluate(() => ({ ...state.walls[0] }));
+  t.ok(Math.abs(Math.hypot(w0.x2 - w0.x1, w0.y2 - w0.y1) - 6000) < 1,
+    '長さの変更はUndoで戻せる');
+
+  // 0やマイナスを入れても壊れない(元の長さのまま)
+  // Undoで選択が外れるので選び直す
+  await page.evaluate(() => { selectOnly(state.walls[0].id); render(); renderSide(); });
+  await page.waitForTimeout(150);
+  await page.fill('#wallLen', '0');
+  await page.dispatchEvent('#wallLen', 'change');
+  await page.waitForTimeout(150);
+  w0 = await page.evaluate(() => ({ ...state.walls[0] }));
+  t.ok(Math.abs(Math.hypot(w0.x2 - w0.x1, w0.y2 - w0.y1) - 6000) < 1,
+    '0を入れても長さは変わらない');
+
   t.eq(await page.locator('#wallThick').count(), 1, '壁を選ぶと太さの欄が出る');
   t.eq(await page.$eval('#wallThick', e => e.value), '400', 'その壁の今の太さが出る');
   t.eq(await page.$eval('[data-wcolor].on', e => e.dataset.wcolor), 'red', 'その壁の今の色に印がつく');

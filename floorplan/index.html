@@ -345,7 +345,7 @@
 <header>
   <!-- 版数。修正を出したのに直っていないという話のとき、
        利用者の画面が古いままかどうかをここで見分ける。修正を公開するたびに上げる -->
-  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v17</span></small></h1>
+  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v18</span></small></h1>
   <label>印刷範囲(A3)の回転
     <select id="sheetSel" title="印刷範囲(A3)を90度きざみで回転します。展示室図面もこの回転に合わせて一緒に回転し、縦横比も印刷範囲に対応します">
       <option value="0" selected>0°(横)</option>
@@ -1200,11 +1200,29 @@ function renderSideBody(){
   }
   else if (wall){
     const len = Math.hypot(wall.x2-wall.x1, wall.y2-wall.y1);
-    props.innerHTML = `<div class="field"><label>壁 — 長さ</label><input value="${(len/1000).toFixed(2)} m" readonly></div>
+    props.innerHTML = `<div class="field"><label>壁 — 長さ (m)</label>
+        <input id="wallLen" type="number" min="0.05" max="100" step="0.05" value="${(len/1000).toFixed(2)}">
+      </div>
+      <div class="note">始点はそのままで、今の向きのまま終点だけを伸ばし縮みします</div>
       ${wallStyleHtml(wall)}
       <div class="field"><button class="sbtn" id="copyWallBtn" style="width:100%">📋 この壁をコピー(Ctrl+C)</button></div>
       <div class="note">貼り付けはCtrl+V。少しずらした位置に複製されます</div>
       <button class="del" id="delBtn">この壁を削除</button>`;
+    // 長さの変更。始点(x1,y1)は動かさず、今の向きのまま終点だけを動かす。
+    // 長さ0の壁は向きが決められないので、そのときは水平(右向き)として扱う
+    document.getElementById("wallLen").onchange = ev=>{
+      const m = +ev.target.value;
+      if (!isFinite(m) || m <= 0){ renderSide(); return; }
+      const mm = Math.min(100000, Math.max(50, m * 1000));
+      const dx = wall.x2 - wall.x1, dy = wall.y2 - wall.y1;
+      const cur = Math.hypot(dx, dy);
+      if (Math.abs(cur - mm) < 0.5) return; // 同じ長さなら何もしない(履歴を無駄に増やさない)
+      const ux = cur ? dx/cur : 1, uy = cur ? dy/cur : 0;
+      pushUndo();
+      wall.x2 = wall.x1 + ux*mm;
+      wall.y2 = wall.y1 + uy*mm;
+      render(); renderSide();
+    };
     // 選択中の壁そのものを変える(壁ツールの既定は変えない)
     bindWallStyle(props, ch=>{
       pushUndo();
