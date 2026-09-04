@@ -345,7 +345,7 @@
 <header>
   <!-- 版数。修正を出したのに直っていないという話のとき、
        利用者の画面が古いままかどうかをここで見分ける。修正を公開するたびに上げる -->
-  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v18</span></small></h1>
+  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v19</span></small></h1>
   <label>印刷範囲(A3)の回転
     <select id="sheetSel" title="印刷範囲(A3)を90度きざみで回転します。展示室図面もこの回転に合わせて一緒に回転し、縦横比も印刷範囲に対応します">
       <option value="0" selected>0°(横)</option>
@@ -571,7 +571,9 @@ let state = {
   rooms: defaultRooms(),
   workList: [],            // 作品リスト(CSV) [{no,title,artist}]
   workStartNo: "",         // 作品ツールの開始番号。この番号以降を順番に配置する(空なら最初から)
-  wallAngle: "ortho",      // 壁を描くときの線の向き ortho=直交 / d45=45度きざみ / free=自由角度
+  wallAngle: "d45",        // 壁を描くときの線の向き ortho=直交 / d45=45度きざみ / free=自由角度
+                           // 既定がorthoだと設定を切り替えるまで斜めが引けず「縦横しか描けない」と
+                           // 見えてしまうため、水平・垂直も正確に出せるd45を既定にしている
   wallThick: 150,          // これから描く壁の太さ(mm)
   wallColor: "ink",        // これから描く壁の色(WALL_COLORSのkey)
   library: [],             // 画像フォルダ [{id,name,no,img}] アップロード済み画像。JSON保存に含まれる
@@ -1024,7 +1026,7 @@ const WALL_ANGLES = [
   ["d45",   "45度きざみ", "斜めもきれいな角度で"],
   ["free",  "自由角度",   "好きな向きに"],
 ];
-function wallAngleMode(){ return state.wallAngle || "ortho"; }
+function wallAngleMode(){ return state.wallAngle || "d45"; }
 /* 太さと色の操作部。壁ツールの既定(target=null)と、選択中の壁(target=壁)の
    どちらにも同じ見た目で出す。idPrefixでボタンを区別する */
 function wallStyleHtml(target){
@@ -1062,6 +1064,7 @@ function wallAngleHtml(){
     </div>
     ${wallStyleHtml(null)}
     <div class="note">いまは「${WALL_ANGLES.find(a=>a[0]===cur)[2]}」で引きます。
+      斜めの壁は「45度きざみ」か「自由角度」で引けます。水平・垂直だけにしたいときは「直交」にしてください。
       ドラッグで壁を描き、既存の壁の端点に近づけるとそこに繋がります(繋がるときは向きの指定より優先)。
       キーボードのShiftを押しながらだと、直交と自由角度を一時的に入れ替えられます</div>`;
 }
@@ -1893,7 +1896,8 @@ function applyPlanText(text){
     if (state.scalePct == null) state.scalePct = 100; // 0%も有効な値なので !state.scalePct にしない
     if (!state.workList) state.workList = [];
     if (state.workStartNo == null) state.workStartNo = "";
-    if (!["ortho","d45","free"].includes(state.wallAngle)) state.wallAngle = "ortho";
+    // 線の向きを持たない古い保存ファイルも、いまの既定(45度きざみ)で描けるようにする
+    if (!["ortho","d45","free"].includes(state.wallAngle)) state.wallAngle = "d45";
     if (!(state.wallThick > 0)) state.wallThick = WALL_T;
     if (!WALL_COLORS.some(c=>c[0] === state.wallColor)) state.wallColor = "ink";
     if (!state.images) state.images = {};
