@@ -123,6 +123,13 @@
   /* 選択中の設定を示す(壁の「線の向き」など、いま効いている選択肢) */
   .sbtn.on{border-color:var(--accent);color:#fff;background:var(--accent);font-weight:600}
   #props .note{font-size:11px;color:#8c887c;margin-bottom:8px}
+  /* 壁の色見本。押しやすいよう指でも触れる大きさにする */
+  .swatches{display:flex;gap:8px;flex-wrap:wrap}
+  .sw{
+    width:32px;height:32px;border-radius:6px;border:2px solid var(--line);
+    cursor:pointer;padding:0;
+  }
+  .sw.on{border-color:var(--ink);box-shadow:0 0 0 2px #fff inset}
   .algrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
   #props select{
     width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:4px;
@@ -338,7 +345,7 @@
 <header>
   <!-- 版数。修正を出したのに直っていないという話のとき、
        利用者の画面が古いままかどうかをここで見分ける。修正を公開するたびに上げる -->
-  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v16</span></small></h1>
+  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v17</span></small></h1>
   <label>印刷範囲(A3)の回転
     <select id="sheetSel" title="印刷範囲(A3)を90度きざみで回転します。展示室図面もこの回転に合わせて一緒に回転し、縦横比も印刷範囲に対応します">
       <option value="0" selected>0°(横)</option>
@@ -481,7 +488,24 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("plan");
 const GRID = 500;            // グリッド 500mm
-const WALL_T = 150;          // 壁厚 150mm
+const WALL_T = 150;          // 壁厚の既定 150mm
+/* 壁の色。図面上で描き分けたいとき用に6色。keyを w.c に持つ(未指定なら既定の壁色) */
+const WALL_COLORS = [
+  ["ink",    "#2b2b2e", "黒"],
+  ["gray",   "#8c887c", "グレー"],
+  ["red",    "#c0392b", "赤"],
+  ["blue",   "#2b6cb0", "青"],
+  ["green",  "#2f855a", "緑"],
+  ["orange", "#c9702a", "オレンジ"],
+];
+function wallColorOf(w){
+  const hit = WALL_COLORS.find(c=>c[0] === (w?.c || ""));
+  return hit ? hit[1] : WALL_COLORS[0][1];
+}
+function wallThickOf(w){
+  const t = Math.round(+w?.t);
+  return (isFinite(t) && t > 0) ? t : WALL_T;
+}
 const SHEET = {w: 42000, h: 29700}; // 図面範囲(mm)。A3実寸×100を基準に回転(0/90/180/270)で切替
 const A3_LANDSCAPE = [420, 297];    // A3実寸(mm)。回転が90/270のときは幅高を入れ替える
 const BASE_SHEET_W = A3_LANDSCAPE[0]*100, BASE_SHEET_H = A3_LANDSCAPE[1]*100; // 常にA3横基準(展示室図面のサイズ計算用)
@@ -548,6 +572,8 @@ let state = {
   workList: [],            // 作品リスト(CSV) [{no,title,artist}]
   workStartNo: "",         // 作品ツールの開始番号。この番号以降を順番に配置する(空なら最初から)
   wallAngle: "ortho",      // 壁を描くときの線の向き ortho=直交 / d45=45度きざみ / free=自由角度
+  wallThick: 150,          // これから描く壁の太さ(mm)
+  wallColor: "ink",        // これから描く壁の色(WALL_COLORSのkey)
   library: [],             // 画像フォルダ [{id,name,no,img}] アップロード済み画像。JSON保存に含まれる
   usedElsewhere: {},       // 他の展示室(別の図面)での使用台数 stockKey→台数。残数から差し引く
   images: {},              // 旧形式の作品画像 番号→dataURL(読み込み時にlibraryへ移行する)
@@ -893,7 +919,10 @@ function render(){
 
   // 壁
   for (const w of state.walls){
-    const ln = el("line",{x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2,"stroke-width":WALL_T,class:"wall-line","data-id":w.id}, root);
+    // 太さ・色は壁ごとに持てる(未指定なら既定)。色はCSSに勝たせるためインラインstyleで指定する
+    const ln = el("line",{x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2,
+      "stroke-width":wallThickOf(w),class:"wall-line","data-id":w.id}, root);
+    ln.style.stroke = wallColorOf(w);
     if (selectedIds.has(w.id)) ln.style.stroke = "var(--accent)"; // inline styleでCSSクラスに勝たせる
   }
 
@@ -996,6 +1025,33 @@ const WALL_ANGLES = [
   ["free",  "自由角度",   "好きな向きに"],
 ];
 function wallAngleMode(){ return state.wallAngle || "ortho"; }
+/* 太さと色の操作部。壁ツールの既定(target=null)と、選択中の壁(target=壁)の
+   どちらにも同じ見た目で出す。idPrefixでボタンを区別する */
+function wallStyleHtml(target){
+  const t = target ? wallThickOf(target) : wallThickOf({t: state.wallThick});
+  const c = target ? (target.c || "ink") : state.wallColor;
+  return `<div class="field"><label>太さ (mm)</label>
+      <input id="wallThick" type="number" min="10" max="2000" step="10" value="${t}">
+    </div>
+    <div class="field"><label>色</label>
+      <div class="swatches">
+        ${WALL_COLORS.map(([k,hex,name])=>
+          `<button class="sw${k===c?" on":""}" data-wcolor="${k}" title="${name}"
+            style="background:${hex}" aria-label="${name}"></button>`).join("")}
+      </div>
+    </div>`;
+}
+/* 太さ・色の操作部の配線。applyには「変更内容を反映する処理」を渡す */
+function bindWallStyle(scope, apply){
+  const inp = scope.querySelector("#wallThick");
+  if (inp) inp.onchange = ev=>{
+    const v = Math.round(+ev.target.value);
+    apply({t: (isFinite(v) && v > 0) ? Math.min(2000, Math.max(10, v)) : WALL_T});
+  };
+  scope.querySelectorAll("[data-wcolor]").forEach(b=>{
+    b.onclick = ()=> apply({c: b.dataset.wcolor});
+  });
+}
 function wallAngleHtml(){
   const cur = wallAngleMode();
   return `<div class="field"><label>壁を描く — 線の向き</label>
@@ -1004,6 +1060,7 @@ function wallAngleHtml(){
           `<button class="sbtn${k===cur?" on":""}" data-wangle="${k}">${name}</button>`).join("")}
       </div>
     </div>
+    ${wallStyleHtml(null)}
     <div class="note">いまは「${WALL_ANGLES.find(a=>a[0]===cur)[2]}」で引きます。
       ドラッグで壁を描き、既存の壁の端点に近づけるとそこに繋がります(繋がるときは向きの指定より優先)。
       キーボードのShiftを押しながらだと、直交と自由角度を一時的に入れ替えられます</div>`;
@@ -1017,6 +1074,12 @@ function renderSide(){
     props.insertAdjacentHTML("afterbegin", wallAngleHtml());
     props.querySelectorAll("[data-wangle]").forEach(b=>{
       b.onclick = ()=>{ state.wallAngle = b.dataset.wangle; renderSide(); };
+    });
+    // ここで変えるのは「これから描く壁」の既定。既存の壁は変わらない
+    bindWallStyle(props, ch=>{
+      if (ch.t != null) state.wallThick = ch.t;
+      if (ch.c != null) state.wallColor = ch.c;
+      renderSide();
     });
     return;
   }
@@ -1040,7 +1103,9 @@ function renderSideBody(){
     const wallsInSel = state.walls.filter(w=>selectedIds.has(w.id));
     props.innerHTML = `<div class="note">${selectedIds.size}個を選択中(整列対象: ${n}個)</div>
       ${wallsInSel.length ? `<div class="field"><button class="sbtn" id="copyWallsBtn" style="width:100%">
-        📋 選択した壁(${wallsInSel.length}本)をコピー(Ctrl+C)</button></div>` : ""}
+        📋 選択した壁(${wallsInSel.length}本)をコピー(Ctrl+C)</button></div>
+        <div class="note">下の太さ・色は、選択した壁${wallsInSel.length}本すべてに適用されます</div>
+        ${wallStyleHtml(wallsInSel[0])}` : ""}
       <div class="field"><label>整列</label>
         <div class="algrid">
           <button class="sbtn" data-align="left" title="左端をそろえる">⇤ 左</button>
@@ -1070,6 +1135,11 @@ function renderSideBody(){
     props.querySelectorAll("[data-rotate]").forEach(b=> b.onclick = ()=> rotateSelected(+b.dataset.rotate));
     const copyWallsBtn = document.getElementById("copyWallsBtn");
     if (copyWallsBtn) copyWallsBtn.onclick = copySelectedWalls;
+    if (wallsInSel.length) bindWallStyle(props, ch=>{ // 選択した壁すべてに適用
+      pushUndo();
+      for (const w of wallsInSel) Object.assign(w, ch);
+      render(); renderSide();
+    });
     document.getElementById("delBtn").onclick = deleteSelected;
     renderList();
     return;
@@ -1131,9 +1201,16 @@ function renderSideBody(){
   else if (wall){
     const len = Math.hypot(wall.x2-wall.x1, wall.y2-wall.y1);
     props.innerHTML = `<div class="field"><label>壁 — 長さ</label><input value="${(len/1000).toFixed(2)} m" readonly></div>
+      ${wallStyleHtml(wall)}
       <div class="field"><button class="sbtn" id="copyWallBtn" style="width:100%">📋 この壁をコピー(Ctrl+C)</button></div>
       <div class="note">貼り付けはCtrl+V。少しずらした位置に複製されます</div>
       <button class="del" id="delBtn">この壁を削除</button>`;
+    // 選択中の壁そのものを変える(壁ツールの既定は変えない)
+    bindWallStyle(props, ch=>{
+      pushUndo();
+      Object.assign(wall, ch);
+      render(); renderSide();
+    });
     document.getElementById("copyWallBtn").onclick = copySelectedWalls;
     document.getElementById("delBtn").onclick = deleteSelected;
   }
@@ -1324,7 +1401,7 @@ let pasteCount = 0;       // 同じコピー内容から連続で貼り付けた
 function copySelectedWalls(){
   const walls = state.walls.filter(w=>selectedIds.has(w.id));
   if (!walls.length) return;
-  wallClipboard = walls.map(w=>({x1:w.x1, y1:w.y1, x2:w.x2, y2:w.y2}));
+  wallClipboard = walls.map(w=>({x1:w.x1, y1:w.y1, x2:w.x2, y2:w.y2, t:w.t, c:w.c}));
   pasteCount = 0;
 }
 function pasteWalls(){
@@ -1334,7 +1411,7 @@ function pasteWalls(){
   pushUndo();
   const newIds = [];
   for (const w of wallClipboard){
-    const nw = {id:idSeq++, x1:w.x1+off, y1:w.y1+off, x2:w.x2+off, y2:w.y2+off};
+    const nw = {id:idSeq++, x1:w.x1+off, y1:w.y1+off, x2:w.x2+off, y2:w.y2+off, t:w.t, c:w.c};
     state.walls.push(nw);
     newIds.push(nw.id);
   }
@@ -1405,7 +1482,8 @@ svg.addEventListener("pointerdown", ev=>{
   if (tool === "wall"){
     pushUndo();
     const sp = snapWallPoint(p);
-    const w = {id: idSeq++, x1:sp.x, y1:sp.y, x2:sp.x, y2:sp.y};
+    const w = {id: idSeq++, x1:sp.x, y1:sp.y, x2:sp.x, y2:sp.y,
+      t: wallThickOf({t: state.wallThick}), c: state.wallColor};
     state.walls.push(w);
     drag = {mode:"wall", wall:w};
     return;
@@ -1798,6 +1876,8 @@ function applyPlanText(text){
     if (!state.workList) state.workList = [];
     if (state.workStartNo == null) state.workStartNo = "";
     if (!["ortho","d45","free"].includes(state.wallAngle)) state.wallAngle = "ortho";
+    if (!(state.wallThick > 0)) state.wallThick = WALL_T;
+    if (!WALL_COLORS.some(c=>c[0] === state.wallColor)) state.wallColor = "ink";
     if (!state.images) state.images = {};
     // 画像フォルダ。旧形式(番号→dataURLのstate.imagesだけを持つファイル)は
     // ここでlibraryへ移して、以後は画像フォルダから選べるようにする
