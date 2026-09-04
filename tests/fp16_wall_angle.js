@@ -2,7 +2,9 @@
 // 「壁を描く」で斜めの線も引けることのテスト。
 //
 // 仕様:
-//  ・右パネルで線の向きを選べる。直交(既定) / 45度きざみ / 自由角度。
+//  ・右パネルで線の向きを選べる。直交 / 45度きざみ(既定) / 自由角度。
+//  ・既定を45度きざみにしてあるのは、何も設定しなくても斜めが引けるようにするため。
+//    45度きざみでも水平・垂直はちょうど0度・90度に丸まるので、これまでの描き方は変わらない。
 //  ・キーボードが無いiPadでも斜めが引けるよう、Shiftではなくボタンで切り替える。
 //  ・Shiftは補助。直交のときは自由角度に、それ以外のときは直交に一時的に入れ替わる。
 //  ・既存の壁の端点に近づけたときは連結が優先(向きの指定より優先)。
@@ -53,12 +55,33 @@ async function run() {
   await page.waitForTimeout(150);
   t.eq(await page.locator('[data-wangle]').count(), 3,
     '壁ツールにすると「直交 / 45度きざみ / 自由角度」の3つが出る');
-  t.eq(await page.$eval('[data-wangle].on', e => e.dataset.wangle), 'ortho',
-    '既定は直交(これまでどおり)');
+  t.eq(await page.$eval('[data-wangle].on', e => e.dataset.wangle), 'd45',
+    '既定は45度きざみ(何も設定しなくても斜めが引ける)');
 
-  // --- 直交: 斜めにドラッグしても水平か垂直になる ---
+  // --- 既定のまま斜めにドラッグすると、設定を触らなくても斜めになる ---
   await drawWall();
   let w = (await walls(page))[0];
+  t.ok(w && w.x2 !== w.x1 && w.y2 !== w.y1,
+    '設定を触らずにドラッグしただけで斜めの壁が引ける');
+  t.ok(Math.abs(angleOf(w) - 45) < 0.01,
+    `既定では斜めがちょうど45度になる(実際: ${angleOf(w).toFixed(2)}度)`);
+  await clearWalls();
+
+  // 既定のままでも、ほぼ水平に引けばちょうど水平になる(これまでの描き方は変わらない)
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 300, from.y + 20, { steps: 5 });
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  w = (await walls(page))[0];
+  t.ok(angleOf(w) < 0.01, '既定のままでも、ほぼ水平に引けば水平の壁になる');
+  await clearWalls();
+
+  // --- 直交: 斜めにドラッグしても水平か垂直になる ---
+  await page.click('[data-wangle="ortho"]');
+  await page.waitForTimeout(100);
+  await drawWall();
+  w = (await walls(page))[0];
   t.ok(w, '壁が1本引けた(前提確認)');
   t.ok(angleOf(w) < 0.01 || Math.abs(angleOf(w) - 90) < 0.01,
     `直交では水平か垂直になる(実際: ${angleOf(w).toFixed(1)}度)`);
@@ -157,7 +180,7 @@ async function run() {
   t.eq(await page.$eval('[data-wangle].on', e => e.dataset.wangle), 'd45',
     '読み込むと線の向きも戻る');
 
-  // 古い保存ファイル(線の向きを持たない)は直交として読む
+  // 古い保存ファイル(線の向きを持たない)は、いまの既定(45度きざみ)で読む
   const old = JSON.parse(fs.readFileSync(savePath, 'utf8'));
   delete old.wallAngle;
   const oldPath = path.join(os.tmpdir(), 'fp16_old.json');
@@ -166,8 +189,8 @@ async function run() {
   await page.waitForTimeout(400);
   await page.click('.tool[data-tool="wall"]');
   await page.waitForTimeout(150);
-  t.eq(await page.$eval('[data-wangle].on', e => e.dataset.wangle), 'ortho',
-    '線の向きを持たない古い保存ファイルは直交として読む');
+  t.eq(await page.$eval('[data-wangle].on', e => e.dataset.wangle), 'd45',
+    '線の向きを持たない古い保存ファイルも、いまの既定(45度きざみ)で読む');
 
   t.noErrors(errors);
   await context.close();
