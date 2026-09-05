@@ -106,12 +106,30 @@ td.ops button{border:1px solid var(--line);background:var(--white);border-radius
 .edit-holder .cap-card{box-shadow:0 3px 14px rgba(40,35,25,.18)}
 .marquee{position:absolute;border:1px solid var(--shu);background:rgba(166,58,34,.08);pointer-events:none;z-index:40;display:none}
 
-#itemPanel{position:absolute;top:14px;right:14px;z-index:60;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(30,26,20,.22);padding:11px 12px;width:224px;max-height:calc(100% - 28px);overflow:auto;display:none}
+#itemPanel{position:absolute;top:14px;right:14px;z-index:60;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(30,26,20,.22);padding:11px 12px;width:252px;max-height:calc(100% - 28px);overflow:auto;display:none}
 #itemPanel.show{display:block}
 #itemPanel h5{font-family:var(--mincho);font-size:12.5px;margin-bottom:9px;letter-spacing:.08em;display:flex;justify-content:space-between;align-items:center;cursor:move;touch-action:none;-webkit-user-select:none;user-select:none}
 #itemPanel h5 button{border:none;background:none;color:var(--sub);font-size:15px;line-height:1;padding:0 2px;cursor:pointer}
 #itemPanel .prow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
-#itemPanel .prow label{font-size:11px;color:var(--sub);width:56px;flex:none}
+/* 数値の調整：直接入力欄と上下ボタン。ブラウザ既定のスピナーは小さく環境によっては出ないため、
+   全ての数値項目に同じ見た目の▲▼を付ける（既定のスピナーは隠す） */
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.spin{display:inline-flex;flex-direction:column;gap:1px;flex:none;margin-left:3px;vertical-align:middle}
+.spin button{border:1px solid var(--line);background:var(--paper);color:var(--sub);font-size:7px;line-height:1;
+  padding:0;width:17px;height:11px;cursor:pointer;border-radius:2px;display:flex;align-items:center;justify-content:center}
+.spin button:hover{background:var(--line);color:var(--ink)}
+.spin button:active{transform:translateY(.5px)}
+.spin button:disabled{opacity:.35;cursor:default}
+input.numbox{width:60px;font-size:12px;padding:3px 5px;text-align:right;flex:none;margin-left:6px}
+/* スライダーと数値欄を1行に収める。狭い小パネルではスライダー側を縮める */
+.ctl .row input[type=range],#itemPanel .prow input[type=range]{min-width:60px}
+#itemPanel .prow input[type=range]{flex:1 1 50px;min-width:50px}
+#itemPanel input.numbox{width:46px;margin-left:4px}
+.numunit{font-size:11px;color:var(--sub);flex:none;margin-left:3px}
+output.numhidden{display:none}
+#itemPanel .prow label{font-size:11px;color:var(--sub);width:58px;flex:none}
 /* チェックボックスの行は見出し用の固定幅を使わない（46px幅に押し込まれて1文字ずつ折り返していた） */
 #itemPanel .prow label.chk{width:auto;flex:1}
 #itemPanel .prow select,#itemPanel .prow input[type=number]{flex:1;font-size:12px;padding:4px 6px}
@@ -703,7 +721,9 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <span style="flex:1"></span>
       <span class="overflow-warn" id="overflowWarn">札からはみ出しています</span>
       <button class="btn small" data-zoom="-">縮小 −</button>
-      <output id="zoomLabel" style="font-size:12px;min-width:44px;text-align:center">—</output>
+      <input type="number" id="zoomInput" class="numbox" min="10" max="400" step="5" aria-label="表示倍率（％）" style="width:52px;margin-left:0">
+      <span class="numunit">%</span>
+      <output id="zoomLabel" class="numhidden">—</output>
       <button class="btn small" data-zoom="+">拡大 ＋</button>
       <button class="btn small ghost" id="btnZoom100">実寸100%</button>
       <button class="btn small ghost" id="btnZoomFit">画面に収める</button>
@@ -1110,7 +1130,10 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 </dialog>
 
 <div id="charSpacingPopover">
-  <div class="cs-head"><span>選択文字の字間</span><output id="csVal">+0.00em</output></div>
+  <div class="cs-head"><span>選択文字の字間</span>
+    <input type="number" id="csNum" class="numbox" min="-0.1" max="0.5" step="0.01" style="width:64px" aria-label="選択文字の字間（em）">
+    <span class="numunit">em</span>
+    <output id="csVal" class="numhidden">+0.00em</output></div>
   <div class="cs-track" id="csTrack"><div class="cs-fill" id="csFill"></div><div class="cs-handle" id="csHandle"></div></div>
   <div class="cs-ruby" id="csRubyRow"><label>ルビ</label><input type="text" id="rubyText" placeholder="よみ（文字ごと＝スペース区切り）"></div>
   <div class="cs-foot" id="csTcyRow" style="display:none">
@@ -2377,7 +2400,91 @@ function setSwatchUI(btnId,cmyk,defaultLabel){
     txt.textContent=`C${cmyk.c} M${cmyk.m} Y${cmyk.y} K${cmyk.k}`;}
   else{chip.style.background="#fff";txt.textContent=defaultLabel;}
 }
-function setRange(id,out,val,unit){$("#"+id).value=val;$("#"+out).textContent=val+(unit?" "+unit:"");}
+function setRange(id,out,val,unit){$("#"+id).value=val;$("#"+out).textContent=val+(unit?" "+unit:"");syncNumBoxes();}
+
+/* ===== 数値の調整：直接入力と上下ボタン =====
+   スライダーには値を打ち込める数値欄を、数値欄には▲▼を足して、どの項目も
+   「直接入力」と「1目盛りずつの増減」の両方でそろえる。 */
+const RANGE_UNITS={ipLs:"em",stLh:"",stPad:"mm",bgOpacity:"%",bgScale:"%",img2Opacity:"%",
+  imgScale:"%",imgOffX:"mm",imgOffY:"mm",imgOpacity:"%",rubyOffset:"pt",rubyLs:"em",
+  cmykC:"%",cmykM:"%",cmykY:"%",cmykK:"%"};
+function stepDecimals(step){const s=String(step==null?1:step);const i=s.indexOf(".");return i<0?0:s.length-1-i;}
+/* 値をmin/maxとstepの桁数に丸める */
+function clampNum(input,v){
+  const min=input.min===""?-Infinity:parseFloat(input.min);
+  const max=input.max===""?Infinity:parseFloat(input.max);
+  const d=stepDecimals(input.step);
+  return +Math.min(max,Math.max(min,v)).toFixed(d);
+}
+function bumpNum(input,dir){
+  if(input.disabled)return;
+  const step=parseFloat(input.step)||1;
+  let v=parseFloat(input.value);
+  if(!isFinite(v))v=parseFloat(input.min)||0;
+  input.value=String(clampNum(input,v+step*dir));
+  input.dispatchEvent(new Event("input",{bubbles:true}));
+  input.dispatchEvent(new Event("change",{bubbles:true}));
+}
+function makeSpin(input){
+  const box=document.createElement("span");box.className="spin";
+  [["▲",1,"増やす"],["▼",-1,"減らす"]].forEach(([mark,dir,tip])=>{
+    const b=document.createElement("button");
+    b.type="button";b.textContent=mark;b.tabIndex=-1;b.title=tip;
+    b.addEventListener("mousedown",e=>e.preventDefault()); // 入力欄のフォーカスを保つ
+    b.addEventListener("click",()=>bumpNum(input,dir));
+    box.appendChild(b);
+  });
+  return box;
+}
+/* 単位の注記（「pt」等）があればその後ろに置く。無ければ入力欄の直後 */
+function placeAfterUnit(input,node){
+  const nx=input.nextElementSibling;
+  const isUnit=nx&&nx.tagName==="SPAN"&&!nx.className&&(nx.textContent||"").trim().length<=4;
+  (isUnit?nx:input).after(node);
+}
+function enhanceNumberInput(input){
+  if(input.dataset.spun)return;input.dataset.spun="1";
+  placeAfterUnit(input,makeSpin(input));
+}
+/* スライダーに、直接入力できる数値欄と▲▼を足す。スライダーのinputイベントを発火させるので
+   既存の処理（保存・再描画）はそのまま動く。値の表示に使っていた<output>は数値欄と重複するため隠す */
+function enhanceRangeInput(range){
+  if(range.dataset.spun)return;range.dataset.spun="1";
+  const box=document.createElement("input");
+  box.type="number";box.className="numbox";box.id=range.id+"Num";
+  box.dataset.spun="1";   // ▲▼はこの下で自分で付けるので、数値欄の一括処理では触らせない
+  box.min=range.min;box.max=range.max;box.step=range.step;
+  box.setAttribute("aria-label",(range.getAttribute("aria-label")||range.id)+"（数値で入力）");
+  const unitText=RANGE_UNITS[range.id];
+  let tail=box;
+  if(unitText){const u=document.createElement("span");u.className="numunit";u.textContent=unitText;range.after(u);tail=u;}
+  range.after(box);
+  tail.after(makeSpin(box));
+  const push=()=>{
+    if(box.value==="")return;
+    range.value=String(clampNum(box,parseFloat(box.value)));
+    range.dispatchEvent(new Event("input",{bubbles:true}));
+  };
+  box.addEventListener("input",push);
+  box.addEventListener("change",()=>{if(box.value!=="")box.value=String(clampNum(box,parseFloat(box.value)));push();});
+  const out=range.parentElement&&range.parentElement.querySelector("output");
+  if(out)out.classList.add("numhidden");
+  box.value=range.value;
+}
+/* スライダー側が動いたら数値欄へ書き戻す（ドラッグ・プログラムからの設定の両方） */
+function syncNumBoxes(){
+  $$("input[type=range][data-spun]").forEach(r=>{
+    const box=document.getElementById(r.id+"Num");
+    if(box&&document.activeElement!==box)box.value=r.value;
+  });
+}
+function enhanceNumericControls(){
+  $$("input[type=range]").forEach(enhanceRangeInput);
+  $$("input[type=number]").forEach(enhanceNumberInput);
+  document.addEventListener("input",e=>{
+    if(e.target&&e.target.tagName==="INPUT"&&e.target.type==="range")syncNumBoxes();
+  },true);
+}
 function renderBgPicker(){const cur=curStyleRead().bg;
   $("#bgPicker").innerHTML=BG_CATS.map(cat=>{
     const items=BACKGROUNDS.filter(b=>b.cat===cat.id);
@@ -2713,6 +2820,12 @@ function updateMasterHint(){const m=$("#masterHint"),o=$("#oneHint");
   if(m)m.style.display=(editScope==="master")?"":"none";
   if(o)o.style.display=(editScope==="one")?"":"none";}
 $$("button[data-zoom]").forEach(b=>b.addEventListener("click",()=>{const base=userZoom||editZoom;userZoom=Math.min(2.2,Math.max(.3,base+(b.dataset.zoom==="+"?.15:-.15)));renderEditor();}));
+/* 表示倍率も数値で直接指定できる（▲▼は共通の仕組みで付く） */
+$("#zoomInput").addEventListener("input",e=>{
+  if(e.target.value==="")return;
+  const v=parseFloat(e.target.value);if(!isFinite(v))return;
+  userZoom=Math.min(2.2,Math.max(.3,v/100));renderEditor();
+});
 $("#btnZoomFit").addEventListener("click",()=>{userZoom=fitZoom(curSize());renderEditor();});
 $("#btnZoom100").addEventListener("click",()=>{userZoom=1;renderEditor();});
 $("#btnUndo").addEventListener("click",doUndo);
@@ -2731,7 +2844,7 @@ let holderEl=null, cardEl=null;
 function getMasterSampleImage(){const w=(proj().works||[]).find(x=>x.image);return w?w.image:"";}
 function currentWork(){const p=proj();if(editScope==="master"){MASTER_DUMMY.image=getMasterSampleImage();return MASTER_DUMMY;}return p.works[previewIndex]||null;}
 function isMaster(){return editScope==="master";}
-function fitZoom(size){const vp=$("#editorViewport");const avail=Math.max(120,(vp.clientWidth||600)-284);
+function fitZoom(size){const vp=$("#editorViewport");const avail=Math.max(120,(vp.clientWidth||600)-312); /* 小パネル252px＋左右の余白 */
   return Math.min(1.6,Math.max(.3,avail/(size.w*MM2PX)));}
 function renderEditor(){
   if(!$("#tab-layout").classList.contains("active"))return;
@@ -2740,9 +2853,10 @@ function renderEditor(){
   const holder=$("#editHolder");holder.innerHTML="";
   const w=currentWork();
   if(!w){holder.innerHTML=`<div class="note" style="padding:40px">作品台帳に作品を登録すると、ここで配置できます。</div>`;
-    hidePanel();updateSelUI();$("#overflowWarn").classList.remove("show");$("#zoomLabel").textContent="—";return;}
+    hidePanel();updateSelUI();$("#overflowWarn").classList.remove("show");$("#zoomLabel").textContent="—";$("#zoomInput").value="";return;}
   editZoom=1;const z=userZoom||editZoom;
   $("#zoomLabel").textContent=Math.round(z*100)+"%";
+  if(document.activeElement!==$("#zoomInput"))$("#zoomInput").value=Math.round(z*100);
   cardEl=buildCard(w,st,size,{editor:true,mode:editMode});
   cardEl.style.transform=`scale(${z})`;cardEl.style.transformOrigin="top left";
   holder.style.width=(size.w*MM2PX*z)+"px";holder.style.height=(size.h*MM2PX*z)+"px";
@@ -2898,7 +3012,16 @@ function setMiniSliderValue(ls){
   $("#csFill").style.width=(t*100)+"%";
   $("#csHandle").style.left=(t*100)+"%";
   $("#csVal").textContent=(ls>=0?"+":"")+ls.toFixed(2)+"em";
+  const box=$("#csNum");if(box&&document.activeElement!==box)box.value=ls.toFixed(2);
 }
+/* 字間も数値で直接指定できる（▲▼は共通の仕組みで付く） */
+$("#csNum").addEventListener("input",e=>{
+  if(e.target.value==="")return;
+  const v=parseFloat(e.target.value);if(!isFinite(v))return;
+  const ls=Math.max(CS_MIN,Math.min(CS_MAX,v));
+  setMiniSliderValue(ls);applyCharSpacing(ls);
+});
+$("#csNum").addEventListener("mousedown",e=>e.stopPropagation());
 function applyCharSpacing(ls){
   if(!charSel)return;
   const w=currentWork();if(!w)return;
@@ -3016,7 +3139,7 @@ function renderImg2Sel(){
   const box=$("#img2Box");if(box)box.style.display=m?"":"none";
   if(!m)return;
   const el=img2El(m.id);if(!el)return;
-  const op=$("#img2Opacity");if(op){op.value=Math.round(((m.opacity==null)?1:m.opacity)*100);$("#oImg2Op").textContent=op.value+"%";}
+  const op=$("#img2Opacity");if(op){op.value=Math.round(((m.opacity==null)?1:m.opacity)*100);$("#oImg2Op").textContent=op.value+"%";syncNumBoxes();}
   const hs=3.4,ar=img2Ar(m);
   const d=document.createElement("div");d.className="img2-handle";
   d.style.left=(m.x+m.w-hs/2)+"mm";d.style.top=(m.y+m.w*ar-hs/2)+"mm";d.style.width=hs+"mm";d.style.height=hs+"mm";
@@ -3402,7 +3525,7 @@ function showPanel(){const p=proj();if(!sel.size){hidePanel();return;}const keys
   updateItemPanelLabels(keys.length===1?isItemVertical(keys[0]):(proj().style.vertical&&keys.every(k=>isItemVertical(k))));
   const font=commonVal(k=>curLayoutRead()[k].font); $("#ipFont").value=font==null?"inherit":font;
   const size=commonVal(k=>curLayoutRead()[k].size); $("#ipSize").value=size==null?"":size;
-  const ls=commonVal(k=>curLayoutRead()[k].ls); $("#ipLs").value=ls==null?0:ls; $("#ipLsO").textContent=(ls==null?"—":(ls.toFixed(2)+"em"));
+  const ls=commonVal(k=>curLayoutRead()[k].ls); $("#ipLs").value=ls==null?0:ls; $("#ipLsO").textContent=(ls==null?"—":(ls.toFixed(2)+"em")); syncNumBoxes();
   const sx=commonVal(k=>curLayoutRead()[k].sx==null?100:curLayoutRead()[k].sx); $("#ipSx").value=sx==null?"":sx;
   const sy=commonVal(k=>curLayoutRead()[k].sy==null?100:curLayoutRead()[k].sy); $("#ipSy").value=sy==null?"":sy;
   const al=commonVal(k=>curLayoutRead()[k].align); $("#ipAlign").value=al==null?"inherit":al;
@@ -3642,7 +3765,7 @@ function openCmykPicker(anchorEl,title,initial,onChange,onReset){
   cmykTarget={onChange,onReset};
   $("#cmykTitle").textContent=title;
   const v=initial||{c:0,m:0,y:0,k:0};
-  $("#cmykC").value=v.c;$("#cmykM").value=v.m;$("#cmykY").value=v.y;$("#cmykK").value=v.k;
+  $("#cmykC").value=v.c;$("#cmykM").value=v.m;$("#cmykY").value=v.y;$("#cmykK").value=v.k;syncNumBoxes();
   cmykRefreshSwatch();
   const pop=$("#cmykPopover");pop.classList.add("show");
   const r=anchorEl.getBoundingClientRect();
@@ -3692,6 +3815,7 @@ window.addEventListener("resize",()=>{if($("#tab-layout").classList.contains("ac
 $("#fontKind").innerHTML=fontOptionsHTML(null,null);
 $("#ipFont").innerHTML=fontOptionsHTML(null,"全体に従う");
 $("#rubyFont").innerHTML=fontOptionsHTML(null,"本文に従う");
+enhanceNumericControls();   // 数値項目に直接入力欄と▲▼を付ける（値を流し込む前に済ませる）
 loadStore();lastSnapshot=JSON.stringify(store);updateUndoButtons();
 applyEditScope();
 if(store.useGoogleFonts){$("#gfontToggle").checked=true;applyGoogleFonts(true);}
