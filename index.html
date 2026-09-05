@@ -862,8 +862,8 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
               <label class="chk"><input type="checkbox" id="shDesc">解説文</label>
             </div>
           </fieldset>
-          <fieldset class="grp lock-layout"><legend>ルビの体裁（作品名・キャッチコピー・解説文）</legend>
-            <p class="note" style="margin-bottom:6px">ルビの付け方：キャンバスで項目をダブルクリック→文字を選択→パネルの「ルビ」欄によみを入力。<b>文字ごとに振るときはスペース区切り</b>（例：東 海 道）、区切らなければ選択範囲全体に均等割付。</p>
+          <fieldset class="grp lock-layout"><legend>ルビの体裁（日本語の項目すべて）</legend>
+            <p class="note" style="margin-bottom:6px">ルビの付け方：キャンバスで項目をダブルクリック→文字を選択→パネルの「ルビ」欄によみを入力。<b>文字ごとに振るときはスペース区切り</b>（例：東 海 道）、区切らなければ選択範囲全体に均等割付。<b>作品名・産地（作者）・時代・所蔵・キャッチコピー・解説文など、日本語の項目すべてに振れます</b>（英訳の項目は対象外）。</p>
             <div class="ctl"><label class="lbl">ルビのオフセット（本文との間隔）</label><div class="row"><input type="range" id="rubyOffset" min="-2" max="10" step="0.5"><output id="oRubyOffset"></output></div></div>
             <div class="ctl"><label class="lbl">ルビのサイズ</label><div class="row"><input type="number" id="rubySizePt" min="3" max="30" step="0.5" placeholder="自動（本文の50%）" style="width:130px"><span style="font-size:11px;color:var(--sub)">pt（空欄で自動）</span></div></div>
             <div class="ctl"><label class="lbl">ルビのフォント</label>
@@ -1831,7 +1831,9 @@ function appendRunsWithOverrides(parentEl,text,startIndex,ranges,tcyRanges){
   }
 }
 /* ===== ルビ注釈（Word風）：文字範囲ごとに任意のルビを振る ===== */
-const RUBY_KEYS=["title","catchcopy","description"];
+/* ルビを振れる項目は日本語の項目すべて（英訳の項目は対象外）。
+   ITEMSから引くので、日本語の項目を増やせばそのままルビも使える */
+const RUBY_KEYS=ITEMS.filter(i=>i.group!=="en").map(i=>i.key);
 function rubyRangesFor(work,key){return (work&&work.ruby&&work.ruby[key])||[];}
 /* 縦中横（手動指定分）：work.tcy[key] = [{start,end}, ...] */
 function tcyRangesFor(work,key){return (work&&work.tcy&&work.tcy[key])||[];}
