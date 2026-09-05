@@ -329,21 +329,19 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
     linear-gradient(var(--bg-accent,#5E7A63),var(--bg-accent,#5E7A63));
   background-size:100% calc(3.4mm*var(--bg-scale,1)),calc(9mm*var(--bg-scale,1)) calc(6.6mm*var(--bg-scale,1)),calc(9mm*var(--bg-scale,1)) calc(6.6mm*var(--bg-scale,1)),100% calc(.7mm*var(--bg-scale,1));
   background-position:0 calc(.4mm*var(--bg-scale,1)),0 calc(4mm*var(--bg-scale,1)),0 calc(4mm*var(--bg-scale,1)),0 calc(10.3mm*var(--bg-scale,1))}
-/* 釉だまり：現代陶芸の釉の流れ（下へ溜まる）に、漢代建築の垂木の律動を重ねた上部帯 */
-.bg-yudamari::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(14mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);
-  background:
-    radial-gradient(ellipse 18% 85% at 12% 100%,rgba(94,122,99,.55),transparent 72%),
-    radial-gradient(ellipse 22% 95% at 38% 100%,rgba(94,122,99,.42),transparent 74%),
-    radial-gradient(ellipse 16% 80% at 63% 100%,rgba(94,122,99,.5),transparent 72%),
-    radial-gradient(ellipse 20% 92% at 88% 100%,rgba(94,122,99,.4),transparent 74%),
-    linear-gradient(180deg,transparent 0 32%,rgba(94,122,99,.26) 100%)}
-.bg-yudamari::after{content:"";position:absolute;left:0;right:0;top:0;height:calc(14mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background-repeat:repeat-x;
+/* 幾何の組物：斗栱を矩形のリズムに還元した上部帯。現代陶芸の面構成と漢代建築の律動を重ねる */
+.bg-kikatokyou::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(12mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background-repeat:repeat-x;
   background-image:
-    /* 垂木（たるき）の等間隔の細線 */
-    repeating-linear-gradient(90deg,var(--bg-accent,#5E7A63) 0 calc(.45mm*var(--bg-scale,1)),transparent calc(.45mm*var(--bg-scale,1)) calc(7mm*var(--bg-scale,1))),
-    linear-gradient(var(--bg-accent,#5E7A63),var(--bg-accent,#5E7A63));
-  background-size:100% calc(3.2mm*var(--bg-scale,1)),100% calc(.8mm*var(--bg-scale,1));
-  background-position:0 calc(1.2mm*var(--bg-scale,1)),0 calc(13.2mm*var(--bg-scale,1))}
+    /* 大斗（一辺の長い矩形） */
+    repeating-linear-gradient(90deg,var(--bg-accent,#6E6E66) 0 calc(3.4mm*var(--bg-scale,1)),transparent calc(3.4mm*var(--bg-scale,1)) calc(12mm*var(--bg-scale,1))),
+    /* 巻斗（薄く沈めた中間の矩形） */
+    repeating-linear-gradient(90deg,transparent 0 calc(4.8mm*var(--bg-scale,1)),rgba(110,110,102,.4) calc(4.8mm*var(--bg-scale,1)) calc(6.8mm*var(--bg-scale,1)),transparent calc(6.8mm*var(--bg-scale,1)) calc(12mm*var(--bg-scale,1))),
+    /* 栱（細く高い縦材） */
+    repeating-linear-gradient(90deg,transparent 0 calc(8.4mm*var(--bg-scale,1)),var(--bg-accent,#6E6E66) calc(8.4mm*var(--bg-scale,1)) calc(9mm*var(--bg-scale,1)),transparent calc(9mm*var(--bg-scale,1)) calc(12mm*var(--bg-scale,1))),
+    /* 通肘木（帯を締める最下部の水平材） */
+    linear-gradient(var(--bg-accent,#6E6E66),var(--bg-accent,#6E6E66));
+  background-size:100% calc(3.8mm*var(--bg-scale,1)),100% calc(2.6mm*var(--bg-scale,1)),100% calc(6.4mm*var(--bg-scale,1)),100% calc(1mm*var(--bg-scale,1));
+  background-position:0 calc(1.6mm*var(--bg-scale,1)),0 calc(6.2mm*var(--bg-scale,1)),0 calc(2.6mm*var(--bg-scale,1)),0 calc(11mm*var(--bg-scale,1))}
 /* 五層望楼（緑釉）：望楼の中央から右半分を、枠の左端に幅16mmの縦帯として立てる。
    形（屋根の反り・壁の直櫺窓・勾欄・基壇）はSVGマスクで描き、色は--bg-accentで塗るため配色変更に追随する */
 .bg-bourou::before{content:"";position:absolute;left:0;top:0;bottom:0;width:calc(16mm*var(--bg-scale,1));opacity:var(--bg-opacity,1);background:var(--bg-accent,#5E7A63);-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20110%20500%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20fill%3D%22black%22%20fill-rule%3D%22evenodd%22%20d%3D%22M0%2C93%20q7%2C1%207%2C8%20q0%2C6%20-7%2C6.5%20Z%20M0%2C108%20h9%20v5%20h-9%20Z%20M0%2C111%20h5.5%20v355.0%20h-5.5%20Z%20M0%2C117%20C18.5%2C119.0%2032.6%2C128.2%2033%2C131%20Q41.5%2C132.5%2044%2C125.0%20L44%2C130.0%20Q36%2C138.0%2028%2C137.0%20C27.3%2C133.9%2014.1%2C127.0%200%2C130.0%20Z%20M0%2C143%20h31%20v28.0%20h-31%20Z%20M5%2C150%20h20.0%20v14.0%20h-20.0%20Z%20M10%2C150%20h2.6%20v14.0%20h-2.6%20Z%20M18%2C150%20h2.6%20v14.0%20h-2.6%20Z%20M0%2C172.5%20h39%20v3%20h-39%20Z%20M0%2C181%20h39%20v3.4%20h-39%20Z%20M5%2C175.5%20h3%20v5.5%20h-3%20Z%20M15%2C175.5%20h3%20v5.5%20h-3%20Z%20M25%2C175.5%20h3%20v5.5%20h-3%20Z%20M0%2C187%20C23.5%2C189.0%2041.4%2C198.2%2045%2C201%20Q53.5%2C202.5%2056%2C195.0%20L56%2C200.0%20Q48%2C208.0%2040%2C207.0%20C34.7%2C203.9%2017.9%2C197.0%200%2C200.0%20Z%20M0%2C213%20h43%20v28.0%20h-43%20Z%20M5%2C220%20h32.0%20v14.0%20h-32.0%20Z%20M10%2C220%20h2.6%20v14.0%20h-2.6%20Z%20M18%2C220%20h2.6%20v14.0%20h-2.6%20Z%20M26%2C220%20h2.6%20v14.0%20h-2.6%20Z%20M0%2C242.5%20h51%20v3%20h-51%20Z%20M0%2C251%20h51%20v3.4%20h-51%20Z%20M5%2C245.5%20h3%20v5.5%20h-3%20Z%20M15%2C245.5%20h3%20v5.5%20h-3%20Z%20M25%2C245.5%20h3%20v5.5%20h-3%20Z%20M35%2C245.5%20h3%20v5.5%20h-3%20Z%20M45%2C245.5%20h3%20v5.5%20h-3%20Z%20M0%2C257%20C28.6%2C259.0%2050.3%2C268.2%2057%2C271%20Q65.5%2C272.5%2068%2C265.0%20L68%2C270.0%20Q60%2C278.0%2052%2C277.0%20C42.2%2C273.9%2021.8%2C267.0%200%2C270.0%20Z%20M0%2C283%20h55%20v30.0%20h-55%20Z%20M5%2C290%20h44.0%20v16.0%20h-44.0%20Z%20M10%2C290%20h2.6%20v16.0%20h-2.6%20Z%20M18%2C290%20h2.6%20v16.0%20h-2.6%20Z%20M26%2C290%20h2.6%20v16.0%20h-2.6%20Z%20M34%2C290%20h2.6%20v16.0%20h-2.6%20Z%20M42%2C290%20h2.6%20v16.0%20h-2.6%20Z%20M0%2C314.5%20h63%20v3%20h-63%20Z%20M0%2C323%20h63%20v3.4%20h-63%20Z%20M5%2C317.5%20h3%20v5.5%20h-3%20Z%20M15%2C317.5%20h3%20v5.5%20h-3%20Z%20M25%2C317.5%20h3%20v5.5%20h-3%20Z%20M35%2C317.5%20h3%20v5.5%20h-3%20Z%20M45%2C317.5%20h3%20v5.5%20h-3%20Z%20M55%2C317.5%20h3%20v5.5%20h-3%20Z%20M0%2C329%20C34.0%2C331.0%2059.9%2C340.2%2070%2C343%20Q78.5%2C344.5%2081%2C337.0%20L81%2C342.0%20Q73%2C350.0%2065%2C349.0%20C50.2%2C345.9%2025.9%2C339.0%200%2C342.0%20Z%20M0%2C355%20h68%20v30.0%20h-68%20Z%20M5%2C362%20h57.0%20v16.0%20h-57.0%20Z%20M10%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M18%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M26%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M34%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M42%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M50%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M58%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M0%2C386.5%20h76%20v3%20h-76%20Z%20M0%2C395%20h76%20v3.4%20h-76%20Z%20M5%2C389.5%20h3%20v5.5%20h-3%20Z%20M15%2C389.5%20h3%20v5.5%20h-3%20Z%20M25%2C389.5%20h3%20v5.5%20h-3%20Z%20M35%2C389.5%20h3%20v5.5%20h-3%20Z%20M45%2C389.5%20h3%20v5.5%20h-3%20Z%20M55%2C389.5%20h3%20v5.5%20h-3%20Z%20M65%2C389.5%20h3%20v5.5%20h-3%20Z%20M0%2C401%20C39.5%2C403.0%2069.6%2C412.2%2083%2C415%20Q91.5%2C416.5%2094%2C409.0%20L94%2C414.0%20Q86%2C422.0%2078%2C421.0%20C58.3%2C417.9%2030.1%2C411.0%200%2C414.0%20Z%20M0%2C427%20h81%20v20.0%20h-81%20Z%20M0%2C448.5%20h89%20v3%20h-89%20Z%20M0%2C457%20h89%20v3.4%20h-89%20Z%20M5%2C451.5%20h3%20v5.5%20h-3%20Z%20M15%2C451.5%20h3%20v5.5%20h-3%20Z%20M25%2C451.5%20h3%20v5.5%20h-3%20Z%20M35%2C451.5%20h3%20v5.5%20h-3%20Z%20M45%2C451.5%20h3%20v5.5%20h-3%20Z%20M55%2C451.5%20h3%20v5.5%20h-3%20Z%20M65%2C451.5%20h3%20v5.5%20h-3%20Z%20M75%2C451.5%20h3%20v5.5%20h-3%20Z%20M0%2C462%20h79.0%20v6%20h-79.0%20Z%20M0%2C470%20h69.6%20v9%20h-69.6%20Z%20M0%2C481%20h94%20v7%20h-94%20Z%22%2F%3E%3C%2Fsvg%3E") no-repeat left center/100% 100%;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20110%20500%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20fill%3D%22black%22%20fill-rule%3D%22evenodd%22%20d%3D%22M0%2C93%20q7%2C1%207%2C8%20q0%2C6%20-7%2C6.5%20Z%20M0%2C108%20h9%20v5%20h-9%20Z%20M0%2C111%20h5.5%20v355.0%20h-5.5%20Z%20M0%2C117%20C18.5%2C119.0%2032.6%2C128.2%2033%2C131%20Q41.5%2C132.5%2044%2C125.0%20L44%2C130.0%20Q36%2C138.0%2028%2C137.0%20C27.3%2C133.9%2014.1%2C127.0%200%2C130.0%20Z%20M0%2C143%20h31%20v28.0%20h-31%20Z%20M5%2C150%20h20.0%20v14.0%20h-20.0%20Z%20M10%2C150%20h2.6%20v14.0%20h-2.6%20Z%20M18%2C150%20h2.6%20v14.0%20h-2.6%20Z%20M0%2C172.5%20h39%20v3%20h-39%20Z%20M0%2C181%20h39%20v3.4%20h-39%20Z%20M5%2C175.5%20h3%20v5.5%20h-3%20Z%20M15%2C175.5%20h3%20v5.5%20h-3%20Z%20M25%2C175.5%20h3%20v5.5%20h-3%20Z%20M0%2C187%20C23.5%2C189.0%2041.4%2C198.2%2045%2C201%20Q53.5%2C202.5%2056%2C195.0%20L56%2C200.0%20Q48%2C208.0%2040%2C207.0%20C34.7%2C203.9%2017.9%2C197.0%200%2C200.0%20Z%20M0%2C213%20h43%20v28.0%20h-43%20Z%20M5%2C220%20h32.0%20v14.0%20h-32.0%20Z%20M10%2C220%20h2.6%20v14.0%20h-2.6%20Z%20M18%2C220%20h2.6%20v14.0%20h-2.6%20Z%20M26%2C220%20h2.6%20v14.0%20h-2.6%20Z%20M0%2C242.5%20h51%20v3%20h-51%20Z%20M0%2C251%20h51%20v3.4%20h-51%20Z%20M5%2C245.5%20h3%20v5.5%20h-3%20Z%20M15%2C245.5%20h3%20v5.5%20h-3%20Z%20M25%2C245.5%20h3%20v5.5%20h-3%20Z%20M35%2C245.5%20h3%20v5.5%20h-3%20Z%20M45%2C245.5%20h3%20v5.5%20h-3%20Z%20M0%2C257%20C28.6%2C259.0%2050.3%2C268.2%2057%2C271%20Q65.5%2C272.5%2068%2C265.0%20L68%2C270.0%20Q60%2C278.0%2052%2C277.0%20C42.2%2C273.9%2021.8%2C267.0%200%2C270.0%20Z%20M0%2C283%20h55%20v30.0%20h-55%20Z%20M5%2C290%20h44.0%20v16.0%20h-44.0%20Z%20M10%2C290%20h2.6%20v16.0%20h-2.6%20Z%20M18%2C290%20h2.6%20v16.0%20h-2.6%20Z%20M26%2C290%20h2.6%20v16.0%20h-2.6%20Z%20M34%2C290%20h2.6%20v16.0%20h-2.6%20Z%20M42%2C290%20h2.6%20v16.0%20h-2.6%20Z%20M0%2C314.5%20h63%20v3%20h-63%20Z%20M0%2C323%20h63%20v3.4%20h-63%20Z%20M5%2C317.5%20h3%20v5.5%20h-3%20Z%20M15%2C317.5%20h3%20v5.5%20h-3%20Z%20M25%2C317.5%20h3%20v5.5%20h-3%20Z%20M35%2C317.5%20h3%20v5.5%20h-3%20Z%20M45%2C317.5%20h3%20v5.5%20h-3%20Z%20M55%2C317.5%20h3%20v5.5%20h-3%20Z%20M0%2C329%20C34.0%2C331.0%2059.9%2C340.2%2070%2C343%20Q78.5%2C344.5%2081%2C337.0%20L81%2C342.0%20Q73%2C350.0%2065%2C349.0%20C50.2%2C345.9%2025.9%2C339.0%200%2C342.0%20Z%20M0%2C355%20h68%20v30.0%20h-68%20Z%20M5%2C362%20h57.0%20v16.0%20h-57.0%20Z%20M10%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M18%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M26%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M34%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M42%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M50%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M58%2C362%20h2.6%20v16.0%20h-2.6%20Z%20M0%2C386.5%20h76%20v3%20h-76%20Z%20M0%2C395%20h76%20v3.4%20h-76%20Z%20M5%2C389.5%20h3%20v5.5%20h-3%20Z%20M15%2C389.5%20h3%20v5.5%20h-3%20Z%20M25%2C389.5%20h3%20v5.5%20h-3%20Z%20M35%2C389.5%20h3%20v5.5%20h-3%20Z%20M45%2C389.5%20h3%20v5.5%20h-3%20Z%20M55%2C389.5%20h3%20v5.5%20h-3%20Z%20M65%2C389.5%20h3%20v5.5%20h-3%20Z%20M0%2C401%20C39.5%2C403.0%2069.6%2C412.2%2083%2C415%20Q91.5%2C416.5%2094%2C409.0%20L94%2C414.0%20Q86%2C422.0%2078%2C421.0%20C58.3%2C417.9%2030.1%2C411.0%200%2C414.0%20Z%20M0%2C427%20h81%20v20.0%20h-81%20Z%20M0%2C448.5%20h89%20v3%20h-89%20Z%20M0%2C457%20h89%20v3.4%20h-89%20Z%20M5%2C451.5%20h3%20v5.5%20h-3%20Z%20M15%2C451.5%20h3%20v5.5%20h-3%20Z%20M25%2C451.5%20h3%20v5.5%20h-3%20Z%20M35%2C451.5%20h3%20v5.5%20h-3%20Z%20M45%2C451.5%20h3%20v5.5%20h-3%20Z%20M55%2C451.5%20h3%20v5.5%20h-3%20Z%20M65%2C451.5%20h3%20v5.5%20h-3%20Z%20M75%2C451.5%20h3%20v5.5%20h-3%20Z%20M0%2C462%20h79.0%20v6%20h-79.0%20Z%20M0%2C470%20h69.6%20v9%20h-69.6%20Z%20M0%2C481%20h94%20v7%20h-94%20Z%22%2F%3E%3C%2Fsvg%3E") no-repeat left center/100% 100%}
@@ -484,7 +482,7 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 .swatch.bg-funsai{background:#F9EFEC}.swatch.bg-kinsai{background:#221D18}.swatch.bg-amime{background:#F7F6F0}
 .swatch.bg-batik{background:#F5EEDD}.swatch.bg-khmer{background:#FBF6EA}.swatch.bg-songket{background:#F7F0DF}
 .swatch.bg-tokyou{background:#EDEBE5}.swatch.bg-rokaku{background:#E6EBE3}.swatch.bg-renji{background:#E9EEE7}
-.swatch.bg-nokigawara{background:#E6EBE3}.swatch.bg-yudamari{background:#E9EEE7}.swatch.bg-bourou{background:#E6EBE3}.swatch.bg-butto{background:#EDEBE5}
+.swatch.bg-nokigawara{background:#E6EBE3}.swatch.bg-kikatokyou{background:#EDEBE5}.swatch.bg-bourou{background:#E6EBE3}.swatch.bg-butto{background:#EDEBE5}
 .swatch.bg-girih{background:#F6F4EC}.swatch.bg-iznik{background:#FBFBF6}.swatch.bg-qali{background:#FBF6EC}
 .swatch.bg-meander{background:#FAF9F3}.swatch.bg-marble{background:#F5F4F1}.swatch.bg-delft{background:#F8F8F3}
 .swatch.bg-rococo{background:#FBF6F3}.swatch.bg-navajo{background:#F4EDE0}.swatch.bg-artdeco{background:#F7F3E8}
@@ -864,8 +862,8 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
               <label class="chk"><input type="checkbox" id="shDesc">解説文</label>
             </div>
           </fieldset>
-          <fieldset class="grp lock-layout"><legend>ルビの体裁（作品名・キャッチコピー・解説文）</legend>
-            <p class="note" style="margin-bottom:6px">ルビの付け方：キャンバスで項目をダブルクリック→文字を選択→パネルの「ルビ」欄によみを入力。<b>文字ごとに振るときはスペース区切り</b>（例：東 海 道）、区切らなければ選択範囲全体に均等割付。</p>
+          <fieldset class="grp lock-layout"><legend>ルビの体裁（日本語の項目すべて）</legend>
+            <p class="note" style="margin-bottom:6px">ルビの付け方：キャンバスで項目をダブルクリック→文字を選択→パネルの「ルビ」欄によみを入力。<b>文字ごとに振るときはスペース区切り</b>（例：東 海 道）、区切らなければ選択範囲全体に均等割付。<b>作品名・産地（作者）・時代・所蔵・キャッチコピー・解説文など、日本語の項目すべてに振れます</b>（英訳の項目は対象外）。</p>
             <div class="ctl"><label class="lbl">ルビのオフセット（本文との間隔）</label><div class="row"><input type="range" id="rubyOffset" min="-2" max="10" step="0.5"><output id="oRubyOffset"></output></div></div>
             <div class="ctl"><label class="lbl">ルビのサイズ</label><div class="row"><input type="number" id="rubySizePt" min="3" max="30" step="0.5" placeholder="自動（本文の50%）" style="width:130px"><span style="font-size:11px;color:var(--sub)">pt（空欄で自動）</span></div></div>
             <div class="ctl"><label class="lbl">ルビのフォント</label>
@@ -1222,7 +1220,7 @@ const BACKGROUNDS=[
   {id:"seigaiha",label:"青海波（淡）",cat:"pattern"},
   {id:"tokyou",label:"斗栱帯（組物・灰陶）",cat:"arch"},{id:"rokaku",label:"重層楼閣（陶楼・緑釉）",cat:"arch"},
   {id:"renji",label:"連子窓（緑釉の銀化）",cat:"arch"},{id:"nokigawara",label:"瓦当文（軒瓦の帯・緑釉）",cat:"arch"},
-  {id:"yudamari",label:"釉だまり（現代陶芸×漢・緑釉）",cat:"arch"},{id:"bourou",label:"五層望楼（左端縦帯・緑釉）",cat:"arch"},
+  {id:"kikatokyou",label:"幾何の組物（現代陶芸×漢・灰陶）",cat:"arch"},{id:"bourou",label:"五層望楼（左端縦帯・緑釉）",cat:"arch"},
   {id:"butto",label:"仏塔・線描（左端縦帯・灰陶）",cat:"arch"},
   {id:"batik",label:"バティック更紗（ジャワ）",cat:"sea"},{id:"khmer",label:"蓮弁帯（クメール）",cat:"sea"},
   {id:"songket",label:"ソンケット金糸帯（マレー）",cat:"sea"},
@@ -1358,7 +1356,7 @@ const PRESET_FILL={white:[255,255,255],cream:[251,247,238],hairline:[255,255,255
   juyo:[203,216,220],ryusen:[191,211,196],kinyo:[139,149,172],tenmoku:[32,26,22],
   rokan:[142,43,39],ruri:[39,67,127],ouyu:[226,180,76],
   saito:[216,162,120],raimon:[246,243,234],totetsu:[239,235,226],gatou:[233,228,216],
-  tokyou:[237,235,229],rokaku:[230,235,227],renji:[233,238,231],nokigawara:[230,235,227],yudamari:[233,238,231],bourou:[230,235,227],butto:[237,235,229],
+  tokyou:[237,235,229],rokaku:[230,235,227],renji:[233,238,231],nokigawara:[230,235,227],kikatokyou:[237,235,229],bourou:[230,235,227],butto:[237,235,229],
   seika:[251,251,247],karakusa:[251,251,247],gosai:[253,252,247],funsai:[249,239,236],
   kinsai:[34,29,24],amime:[247,246,240],
   batik:[245,238,221],khmer:[251,246,234],songket:[247,240,223],
@@ -1596,13 +1594,17 @@ function migrateWork(w){
 /* ===== 保存 ===== */
 const LS_KEY="caption-koubou-v1";
 let store=null,canPersist=true;
+/* 廃止した背景デザインの読み替え（旧IDの保存データが無地にならないように） */
+const BG_RENAMED={yudamari:"kikatokyou"};
+function migrateBg(st){if(st&&BG_RENAMED[st.bg])st.bg=BG_RENAMED[st.bg];}
 function fixStyle(p){
   p.style=Object.assign(defaultStyle(),p.style||{});
   p.style.show=Object.assign(defaultStyle().show,p.style.show||{});
   p.style.bracket=false; // 作品名の《》は常に不要（既存データも含め毎回強制OFF）
   if(!p.size)p.size={preset:"140x100",w:140,h:100};
   if(!Array.isArray(p.works))p.works=[];
-  p.works.forEach(migrateWork);
+  migrateBg(p.style);
+  p.works.forEach(w=>{migrateWork(w);migrateBg(w.styleOverride);});
   ensureLayout(p);
 }
 function loadStore(){
@@ -1829,7 +1831,9 @@ function appendRunsWithOverrides(parentEl,text,startIndex,ranges,tcyRanges){
   }
 }
 /* ===== ルビ注釈（Word風）：文字範囲ごとに任意のルビを振る ===== */
-const RUBY_KEYS=["title","catchcopy","description"];
+/* ルビを振れる項目は日本語の項目すべて（英訳の項目は対象外）。
+   ITEMSから引くので、日本語の項目を増やせばそのままルビも使える */
+const RUBY_KEYS=ITEMS.filter(i=>i.group!=="en").map(i=>i.key);
 function rubyRangesFor(work,key){return (work&&work.ruby&&work.ruby[key])||[];}
 /* 縦中横（手動指定分）：work.tcy[key] = [{start,end}, ...] */
 function tcyRangesFor(work,key){return (work&&work.tcy&&work.tcy[key])||[];}
