@@ -9,15 +9,15 @@ async function run() {
   try {
     const { page, errors } = await openApp(browser, { waitTab: 'layout' });
 
-    // ---- カテゴリと3案が登録されている ----
+    // ---- カテゴリと初期3案が登録されている（案の追加は bt43 で検証） ----
     const reg = await page.evaluate(() => ({
       cat: BG_CATS.find(c => c.id === 'arch'),
       items: BACKGROUNDS.filter(b => b.cat === 'arch').map(b => ({ id: b.id, label: b.label })),
       fills: ['tokyou', 'rokaku', 'renji'].map(id => PRESET_FILL[id])
     }));
     t.ok(reg.cat && reg.cat.label.includes('建築'), '「建築」カテゴリが追加される');
-    t.eq(reg.items.length, 3, '建築テーマのデザインが3案ある');
-    t.ok(reg.items.every(i => ARCH.includes(i.id)), '3案は斗栱帯・重層楼閣・連子窓');
+    t.ok(reg.items.length >= 3, `建築テーマのデザインが3案以上ある（実際: ${reg.items.length}案）`);
+    t.ok(ARCH.every(id => reg.items.some(i => i.id === id)), '斗栱帯・重層楼閣・連子窓の3案が残っている');
     t.ok(reg.items.some(i => i.label.includes('斗栱')), '斗栱（組物）の案がある');
     t.ok(reg.items.some(i => i.label.includes('楼閣')), '重層楼閣（陶楼）の案がある');
     t.ok(reg.items.some(i => i.label.includes('連子窓')), '連子窓の案がある');

@@ -48,6 +48,41 @@ async function run() {
     const savedScale = await page.evaluate(() => proj().style.bgScale);
     t.eq(savedScale, 200, '柄の大きさの値がstyle.bgScaleに保存される');
 
+    // ---- 柄の大きさは1%刻みで調整できる ----
+    const stepAttr = await page.evaluate(() => {
+      const el = document.getElementById('bgScale');
+      return { step: el.step, min: el.min, max: el.max };
+    });
+    t.eq(stepAttr.step, '1', '柄の大きさスライダーは1%刻み（step="1"）');
+    t.eq(stepAttr.min + '-' + stepAttr.max, '30-300', '調整範囲は30〜300%のまま');
+
+    // 5の倍数でない値（1%刻みでしか作れない値）が保存・表示・描画に反映される
+    await page.evaluate(() => {
+      const el = document.getElementById('bgScale');
+      el.value = 137; el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.waitForTimeout(150);
+    const odd = await page.evaluate(() => ({
+      saved: proj().style.bgScale,
+      label: document.getElementById('oBgScale').textContent,
+      cssVar: document.querySelector('#editHolder .cap-card').style.getPropertyValue('--bg-scale')
+    }));
+    t.eq(odd.saved, 137, '1%刻みの値（137%）がそのまま保存される');
+    t.eq(odd.label, '137%', '表示ラベルも1%刻みの値を示す');
+    t.eq(odd.cssVar, '1.37', '描画（--bg-scale）にも1%刻みで反映される');
+
+    // 隣接する1%差でも描画が変わる（丸め落ちしない）
+    const oneStep = await page.evaluate(async () => {
+      const card = () => document.querySelector('#editHolder .cap-card');
+      proj().style.bg = 'raimon';
+      proj().style.bgScale = 100; save(); renderEditor();
+      const a = card().style.getPropertyValue('--bg-scale');
+      proj().style.bgScale = 101; save(); renderEditor();
+      const b = card().style.getPropertyValue('--bg-scale');
+      return { a, b };
+    });
+    t.ok(oneStep.a !== oneStep.b, `100%と101%で描画倍率が変わる（${oneStep.a} → ${oneStep.b}）`);
+
     // ---- 既存の中国陶磁パターンにも柄の大きさが効く ----
     await page.evaluate(() => { proj().style.bg = 'raimon'; proj().style.bgScale = 100; save(); renderEditor(); });
     await page.waitForTimeout(120);
