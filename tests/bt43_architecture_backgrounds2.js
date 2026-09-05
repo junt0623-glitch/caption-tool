@@ -1,12 +1,12 @@
-// bt43【新機能】建築テーマの背景4案の追加（瓦当文・釉だまりの上部帯／五層望楼・仏塔線描の左端縦帯）
+// bt43【新機能】建築テーマの背景4案の追加（瓦当文・幾何の組物の上部帯／五層望楼・仏塔線描の左端縦帯）
 const { openApp, mkRunner, chromium } = require('./helpers');
 
-const NEW = ['nokigawara', 'yudamari', 'bourou', 'butto'];
-const BAND = ['nokigawara', 'yudamari'];   // 枠の上部に帯状
+const NEW = ['nokigawara', 'kikatokyou', 'bourou', 'butto'];
+const BAND = ['nokigawara', 'kikatokyou'];   // 枠の上部に帯状
 const SIDE = ['bourou', 'butto'];          // 枠の左端に縦長
 
 async function run() {
-  const t = mkRunner('bt43 建築背景の追加（瓦当・釉だまり・望楼・仏塔）');
+  const t = mkRunner('bt43 建築背景の追加（瓦当・幾何の組物・望楼・仏塔）');
   const browser = await chromium.launch();
   try {
     const { page, errors } = await openApp(browser, { waitTab: 'layout' });
@@ -123,16 +123,37 @@ async function run() {
     t.eq(op, '0.3', '柄の濃さ（--bg-opacity）が縦帯にも効く');
 
     // ---- 印刷プレビューにも反映される ----
-    await page.evaluate(() => { proj().style.bg = 'yudamari'; proj().style.bgScale = 150; save(); renderEditor(); });
+    await page.evaluate(() => { proj().style.bg = 'kikatokyou'; proj().style.bgScale = 150; save(); renderEditor(); });
     await page.waitForTimeout(120);
     await page.click('nav.tabs button[data-tab="print"]');
     await page.waitForTimeout(500);
     const pr = await page.evaluate(() => {
       const c = document.querySelector('#sheetScroll .cap-card');
-      return c ? { cls: c.classList.contains('bg-yudamari'), scale: c.style.getPropertyValue('--bg-scale') } : null;
+      return c ? { cls: c.classList.contains('bg-kikatokyou'), scale: c.style.getPropertyValue('--bg-scale') } : null;
     });
-    t.ok(pr && pr.cls, '印刷プレビューにも釉だまりが反映される');
+    t.ok(pr && pr.cls, '印刷プレビューにも幾何の組物が反映される');
     t.eq(pr && pr.scale, '1.5', '印刷プレビューにも柄の大きさが反映される');
+
+    // ---- 廃止した「釉だまり」が残っていない ----
+    const gone = await page.evaluate(() => ({
+      reg: BACKGROUNDS.some(b => b.id === 'yudamari'),
+      fill: !!PRESET_FILL.yudamari,
+      picker: [...document.querySelectorAll('#bgPicker .bg-item')].some(i => i.dataset.bg === 'yudamari')
+    }));
+    t.eq(gone.reg, false, '廃止した「釉だまり」が背景一覧に残っていない');
+    t.eq(gone.fill, false, '「釉だまり」の地色プリセットも削除されている');
+    t.eq(gone.picker, false, '背景ピッカーにも「釉だまり」が出ない');
+
+    // ---- 旧IDで保存された既存データは「幾何の組物」に読み替えられる ----
+    const migrated = await page.evaluate(() => {
+      const p = proj();
+      p.style.bg = 'yudamari';
+      p.works[0].styleOverride = Object.assign({}, p.works[0].styleOverride || {}, { bg: 'yudamari' });
+      fixStyle(p);
+      return { master: p.style.bg, ovr: p.works[0].styleOverride.bg };
+    });
+    t.eq(migrated.master, 'kikatokyou', '旧IDで保存されたマスターの背景が幾何の組物に読み替えられる');
+    t.eq(migrated.ovr, 'kikatokyou', '作品ごとの上書きに残った旧IDも読み替えられる');
 
     t.noErrors(errors);
     const r = t.finish();
