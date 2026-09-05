@@ -1262,6 +1262,10 @@ const FONTS={
   msuigothic:{label:"MS UI Gothic",stack:cssVar("--ms-ui-gothic"),group:"ゴシック体"},
   yugothicui:{label:"游ゴシック UI",stack:'"Yu Gothic UI","Yu Gothic","YuGothic","Meiryo",sans-serif',group:"ゴシック体"},
   meiryoui:{label:"メイリオ UI",stack:'"Meiryo UI","Meiryo","Yu Gothic",sans-serif',group:"ゴシック体"},
+  /* GN-きんいろサンセリフ（月蓮／GN's Side）。縦横の太さの差が大きく、仮名が縦長の見出し向けゴシック。
+     和文名・欧文登録名の両方を並べる（OSやインストール方法でどちらの名で引けるかが変わるため） */
+  kiniro:{label:"GN-きんいろサンセリフ",stack:'"GN-きんいろサンセリフ","GN-Kin-iro_SansSerif","GN-Kin-iro SansSerif","GNきんいろサンセリフ","BIZ UDPGothic","Meiryo",sans-serif',group:"ゴシック体",
+    probe:["GN-きんいろサンセリフ","GN-Kin-iro_SansSerif","GN-Kin-iro SansSerif","GNきんいろサンセリフ"]},
   /* オンラインフォント（選ぶと自動でネットから読み込み、プレビューに即時反映される。gf=Google Fonts APIのfamily指定） */
   notoserif:{label:"Noto Serif JP（オンライン）",stack:cssVar("--noto-serif-jp"),group:"オンラインフォント",gf:"Noto+Serif+JP:wght@400;700"},
   notosans:{label:"Noto Sans JP（オンライン）",stack:cssVar("--noto-sans-jp"),group:"オンラインフォント",gf:"Noto+Sans+JP:wght@400;700"},
@@ -2406,7 +2410,9 @@ function stackFamilies(stack){
 function selectedFontUnavailable(key){
   const f=FONTS[key];
   if(!f||f.gf)return false; // オンライン書体はダウンロードされるので対象外
-  const fams=stackFamilies(f.stack);
+  /* probeを持つ書体は、代替用に末尾へ並べた別書体（BIZ UDPゴシック等）を判定に含めない。
+     含めると代替が見つかった時点で「あり」になり、本来の書体が無くても警告が出ないため */
+  const fams=f.probe?f.probe.slice():stackFamilies(f.stack);
   return fams.length>0 && !fams.some(isFontAvailable);
 }
 function updateFontMissingWarn(){
@@ -2414,9 +2420,11 @@ function updateFontMissingWarn(){
   const key=proj()&&proj().style?proj().style.font:null;
   if(key&&selectedFontUnavailable(key)){
     w.style.display="";
-    w.innerHTML="⚠ <b>この端末には選択中の書体の実フォントが見つかりません。</b>近い代替書体で表示しています。"+
-      "（例：UDデジタル教科書体はWindows搭載フォントで、macOS等には入っていません。）"+
-      "PowerPointと同じ字形にするには、その書体が入ったWindows端末で開くか、どの端末でも同じ字形で出る「オンラインフォント」をお使いください。";
+    const nm=(FONTS[key]&&FONTS[key].label)||"選択中の書体";
+    w.innerHTML="⚠ <b>この端末に「"+nm+"」の実フォントが見つかりません。</b>近い代替書体で表示しています。"+
+      "（例：UDデジタル教科書体はWindows搭載フォントで、macOS等には入っていません。"+
+      "GN-きんいろサンセリフのような配布フォントは、使う端末ごとにインストールが必要です。）"+
+      "同じ字形で出すには、その書体を入れた端末で開くか、どの端末でも同じ字形で出る「オンラインフォント」をお使いください。";
   }else{w.style.display="none";}
 }
 $("#btnFontCheck").addEventListener("click",()=>{
