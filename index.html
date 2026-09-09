@@ -106,12 +106,32 @@ td.ops button{border:1px solid var(--line);background:var(--white);border-radius
 .edit-holder .cap-card{box-shadow:0 3px 14px rgba(40,35,25,.18)}
 .marquee{position:absolute;border:1px solid var(--shu);background:rgba(166,58,34,.08);pointer-events:none;z-index:40;display:none}
 
-#itemPanel{position:absolute;top:14px;right:14px;z-index:60;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(30,26,20,.22);padding:11px 12px;width:224px;max-height:calc(100% - 28px);overflow:auto;display:none}
+#itemPanel{position:absolute;top:14px;right:14px;z-index:60;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(30,26,20,.22);padding:11px 12px;width:252px;max-height:calc(100% - 28px);overflow:auto;display:none}
 #itemPanel.show{display:block}
 #itemPanel h5{font-family:var(--mincho);font-size:12.5px;margin-bottom:9px;letter-spacing:.08em;display:flex;justify-content:space-between;align-items:center;cursor:move;touch-action:none;-webkit-user-select:none;user-select:none}
 #itemPanel h5 button{border:none;background:none;color:var(--sub);font-size:15px;line-height:1;padding:0 2px;cursor:pointer}
 #itemPanel .prow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
-#itemPanel .prow label{font-size:11px;color:var(--sub);width:46px;flex:none}
+/* 数値の調整：直接入力欄と上下ボタン。ブラウザ既定のスピナーは小さく環境によっては出ないため、
+   全ての数値項目に同じ見た目の▲▼を付ける（既定のスピナーは隠す） */
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.spin{display:inline-flex;flex-direction:column;gap:1px;flex:none;margin-left:3px;vertical-align:middle}
+.spin button{border:1px solid var(--line);background:var(--paper);color:var(--sub);font-size:7px;line-height:1;
+  padding:0;width:17px;height:11px;cursor:pointer;border-radius:2px;display:flex;align-items:center;justify-content:center}
+.spin button:hover{background:var(--line);color:var(--ink)}
+.spin button:active{transform:translateY(.5px)}
+.spin button:disabled{opacity:.35;cursor:default}
+input.numbox{width:60px;font-size:12px;padding:3px 5px;text-align:right;flex:none;margin-left:6px}
+/* スライダーと数値欄を1行に収める。狭い小パネルではスライダー側を縮める */
+.ctl .row input[type=range],#itemPanel .prow input[type=range]{min-width:60px}
+#itemPanel .prow input[type=range]{flex:1 1 50px;min-width:50px}
+#itemPanel input.numbox{width:46px;margin-left:4px}
+.numunit{font-size:11px;color:var(--sub);flex:none;margin-left:3px}
+output.numhidden{display:none}
+#itemPanel .prow label{font-size:11px;color:var(--sub);width:58px;flex:none}
+/* チェックボックスの行は見出し用の固定幅を使わない（46px幅に押し込まれて1文字ずつ折り返していた） */
+#itemPanel .prow label.chk{width:auto;flex:1}
 #itemPanel .prow select,#itemPanel .prow input[type=number]{flex:1;font-size:12px;padding:4px 6px}
 #itemPanel .prow input[type=range]{flex:1;accent-color:var(--shu)}
 #itemPanel output{font-size:11px;color:var(--ink);width:40px;text-align:right}
@@ -665,7 +685,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
   <section id="tab-daicho" class="tabpane active">
     <div class="daicho-bar">
       <button class="btn primary" id="btnAddWork">＋ 作品を追加</button>
-      <button class="btn" id="btnOpenImport">スプレッドシートから貼り付け</button>
+      <button class="btn" id="btnOpenImport" title="Excelのブック（.xlsx）やCSVファイルを開いて取り込めます。スプレッドシートのURL・コピー＆貼り付けにも対応しています">Excel・スプレッドシートから取り込む</button>
       <button class="btn" id="btnExportCsv" title="作品リストをCSVファイルに書き出します。Excelでそのまま開けます（文字化けしないUTF-8 BOM付き）">CSVで書き出し（Excel）</button>
       <button class="btn" id="btnCopyTsv" title="作品リストの表をクリップボードにコピーします。ExcelやGoogleスプレッドシートのセルにそのまま貼り付けられます">表をコピー（シート貼り付け用）</button>
       <input type="search" id="searchBox" placeholder="検索（産地・作品名など）">
@@ -701,7 +721,9 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <span style="flex:1"></span>
       <span class="overflow-warn" id="overflowWarn">札からはみ出しています</span>
       <button class="btn small" data-zoom="-">縮小 −</button>
-      <output id="zoomLabel" style="font-size:12px;min-width:44px;text-align:center">—</output>
+      <input type="number" id="zoomInput" class="numbox" min="10" max="400" step="5" aria-label="表示倍率（％）" style="width:52px;margin-left:0">
+      <span class="numunit">%</span>
+      <output id="zoomLabel" class="numhidden">—</output>
       <button class="btn small" data-zoom="+">拡大 ＋</button>
       <button class="btn small ghost" id="btnZoom100">実寸100%</button>
       <button class="btn small ghost" id="btnZoomFit">画面に収める</button>
@@ -743,6 +765,9 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
           <select id="ipFont"></select></div>
         <div class="prow"><label>サイズ</label><input type="number" id="ipSize" min="4" max="60" step="0.5"><span style="font-size:11px;color:var(--sub)">pt</span></div>
         <div class="prow"><label>文字間</label><input type="range" id="ipLs" min="-0.05" max="0.6" step="0.01"><output id="ipLsO"></output></div>
+        <div class="prow"><label>文字の横幅</label><input type="number" id="ipSx" min="1" max="200" step="1"><span style="font-size:11px;color:var(--sub)">%</span></div>
+        <div class="prow"><label>文字の縦幅</label><input type="number" id="ipSy" min="1" max="200" step="1"><span style="font-size:11px;color:var(--sub)">%</span></div>
+        <div class="prow"><label></label><button type="button" class="btn small" id="ipScaleReset" style="flex:1">縦横幅を100%に戻す</button></div>
         <div class="prow"><label>行揃え</label>
           <select id="ipAlign"><option value="inherit">全体に従う</option><option value="left">左</option><option value="center">中央</option><option value="right">右</option><option value="justify">両端揃え</option></select></div>
         <div class="prow"><label id="ipWLabel">幅</label><input type="number" id="ipW" min="8" max="300" step="1"><span style="font-size:11px;color:var(--sub)">mm</span></div>
@@ -752,7 +777,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
         <p class="note" style="margin-top:2px">四隅・辺のハンドルをドラッグしても拡大・縮小できます。</p>
       </div>
     </div>
-    <p class="note" style="margin-top:8px">「キャプション／解説」ボタンで編集する面を切り替えます。<b>ダブルクリックでその場で文字を編集</b>（Enterで改行、Escか外側クリックで確定）。編集中に<b>一部の文字だけをマウスで選択</b>すると字間調整の小さなパネルが出て、選んだ文字だけの字間を個別に調整できます。クリックで選択→小パネルでフォント・サイズ・文字間・縦横サイズを調整。ドラッグで移動、ハンドルで拡大・縮小。Shift＋クリックで複数選択、余白ドラッグで範囲選択。ここで組んだ配置が全作品と印刷に反映されます。</p>
+    <p class="note" style="margin-top:8px">「キャプション／解説」ボタンで編集する面を切り替えます。<b>ダブルクリックでその場で文字を編集</b>（Enterで改行、Escか外側クリックで確定）。編集中に<b>一部の文字だけをマウスで選択</b>すると字間調整の小さなパネルが出て、選んだ文字だけの字間を個別に調整できます。クリックで選択→小パネルでフォント・サイズ・文字間・<b>文字の縦横幅（長体・平体）</b>・枠の幅と高さを調整。ドラッグで移動、ハンドルで拡大・縮小。Shift＋クリックで複数選択、余白ドラッグで範囲選択。ここで組んだ配置が全作品と印刷に反映されます。</p>
 
     <div class="layout-controls">
       <h2 class="sec">全体の設定<span id="settingsScope" class="scope-tag"></span></h2>
@@ -978,9 +1003,20 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 
 <!-- 取り込み -->
 <dialog id="importDialog">
-  <div class="dlg-head"><h3>スプレッドシートから取り込む</h3><button class="btn ghost small" data-close="importDialog">✕ 閉じる</button></div>
+  <div class="dlg-head"><h3>Excel・スプレッドシートから取り込む</h3><button class="btn ghost small" data-close="importDialog">✕ 閉じる</button></div>
   <div class="dlg-body">
     <fieldset class="grp" style="margin-top:0;border-top:none;padding-top:0">
+      <legend>Excelファイルから読み込む</legend>
+      <p class="note" style="margin-bottom:8px">Excelのブック（<b>.xlsx</b>）とCSV・TSVファイルを、そのまま開いて取り込めます。ファイルはこの端末の中だけで読み取られ、どこにも送信されません。</p>
+      <div class="row" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <input type="file" id="importFile" accept=".xlsx,.xlsm,.csv,.tsv,.txt" style="flex:1;min-width:220px;font-size:12px">
+        <label id="importSheetWrap" style="display:none;font-size:12px;color:var(--sub);align-items:center;gap:6px">
+          シート <select id="importSheet" style="font-size:12px"></select>
+        </label>
+      </div>
+      <p class="note" id="fileStatus"></p>
+    </fieldset>
+    <fieldset class="grp">
       <legend>URLから一括取得</legend>
       <p class="note" style="margin-bottom:8px">スプレッドシートの共有設定を<b>「リンクを知っている全員（閲覧者）」</b>にしてから、共有URLを貼り付けてください。</p>
       <div class="row" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
@@ -995,7 +1031,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       </div>
       <p class="note" id="urlStatus"></p>
     </fieldset>
-    <p class="note" style="margin:12px 0 6px">または、下の枠にスプレッドシートの範囲を直接コピー＆貼り付け（見出し行ごとで構いません）：</p>
+    <p class="note" style="margin:12px 0 6px">または、下の枠にExcel・スプレッドシートの範囲を直接コピー＆貼り付け（見出し行ごとで構いません）：</p>
     <textarea id="importText" placeholder="ここに貼り付け"></textarea>
     <label class="chk" style="margin-top:8px"><input type="checkbox" id="impHeader" checked>1行目は見出し行として扱う</label>
     <div id="mapArea"></div>
@@ -1084,7 +1120,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     <ul>
       <li>作業内容は<b>このブラウザの中に自動保存</b>されます。別のPCやiPadには自動で移りません。</li>
       <li>移動・バックアップは「書き出し」でJSON保存し、移動先で「読み込み」。画像もJSONに含まれます。</li>
-      <li>作品台帳の<b>「CSVで書き出し（Excel）」でExcelファイルとして保存</b>、<b>「表をコピー」でGoogleスプレッドシートやExcelに直接貼り付け</b>できます。見出しは取り込みと同じ形式なので、編集後に「スプレッドシートから貼り付け」で戻せます（画像・ルビは表に含まれません）。Excelで番号「1-01」などが日付に変わる場合は、貼り付け方式（表をコピー→貼り付け先の列を「文字列」に設定）をお使いください。</li>
+      <li>作品台帳の<b>「CSVで書き出し（Excel）」でExcelファイルとして保存</b>、<b>「表をコピー」でGoogleスプレッドシートやExcelに直接貼り付け</b>できます。見出しは取り込みと同じ形式なので、編集後に<b>「Excel・スプレッドシートから取り込む」でExcelファイル（.xlsx）やCSVファイルをそのまま開いて戻せます</b>（画像・ルビは表に含まれません）。Excelで番号「1-01」などが日付に変わる場合は、貼り付け方式（表をコピー→貼り付け先の列を「文字列」に設定）をお使いください。</li>
     </ul>
     <h4>うまくいかないとき</h4>
     <ul>
@@ -1105,7 +1141,10 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 </dialog>
 
 <div id="charSpacingPopover">
-  <div class="cs-head"><span>選択文字の字間</span><output id="csVal">+0.00em</output></div>
+  <div class="cs-head"><span>選択文字の字間</span>
+    <input type="number" id="csNum" class="numbox" min="-0.1" max="0.5" step="0.01" style="width:64px" aria-label="選択文字の字間（em）">
+    <span class="numunit">em</span>
+    <output id="csVal" class="numhidden">+0.00em</output></div>
   <div class="cs-track" id="csTrack"><div class="cs-fill" id="csFill"></div><div class="cs-handle" id="csHandle"></div></div>
   <div class="cs-ruby" id="csRubyRow"><label>ルビ</label><input type="text" id="rubyText" placeholder="よみ（文字ごと＝スペース区切り）"></div>
   <div class="cs-foot" id="csTcyRow" style="display:none">
@@ -1387,7 +1426,7 @@ function defaultLayout(size,style){
     if(it.group==="en"&&prevGroup!=="en") y+=2.2;
     if(it.key==="catchcopy") y+=1.0;
     if(it.key==="description") y+=2.2;
-    L[it.key]={x:+pad.toFixed(1),y:+y.toFixed(1),w:W,h:null,font:"inherit",size:it.size,ls:0,align:defaultAlignFor(it.key),color:null};
+    L[it.key]={x:+pad.toFixed(1),y:+y.toFixed(1),w:W,h:null,font:"inherit",size:it.size,ls:0,align:defaultAlignFor(it.key),color:null,sx:100,sy:100};
     if(it.key==="yomigana") y += it.size*PT2MM*1.1 + 0.3; // 作品名の真上に近接配置
     else y += it.size*PT2MM*lh + 1.1;
     prevGroup=it.group;
@@ -1411,7 +1450,7 @@ function defaultLayoutVertical(size,style){
   const enW=Math.max(24,+(W*0.35).toFixed(1));
   let y=pad;
   ITEMS.filter(it=>it.group==="en").forEach(it=>{
-    L[it.key]={x:+pad.toFixed(1),y:+y.toFixed(1),w:enW,h:null,font:"inherit",size:it.size,ls:0,align:"inherit",color:null};
+    L[it.key]={x:+pad.toFixed(1),y:+y.toFixed(1),w:enW,h:null,font:"inherit",size:it.size,ls:0,align:"inherit",color:null,sx:100,sy:100};
     y += it.size*PT2MM*lh + 1.1;
   });
   const jpMinX=+(pad+enW+2.2).toFixed(1);
@@ -1422,7 +1461,7 @@ function defaultLayoutVertical(size,style){
     const pitch=it.size*PT2MM*lh+1.1;
     const colW=Math.max(4,+pitch.toFixed(1));
     const x=Math.max(jpMinX,+(xRight-colW).toFixed(1));
-    L[it.key]={x:x,y:+pad.toFixed(1),w:H,h:null,font:"inherit",size:it.size,ls:0,align:defaultAlignFor(it.key),color:null};
+    L[it.key]={x:x,y:+pad.toFixed(1),w:H,h:null,font:"inherit",size:it.size,ls:0,align:defaultAlignFor(it.key),color:null,sx:100,sy:100};
     if(it.key==="yomigana") xRight -= (it.size*PT2MM*1.1+0.3);
     else xRight -= pitch;
   });
@@ -1480,7 +1519,7 @@ function ensureLayout(p){
     ["x","y","w"].forEach(f=>{if(L[f]==null)L[f]=d[f];});
     if(L.h===undefined)L.h=d.h;
     if(L.font==null)L.font="inherit";if(L.size==null)L.size=d.size;if(L.ls==null)L.ls=0;if(L.align==null)L.align=d.align;
-    if(L.color===undefined)L.color=null;});
+    if(L.color===undefined)L.color=null;if(L.sx==null)L.sx=100;if(L.sy==null)L.sy=100;});
   if(!p.style.layout){p.style.layout=pickDefaultLayout(p.size,p.style);return;}
   const def=pickDefaultLayout(p.size,p.style);
   ITEMS.forEach(it=>{
@@ -1490,6 +1529,7 @@ function ensureLayout(p){
     if(L.h===undefined)L.h=null;
     if(L.font==null)L.font="inherit"; if(L.size==null)L.size=it.size; if(L.ls==null)L.ls=0; if(L.align==null)L.align=def[it.key].align;
     if(L.color===undefined)L.color=null;
+    if(L.sx==null)L.sx=100; if(L.sy==null)L.sy=100;   /* 文字の縦横幅（％）。既存データは等倍で埋める */
   });
 }
 /* ===== 解説面（キャプションと切替） ===== */
@@ -1572,8 +1612,8 @@ function visIn(st,key,mode){
   return isVisibleRaw(st,key);
 }
 function defaultDescLayout(){return {
-  no:{x:10,y:8,w:120,h:null,font:"inherit",size:12,ls:0,align:"inherit",color:null},
-  description:{x:10,y:15,w:120,h:80,font:"inherit",size:16,ls:0,align:"justify",color:null}
+  no:{x:10,y:8,w:120,h:null,font:"inherit",size:12,ls:0,align:"inherit",color:null,sx:100,sy:100},
+  description:{x:10,y:15,w:120,h:80,font:"inherit",size:16,ls:0,align:"justify",color:null,sx:100,sy:100}
 };}
 function newProject(name){
   const p={id:"p"+Date.now()+Math.random().toString(36).slice(2,7),name:name||"新しい展覧会",
@@ -1787,6 +1827,135 @@ function parsePaste(text){const t=String(text||"");const hasTab=t.slice(0,1000).
 function guessField(header){const h=String(header||"").trim().toLowerCase().replace(/\s/g,"");if(!h)return "";
   for(const key of Object.keys(GUESS)){if(GUESS[key].some(k=>h.includes(k.toLowerCase())))return key;}return "";}
 
+/* ===== Excelファイル（.xlsx）の読み取り =====
+   .xlsxは中身がZIPで固めたXML。ブラウザ標準のDecompressionStreamで展開できるので、
+   外部ライブラリを足さずに（＝オフラインでも、単一ファイルのまま）読める。
+   古い.xls（バイナリ形式）は別物なので読めない。その場合は保存し直してもらう。 */
+function u16(d,o){return d.getUint16(o,true);} function u32(d,o){return d.getUint32(o,true);}
+/* ZIPの中央ディレクトリを読み、名前→実体の対応表を作る */
+async function unzip(buf){
+  const d=new DataView(buf),bytes=new Uint8Array(buf);
+  let eocd=-1;
+  for(let i=buf.byteLength-22;i>=0&&i>=buf.byteLength-66000;i--){if(u32(d,i)===0x06054b50){eocd=i;break;}}
+  if(eocd<0)throw new Error("ZIP形式として読めません");
+  const count=u16(d,eocd+10);let p=u32(d,eocd+16);
+  if(p===0xffffffff)throw new Error("ZIP64形式には未対応です");
+  const files={};
+  for(let i=0;i<count;i++){
+    if(u32(d,p)!==0x02014b50)break;
+    const method=u16(d,p+10),csize=u32(d,p+20),nameLen=u16(d,p+28),extraLen=u16(d,p+30),
+          cmtLen=u16(d,p+32),lho=u32(d,p+42);
+    const name=new TextDecoder().decode(bytes.subarray(p+46,p+46+nameLen));
+    files[name]={method,csize,lho};
+    p+=46+nameLen+extraLen+cmtLen;
+  }
+  const read=async(name)=>{
+    const f=files[name];if(!f)return null;
+    const lh=f.lho;
+    if(u32(d,lh)!==0x04034b50)throw new Error("ZIPの構造が壊れています");
+    const start=lh+30+u16(d,lh+26)+u16(d,lh+28);
+    const raw=bytes.subarray(start,start+f.csize);
+    if(f.method===0)return new TextDecoder().decode(raw);
+    if(f.method!==8)throw new Error("未対応の圧縮方式です");
+    if(typeof DecompressionStream!=="function")throw new Error("このブラウザではExcelファイルを展開できません");
+    const st=new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return await new Response(st).text();
+  };
+  return {names:Object.keys(files),read};
+}
+const XLSX_DATE_FMT=new Set([14,15,16,17,18,19,20,21,22,45,46,47]);
+function xlsxSerialToText(n,isDate){
+  if(!isDate)return String(n);
+  /* Excelの日付連番。1900年うるう年バグぶんの2日を差し引いて基準日から数える */
+  const ms=Math.round((n-25569)*86400000);
+  const dt=new Date(ms);if(isNaN(dt))return String(n);
+  const p=v=>String(v).padStart(2,"0");
+  const ymd=`${dt.getUTCFullYear()}/${p(dt.getUTCMonth()+1)}/${p(dt.getUTCDate())}`;
+  const frac=n-Math.floor(n);
+  return frac>1e-6?`${ymd} ${p(dt.getUTCHours())}:${p(dt.getUTCMinutes())}`:ymd;
+}
+function colIndex(ref){let n=0;for(const ch of String(ref)){const c=ch.charCodeAt(0);
+  if(c<65||c>90)break;n=n*26+(c-64);}return n-1;}
+function xmlDoc(text){return new DOMParser().parseFromString(text,"application/xml");}
+function tagsOf(node,name){return [...node.getElementsByTagNameNS("*",name)];}
+/* ブックを読み、シート一覧と各シートの行データ（文字列の二次元配列）を返す */
+async function readXlsx(file){
+  const zip=await unzip(await file.arrayBuffer());
+  if(!zip.names.some(n=>n.startsWith("xl/")))throw new Error("Excelのブックではないようです");
+  /* 共有文字列 */
+  const ssText=await zip.read("xl/sharedStrings.xml");
+  const shared=ssText?tagsOf(xmlDoc(ssText),"si").map(si=>tagsOf(si,"t").map(t=>t.textContent).join("")):[];
+  /* 表示形式（日付かどうかの判定に使う） */
+  const stText=await zip.read("xl/styles.xml");
+  const dateStyle=[];
+  if(stText){
+    const doc=xmlDoc(stText);
+    const custom={};
+    tagsOf(doc,"numFmt").forEach(f=>{
+      const code=f.getAttribute("formatCode")||"";
+      custom[f.getAttribute("numFmtId")]=/[ymd]/.test(code.replace(/\[[^\]]*\]|"[^"]*"/g,""));
+    });
+    const xfs=doc.getElementsByTagNameNS("*","cellXfs")[0];
+    if(xfs)tagsOf(xfs,"xf").forEach((xf,i)=>{
+      const id=xf.getAttribute("numFmtId")||"0";
+      dateStyle[i]=custom[id]!==undefined?custom[id]:XLSX_DATE_FMT.has(+id);
+    });
+  }
+  /* シート名と実体の対応 */
+  const wbText=await zip.read("xl/workbook.xml");
+  if(!wbText)throw new Error("Excelのブックではないようです");
+  const relText=await zip.read("xl/_rels/workbook.xml.rels")||"";
+  const rels={};
+  if(relText)tagsOf(xmlDoc(relText),"Relationship").forEach(r=>{
+    let tgt=r.getAttribute("Target")||"";
+    tgt=tgt.replace(/^\/xl\//,"").replace(/^\.?\//,"");
+    rels[r.getAttribute("Id")]="xl/"+tgt;
+  });
+  const sheets=tagsOf(xmlDoc(wbText),"sheet").map((s,i)=>{
+    const rid=s.getAttribute("r:id")||s.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id");
+    return {name:s.getAttribute("name")||("シート"+(i+1)),
+            hidden:(s.getAttribute("state")||"")!=="",
+            path:rels[rid]||("xl/worksheets/sheet"+(i+1)+".xml")};
+  });
+  if(!sheets.length)throw new Error("シートが見つかりません");
+  const rowsOf=async(sheet)=>{
+    const text=await zip.read(sheet.path);
+    if(!text)return [];
+    const out=[];
+    tagsOf(xmlDoc(text),"row").forEach(r=>{
+      const row=[];
+      tagsOf(r,"c").forEach(c=>{
+        const idx=colIndex(c.getAttribute("r")||""),type=c.getAttribute("t")||"n";
+        let v="";
+        if(type==="inlineStr"){v=tagsOf(c,"t").map(t=>t.textContent).join("");}
+        else{
+          const vEl=c.getElementsByTagNameNS("*","v")[0];
+          const raw=vEl?vEl.textContent:"";
+          if(raw==="")v="";
+          else if(type==="s")v=shared[+raw]!==undefined?shared[+raw]:"";
+          else if(type==="b")v=(raw==="1")?"TRUE":"FALSE";
+          else if(type==="e")v="";
+          else if(type==="str")v=raw;
+          else v=xlsxSerialToText(+raw,!!dateStyle[+(c.getAttribute("s")||0)]);
+        }
+        if(idx>=0){while(row.length<idx)row.push("");row[idx]=v;}
+        else row.push(v);
+      });
+      out.push(row);
+    });
+    return out.filter(r=>r.some(c=>String(c).trim()!==""));
+  };
+  return {sheets,rowsOf};
+}
+/* CSV/TSVファイルの文字コード判定。Excelが書き出したCSVはShift_JISのことが多い */
+async function readTextFile(file){
+  const buf=await file.arrayBuffer(),bytes=new Uint8Array(buf);
+  if(bytes[0]===0xef&&bytes[1]===0xbb&&bytes[2]===0xbf)return new TextDecoder("utf-8").decode(bytes.subarray(3));
+  const utf8=new TextDecoder("utf-8",{fatal:false}).decode(bytes);
+  if(!utf8.includes("�"))return utf8;
+  try{return new TextDecoder("shift_jis").decode(bytes);}catch(e){return utf8;}
+}
+
 /* ===== GoogleスプレッドシートURLからの取り込み ===== */
 function parseSheetUrl(url){const m=url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);if(!m)return null;
   const id=m[1];const gidM=url.match(/[?&#]gid=([0-9]+)/);return {id,gid:gidM?gidM[1]:null};}
@@ -1929,17 +2098,24 @@ function buildDescContent(el,text,ranges,tcyRanges){
     });
   });
 }
+/* 文字の縦横幅（長体・平体）。1〜200%を倍率に直す。未設定の古いデータは等倍 */
+const SCALE_MIN=1, SCALE_MAX=200;
+function clampScale(v){v=Math.round(Number(v));if(!isFinite(v))return 100;return Math.min(SCALE_MAX,Math.max(SCALE_MIN,v));}
+function itemScaleX(L){return clampScale(L&&L.sx==null?100:L.sx)/100;}
+function itemScaleY(L){return clampScale(L&&L.sy==null?100:L.sy)/100;}
 /* 枠に収まるよう 文字間→文字幅 を ±5% の範囲で自動調整。収まれば true */
 function fitDescEl(el){
   const base=parseFloat(el.dataset.basels||"0"), wmm=parseFloat(el.dataset.wmm||"0");
-  el.style.transform="";el.style.width=wmm+"mm";el.style.letterSpacing=base+"em";
+  /* 項目に指定された文字の縦横幅（長体・平体）を土台にして、その上から自動調整をかける。
+     自動調整のscaleXは指定倍率に掛け合わせ、幅は合成後の倍率で割る */
+  const ux=parseFloat(el.dataset.sx||"1")||1, uy=parseFloat(el.dataset.sy||"1")||1;
+  const put=(s)=>{el.style.width=(wmm/(ux*s))+"mm";
+    el.style.transform=`scale(${(ux*s).toFixed(3)},${uy})`;el.style.transformOrigin="left top";};
+  put(1);el.style.letterSpacing=base+"em";
   const fits=()=>el.scrollHeight<=el.clientHeight+1;
   if(fits())return true;
   for(let d=0.01;d<=0.051;d+=0.01){el.style.letterSpacing=(base-d)+"em";if(fits())return true;}
-  for(let s=0.99;s>=0.949;s-=0.01){
-    el.style.width=(wmm/s)+"mm";el.style.transform="scaleX("+s.toFixed(2)+")";el.style.transformOrigin="left top";
-    if(fits())return true;
-  }
+  for(let s=0.99;s>=0.949;s-=0.01){put(s);if(fits())return true;}
   return false;
 }
 function fitDescIn(root){let ok=true;$$(".fit-desc",root).forEach(el=>{if(!fitDescEl(el))ok=false;});return ok;}
@@ -1996,14 +2172,23 @@ function buildCard(work,st,size,opts){
     el.className="cap-item it-"+it.key+(it.group==="en"?" cap-item-en":"")+((mode!=="desc"&&work.image&&st.textScrim)?" scrim":"")+((!val&&opts.editor)?" ph":"");
     el.dataset.item=it.key;
     el.style.left=L.x+"mm";el.style.top=L.y+"mm";
+    /* 文字の縦横幅（長体・平体）：字形だけを伸縮させ、枠の実寸(L.w/L.h)は変えない。
+       そのためCSSの寸法を倍率で割ってから transform で戻す。こうすると横幅を詰めた分だけ
+       1行に入る字数が増える（DTPの長体と同じ挙動）。原点は左上に固定しておけば、
+       縦書き（右上から始まる）でも枠の見た目の位置は L.x / L.y のままになる。 */
+    const sx=itemScaleX(L), sy=itemScaleY(L);
     // 縦書きモードでは、和文項目に限り「幅(L.w)＝行の長さ→CSSのheight」「高さ(L.h)＝段の広さ→CSSのwidth」に入れ替える。英字項目は常に横書きのまま（従来通り）。
     if(st.vertical&&it.group!=="en"){
-      el.style.height=L.w+"mm";
-      if(L.h!=null){el.style.width=L.h+"mm";el.classList.add("fixed-h");}
+      el.style.height=(L.w/sy)+"mm";
+      if(L.h!=null){el.style.width=(L.h/sx)+"mm";el.classList.add("fixed-h");}
     }else{
-      el.style.width=L.w+"mm";
-      if(L.h!=null){el.style.height=L.h+"mm";el.classList.add("fixed-h");}
+      el.style.width=(L.w/sx)+"mm";
+      if(L.h!=null){el.style.height=(L.h/sy)+"mm";el.classList.add("fixed-h");}
     }
+    if(sx!==1||sy!==1){
+      el.style.transform=`scale(${sx},${sy})`;el.style.transformOrigin="left top";
+    }
+    el.dataset.sx=String(sx);el.dataset.sy=String(sy);
     el.style.fontFamily=(L.font==="inherit")?defFont:fontStack(L.font);
     const effFontKey=(L.font==="inherit")?st.font:L.font;
     const fw=fontWeight(effFontKey);if(fw)el.style.fontWeight=fw;
@@ -2211,8 +2396,60 @@ $("#btnDeleteWork").addEventListener("click",async()=>{if(editingIndex<0)return;
 let impRows=[],impMap=[];
 $("#btnOpenImport").addEventListener("click",()=>{$("#importText").value="";$("#mapArea").innerHTML="";$("#impCount").textContent="";
   $("#importUrl").value=proj().lastImportUrl||"";$("#importSheetRef").value=proj().lastImportRef||"";$("#urlStatus").textContent="";
+  $("#importFile").value="";$("#fileStatus").textContent="";$("#importSheetWrap").style.display="none";impBook=null;impFileRows=null;
   impRows=[];impMap=[];$("#importDialog").showModal();});
-$("#importText").addEventListener("input",buildMapping);$("#impHeader").addEventListener("change",buildMapping);
+/* 貼り付け欄に手で入力したら、ファイルから読んだ内容よりそちらを優先する */
+$("#importText").addEventListener("input",()=>{impFileRows=null;buildMapping();});
+$("#impHeader").addEventListener("change",buildMapping);
+
+/* ---- Excel（.xlsx）・CSV/TSVファイルからの取り込み ---- */
+let impBook=null,impFileRows=null;
+async function loadImportFile(file){
+  const status=$("#fileStatus");
+  const wrap=$("#importSheetWrap"),pick=$("#importSheet");
+  wrap.style.display="none";impBook=null;impFileRows=null;
+  if(!file)return;
+  status.textContent="読み込み中…";
+  const name=(file.name||"").toLowerCase();
+  try{
+    if(/\.xls$/.test(name)){
+      status.textContent="古い形式（.xls）は読み取れません。Excelで開いて「.xlsx」または「CSV UTF-8」で保存し直してください。";
+      return;
+    }
+    if(/\.(xlsx|xlsm)$/.test(name)){
+      impBook=await readXlsx(file);
+      const visible=impBook.sheets.filter(sh=>!sh.hidden);
+      const list=visible.length?visible:impBook.sheets;
+      pick.innerHTML=list.map((sh,i)=>`<option value="${impBook.sheets.indexOf(sh)}">${esc(sh.name)}</option>`).join("");
+      wrap.style.display=list.length>1?"inline-flex":"none";
+      await useSheet(+pick.value);
+    }else{
+      const text=await readTextFile(file);
+      impFileRows=parsePaste(text);
+      $("#importText").value="";
+      buildMapping();
+      reportFileRows(file.name);
+    }
+  }catch(err){
+    status.textContent="読み込めませんでした（"+err.message+"）。Excelで開いて「.xlsx」または「CSV UTF-8」で保存し直すと読めることがあります。";
+  }
+}
+async function useSheet(idx){
+  if(!impBook)return;
+  const sheet=impBook.sheets[idx];
+  impFileRows=await impBook.rowsOf(sheet);
+  $("#importText").value="";
+  buildMapping();
+  reportFileRows(sheet.name);
+}
+function reportFileRows(label){
+  const useHeader=$("#impHeader").checked;
+  const n=Math.max(0,(impFileRows||[]).length-(useHeader?1:0));
+  $("#fileStatus").textContent=n?`「${label}」から${n}件を読み込みました。下の列の割り当てを確認して取り込んでください。`
+                                :`「${label}」に取り込める行がありませんでした。`;
+}
+$("#importFile").addEventListener("change",e=>loadImportFile(e.target.files&&e.target.files[0]));
+$("#importSheet").addEventListener("change",e=>useSheet(+e.target.value));
 $("#btnFetchUrl").addEventListener("click",async()=>{
   const raw=$("#importUrl").value.trim();
   if(!raw){alert("スプレッドシートのURLを入力してください。");return;}
@@ -2228,7 +2465,7 @@ $("#btnFetchUrl").addEventListener("click",async()=>{
     if(trimmed.startsWith("<")){
       statusEl.textContent="取得できませんでした。共有設定が「リンクを知っている全員」になっているかご確認ください。";
     }else{
-      $("#importText").value=text;buildMapping();
+      impFileRows=null;$("#importText").value=text;buildMapping();
       const useHeader=$("#impHeader").checked;const n=Math.max(0,impRows.length-(useHeader?1:0));
       statusEl.textContent=n?`${n}件を取得しました。下の列の割り当てを確認して取り込んでください。`:"データが空でした。URLやシート名/GIDを確認してください。";
       proj().lastImportUrl=raw;proj().lastImportRef=ref;save();
@@ -2238,7 +2475,7 @@ $("#btnFetchUrl").addEventListener("click",async()=>{
   }
   $("#btnFetchUrl").disabled=false;
 });
-function buildMapping(){impRows=parsePaste($("#importText").value);const area=$("#mapArea");
+function buildMapping(){impRows=impFileRows||parsePaste($("#importText").value);const area=$("#mapArea");
   if(!impRows.length){area.innerHTML="";$("#impCount").textContent="";return;}
   const useHeader=$("#impHeader").checked;const header=useHeader?impRows[0]:impRows[0].map((_,i)=>"列"+(i+1));
   const cols=Math.max(...impRows.map(r=>r.length));impMap=[];
@@ -2250,7 +2487,7 @@ function buildMapping(){impRows=parsePaste($("#importText").value);const area=$(
   html+="</table>";area.innerHTML=html;
   $$("select[data-col]",area).forEach(s=>s.addEventListener("change",()=>{impMap[+s.dataset.col]=s.value;updateImpCount();}));updateImpCount();}
 function updateImpCount(){const useHeader=$("#impHeader").checked;const n=Math.max(0,impRows.length-(useHeader?1:0));$("#impCount").textContent=n?`${n}件の作品を取り込みます`:"";}
-async function doImport(replace){if(!impRows.length){alert("先にデータを貼り付けてください。");return;}
+async function doImport(replace){if(!impRows.length){alert("先にExcelファイルを選ぶか、データを貼り付けてください。");return;}
   if(!impMap.some(m=>m)){alert("少なくとも1列は取り込み先を選んでください。");return;}
   const useHeader=$("#impHeader").checked;const rows=impRows.slice(useHeader?1:0);if(!rows.length){alert("取り込める行がありません。");return;}
   if(replace&&proj().works.length){
@@ -2355,7 +2592,91 @@ function setSwatchUI(btnId,cmyk,defaultLabel){
     txt.textContent=`C${cmyk.c} M${cmyk.m} Y${cmyk.y} K${cmyk.k}`;}
   else{chip.style.background="#fff";txt.textContent=defaultLabel;}
 }
-function setRange(id,out,val,unit){$("#"+id).value=val;$("#"+out).textContent=val+(unit?" "+unit:"");}
+function setRange(id,out,val,unit){$("#"+id).value=val;$("#"+out).textContent=val+(unit?" "+unit:"");syncNumBoxes();}
+
+/* ===== 数値の調整：直接入力と上下ボタン =====
+   スライダーには値を打ち込める数値欄を、数値欄には▲▼を足して、どの項目も
+   「直接入力」と「1目盛りずつの増減」の両方でそろえる。 */
+const RANGE_UNITS={ipLs:"em",stLh:"",stPad:"mm",bgOpacity:"%",bgScale:"%",img2Opacity:"%",
+  imgScale:"%",imgOffX:"mm",imgOffY:"mm",imgOpacity:"%",rubyOffset:"pt",rubyLs:"em",
+  cmykC:"%",cmykM:"%",cmykY:"%",cmykK:"%"};
+function stepDecimals(step){const s=String(step==null?1:step);const i=s.indexOf(".");return i<0?0:s.length-1-i;}
+/* 値をmin/maxとstepの桁数に丸める */
+function clampNum(input,v){
+  const min=input.min===""?-Infinity:parseFloat(input.min);
+  const max=input.max===""?Infinity:parseFloat(input.max);
+  const d=stepDecimals(input.step);
+  return +Math.min(max,Math.max(min,v)).toFixed(d);
+}
+function bumpNum(input,dir){
+  if(input.disabled)return;
+  const step=parseFloat(input.step)||1;
+  let v=parseFloat(input.value);
+  if(!isFinite(v))v=parseFloat(input.min)||0;
+  input.value=String(clampNum(input,v+step*dir));
+  input.dispatchEvent(new Event("input",{bubbles:true}));
+  input.dispatchEvent(new Event("change",{bubbles:true}));
+}
+function makeSpin(input){
+  const box=document.createElement("span");box.className="spin";
+  [["▲",1,"増やす"],["▼",-1,"減らす"]].forEach(([mark,dir,tip])=>{
+    const b=document.createElement("button");
+    b.type="button";b.textContent=mark;b.tabIndex=-1;b.title=tip;
+    b.addEventListener("mousedown",e=>e.preventDefault()); // 入力欄のフォーカスを保つ
+    b.addEventListener("click",()=>bumpNum(input,dir));
+    box.appendChild(b);
+  });
+  return box;
+}
+/* 単位の注記（「pt」等）があればその後ろに置く。無ければ入力欄の直後 */
+function placeAfterUnit(input,node){
+  const nx=input.nextElementSibling;
+  const isUnit=nx&&nx.tagName==="SPAN"&&!nx.className&&(nx.textContent||"").trim().length<=4;
+  (isUnit?nx:input).after(node);
+}
+function enhanceNumberInput(input){
+  if(input.dataset.spun)return;input.dataset.spun="1";
+  placeAfterUnit(input,makeSpin(input));
+}
+/* スライダーに、直接入力できる数値欄と▲▼を足す。スライダーのinputイベントを発火させるので
+   既存の処理（保存・再描画）はそのまま動く。値の表示に使っていた<output>は数値欄と重複するため隠す */
+function enhanceRangeInput(range){
+  if(range.dataset.spun)return;range.dataset.spun="1";
+  const box=document.createElement("input");
+  box.type="number";box.className="numbox";box.id=range.id+"Num";
+  box.dataset.spun="1";   // ▲▼はこの下で自分で付けるので、数値欄の一括処理では触らせない
+  box.min=range.min;box.max=range.max;box.step=range.step;
+  box.setAttribute("aria-label",(range.getAttribute("aria-label")||range.id)+"（数値で入力）");
+  const unitText=RANGE_UNITS[range.id];
+  let tail=box;
+  if(unitText){const u=document.createElement("span");u.className="numunit";u.textContent=unitText;range.after(u);tail=u;}
+  range.after(box);
+  tail.after(makeSpin(box));
+  const push=()=>{
+    if(box.value==="")return;
+    range.value=String(clampNum(box,parseFloat(box.value)));
+    range.dispatchEvent(new Event("input",{bubbles:true}));
+  };
+  box.addEventListener("input",push);
+  box.addEventListener("change",()=>{if(box.value!=="")box.value=String(clampNum(box,parseFloat(box.value)));push();});
+  const out=range.parentElement&&range.parentElement.querySelector("output");
+  if(out)out.classList.add("numhidden");
+  box.value=range.value;
+}
+/* スライダー側が動いたら数値欄へ書き戻す（ドラッグ・プログラムからの設定の両方） */
+function syncNumBoxes(){
+  $$("input[type=range][data-spun]").forEach(r=>{
+    const box=document.getElementById(r.id+"Num");
+    if(box&&document.activeElement!==box)box.value=r.value;
+  });
+}
+function enhanceNumericControls(){
+  $$("input[type=range]").forEach(enhanceRangeInput);
+  $$("input[type=number]").forEach(enhanceNumberInput);
+  document.addEventListener("input",e=>{
+    if(e.target&&e.target.tagName==="INPUT"&&e.target.type==="range")syncNumBoxes();
+  },true);
+}
 function renderBgPicker(){const cur=curStyleRead().bg;
   $("#bgPicker").innerHTML=BG_CATS.map(cat=>{
     const items=BACKGROUNDS.filter(b=>b.cat===cat.id);
@@ -2691,6 +3012,12 @@ function updateMasterHint(){const m=$("#masterHint"),o=$("#oneHint");
   if(m)m.style.display=(editScope==="master")?"":"none";
   if(o)o.style.display=(editScope==="one")?"":"none";}
 $$("button[data-zoom]").forEach(b=>b.addEventListener("click",()=>{const base=userZoom||editZoom;userZoom=Math.min(2.2,Math.max(.3,base+(b.dataset.zoom==="+"?.15:-.15)));renderEditor();}));
+/* 表示倍率も数値で直接指定できる（▲▼は共通の仕組みで付く） */
+$("#zoomInput").addEventListener("input",e=>{
+  if(e.target.value==="")return;
+  const v=parseFloat(e.target.value);if(!isFinite(v))return;
+  userZoom=Math.min(2.2,Math.max(.3,v/100));renderEditor();
+});
 $("#btnZoomFit").addEventListener("click",()=>{userZoom=fitZoom(curSize());renderEditor();});
 $("#btnZoom100").addEventListener("click",()=>{userZoom=1;renderEditor();});
 $("#btnUndo").addEventListener("click",doUndo);
@@ -2709,7 +3036,7 @@ let holderEl=null, cardEl=null;
 function getMasterSampleImage(){const w=(proj().works||[]).find(x=>x.image);return w?w.image:"";}
 function currentWork(){const p=proj();if(editScope==="master"){MASTER_DUMMY.image=getMasterSampleImage();return MASTER_DUMMY;}return p.works[previewIndex]||null;}
 function isMaster(){return editScope==="master";}
-function fitZoom(size){const vp=$("#editorViewport");const avail=Math.max(120,(vp.clientWidth||600)-284);
+function fitZoom(size){const vp=$("#editorViewport");const avail=Math.max(120,(vp.clientWidth||600)-312); /* 小パネル252px＋左右の余白 */
   return Math.min(1.6,Math.max(.3,avail/(size.w*MM2PX)));}
 function renderEditor(){
   if(!$("#tab-layout").classList.contains("active"))return;
@@ -2718,9 +3045,10 @@ function renderEditor(){
   const holder=$("#editHolder");holder.innerHTML="";
   const w=currentWork();
   if(!w){holder.innerHTML=`<div class="note" style="padding:40px">作品台帳に作品を登録すると、ここで配置できます。</div>`;
-    hidePanel();updateSelUI();$("#overflowWarn").classList.remove("show");$("#zoomLabel").textContent="—";return;}
+    hidePanel();updateSelUI();$("#overflowWarn").classList.remove("show");$("#zoomLabel").textContent="—";$("#zoomInput").value="";return;}
   editZoom=1;const z=userZoom||editZoom;
   $("#zoomLabel").textContent=Math.round(z*100)+"%";
+  if(document.activeElement!==$("#zoomInput"))$("#zoomInput").value=Math.round(z*100);
   cardEl=buildCard(w,st,size,{editor:true,mode:editMode});
   cardEl.style.transform=`scale(${z})`;cardEl.style.transformOrigin="top left";
   holder.style.width=(size.w*MM2PX*z)+"px";holder.style.height=(size.h*MM2PX*z)+"px";
@@ -2754,7 +3082,13 @@ function startInlineEdit(key){
   el.classList.remove("ph");
   el.innerHTML="";
   buildRichText(el,w[key]||"",(w.charFmt&&w.charFmt[key])||[],tcyRangesFor(w,key)); // 文字単位の字間・縦中横を保持したまま編集
-  el.style.transform="";
+  /* 解説文の自動調整ぶんの倍率は編集中だけ外し、項目に指定された文字の縦横幅はそのまま残す
+     （見たままの字形で編集できるようにするため） */
+  const ux=parseFloat(el.dataset.sx||"1")||1, uy=parseFloat(el.dataset.sy||"1")||1;
+  const wmm=parseFloat(el.dataset.wmm||"");
+  if(!isNaN(wmm))el.style.width=(wmm/ux)+"mm";
+  el.style.transform=(ux!==1||uy!==1)?`scale(${ux},${uy})`:"";
+  el.style.transformOrigin="left top";
   try{el.contentEditable="plaintext-only";}catch(_){el.contentEditable="true";}
   el.classList.add("editing-text");
   el.focus();
@@ -2784,8 +3118,10 @@ function finishInlineEdit(){
   renderEditor();renderList();renderPreviewSelect();
 }
 function itemEl(key){return cardEl?cardEl.querySelector('.cap-item[data-item="'+key+'"]'):null;}
-function heightMM(key){const el=itemEl(key);return el?el.offsetHeight/MM2PX:6;}
-function widthMM(key){const el=itemEl(key);return el?el.offsetWidth/MM2PX:curLayoutRead()[key].w;}
+/* offsetWidth/Height はtransformを含まない「倍率で割る前」の寸法なので、倍率を掛けて見た目の実寸に戻す。
+   はみ出し判定・選択枠・ハンドルでの拡縮は、すべてこの見た目の実寸で扱う */
+function heightMM(key){const el=itemEl(key);if(!el)return 6;return el.offsetHeight*itemScaleY(curLayoutRead()[key])/MM2PX;}
+function widthMM(key){const el=itemEl(key);const L=curLayoutRead()[key];if(!el)return L.w;return el.offsetWidth*itemScaleX(L)/MM2PX;}
 /* この項目が「縦書き」として描画されているか（英字項目は縦書きモードでも常に横書き扱い） */
 function isItemVertical(key){
   if(!proj().style.vertical)return false;
@@ -2868,7 +3204,16 @@ function setMiniSliderValue(ls){
   $("#csFill").style.width=(t*100)+"%";
   $("#csHandle").style.left=(t*100)+"%";
   $("#csVal").textContent=(ls>=0?"+":"")+ls.toFixed(2)+"em";
+  const box=$("#csNum");if(box&&document.activeElement!==box)box.value=ls.toFixed(2);
 }
+/* 字間も数値で直接指定できる（▲▼は共通の仕組みで付く） */
+$("#csNum").addEventListener("input",e=>{
+  if(e.target.value==="")return;
+  const v=parseFloat(e.target.value);if(!isFinite(v))return;
+  const ls=Math.max(CS_MIN,Math.min(CS_MAX,v));
+  setMiniSliderValue(ls);applyCharSpacing(ls);
+});
+$("#csNum").addEventListener("mousedown",e=>e.stopPropagation());
 function applyCharSpacing(ls){
   if(!charSel)return;
   const w=currentWork();if(!w)return;
@@ -2986,7 +3331,7 @@ function renderImg2Sel(){
   const box=$("#img2Box");if(box)box.style.display=m?"":"none";
   if(!m)return;
   const el=img2El(m.id);if(!el)return;
-  const op=$("#img2Opacity");if(op){op.value=Math.round(((m.opacity==null)?1:m.opacity)*100);$("#oImg2Op").textContent=op.value+"%";}
+  const op=$("#img2Opacity");if(op){op.value=Math.round(((m.opacity==null)?1:m.opacity)*100);$("#oImg2Op").textContent=op.value+"%";syncNumBoxes();}
   const hs=3.4,ar=img2Ar(m);
   const d=document.createElement("div");d.className="img2-handle";
   d.style.left=(m.x+m.w-hs/2)+"mm";d.style.top=(m.y+m.w*ar-hs/2)+"mm";d.style.width=hs+"mm";d.style.height=hs+"mm";
@@ -3372,7 +3717,9 @@ function showPanel(){const p=proj();if(!sel.size){hidePanel();return;}const keys
   updateItemPanelLabels(keys.length===1?isItemVertical(keys[0]):(proj().style.vertical&&keys.every(k=>isItemVertical(k))));
   const font=commonVal(k=>curLayoutRead()[k].font); $("#ipFont").value=font==null?"inherit":font;
   const size=commonVal(k=>curLayoutRead()[k].size); $("#ipSize").value=size==null?"":size;
-  const ls=commonVal(k=>curLayoutRead()[k].ls); $("#ipLs").value=ls==null?0:ls; $("#ipLsO").textContent=(ls==null?"—":(ls.toFixed(2)+"em"));
+  const ls=commonVal(k=>curLayoutRead()[k].ls); $("#ipLs").value=ls==null?0:ls; $("#ipLsO").textContent=(ls==null?"—":(ls.toFixed(2)+"em")); syncNumBoxes();
+  const sx=commonVal(k=>curLayoutRead()[k].sx==null?100:curLayoutRead()[k].sx); $("#ipSx").value=sx==null?"":sx;
+  const sy=commonVal(k=>curLayoutRead()[k].sy==null?100:curLayoutRead()[k].sy); $("#ipSy").value=sy==null?"":sy;
   const al=commonVal(k=>curLayoutRead()[k].align); $("#ipAlign").value=al==null?"inherit":al;
   const wv=commonVal(k=>curLayoutRead()[k].w); $("#ipW").value=wv==null?"":wv;
   const hv=commonVal(k=>curLayoutRead()[k].h);
@@ -3428,6 +3775,12 @@ function applyToSel(fn){sel.forEach(k=>fn(curLayout()[k]));save();renderEditor()
 $("#ipFont").addEventListener("change",e=>applyToSel(L=>L.font=e.target.value));
 $("#ipSize").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.size=v);});
 $("#ipLs").addEventListener("input",e=>{const v=parseFloat(e.target.value);$("#ipLsO").textContent=v.toFixed(2)+"em";applyToSel(L=>L.ls=v);});
+/* 文字の縦横幅（長体・平体）。1〜200%に丸めてから反映する */
+$("#ipSx").addEventListener("input",e=>{if(e.target.value==="")return;const v=clampScale(e.target.value);applyToSel(L=>L.sx=v);});
+$("#ipSy").addEventListener("input",e=>{if(e.target.value==="")return;const v=clampScale(e.target.value);applyToSel(L=>L.sy=v);});
+$("#ipSx").addEventListener("change",e=>{const v=clampScale(e.target.value);e.target.value=v;applyToSel(L=>L.sx=v);});
+$("#ipSy").addEventListener("change",e=>{const v=clampScale(e.target.value);e.target.value=v;applyToSel(L=>L.sy=v);});
+$("#ipScaleReset").addEventListener("click",()=>{$("#ipSx").value=100;$("#ipSy").value=100;applyToSel(L=>{L.sx=100;L.sy=100;});showPanel();});
 $("#ipAlign").addEventListener("change",e=>applyToSel(L=>L.align=e.target.value));
 $("#ipW").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.w=Math.max(8,v));});
 $("#ipH").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.h=Math.max(4,v));});
@@ -3604,7 +3957,7 @@ function openCmykPicker(anchorEl,title,initial,onChange,onReset){
   cmykTarget={onChange,onReset};
   $("#cmykTitle").textContent=title;
   const v=initial||{c:0,m:0,y:0,k:0};
-  $("#cmykC").value=v.c;$("#cmykM").value=v.m;$("#cmykY").value=v.y;$("#cmykK").value=v.k;
+  $("#cmykC").value=v.c;$("#cmykM").value=v.m;$("#cmykY").value=v.y;$("#cmykK").value=v.k;syncNumBoxes();
   cmykRefreshSwatch();
   const pop=$("#cmykPopover");pop.classList.add("show");
   const r=anchorEl.getBoundingClientRect();
@@ -3654,6 +4007,7 @@ window.addEventListener("resize",()=>{if($("#tab-layout").classList.contains("ac
 $("#fontKind").innerHTML=fontOptionsHTML(null,null);
 $("#ipFont").innerHTML=fontOptionsHTML(null,"全体に従う");
 $("#rubyFont").innerHTML=fontOptionsHTML(null,"本文に従う");
+enhanceNumericControls();   // 数値項目に直接入力欄と▲▼を付ける（値を流し込む前に済ませる）
 loadStore();lastSnapshot=JSON.stringify(store);updateUndoButtons();
 applyEditScope();
 if(store.useGoogleFonts){$("#gfontToggle").checked=true;applyGoogleFonts(true);}
