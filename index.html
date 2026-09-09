@@ -685,7 +685,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
   <section id="tab-daicho" class="tabpane active">
     <div class="daicho-bar">
       <button class="btn primary" id="btnAddWork">＋ 作品を追加</button>
-      <button class="btn" id="btnOpenImport">スプレッドシートから貼り付け</button>
+      <button class="btn" id="btnOpenImport" title="Excelのブック（.xlsx）やCSVファイルを開いて取り込めます。スプレッドシートのURL・コピー＆貼り付けにも対応しています">Excel・スプレッドシートから取り込む</button>
       <button class="btn" id="btnExportCsv" title="作品リストをCSVファイルに書き出します。Excelでそのまま開けます（文字化けしないUTF-8 BOM付き）">CSVで書き出し（Excel）</button>
       <button class="btn" id="btnCopyTsv" title="作品リストの表をクリップボードにコピーします。ExcelやGoogleスプレッドシートのセルにそのまま貼り付けられます">表をコピー（シート貼り付け用）</button>
       <input type="search" id="searchBox" placeholder="検索（産地・作品名など）">
@@ -1003,9 +1003,20 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 
 <!-- 取り込み -->
 <dialog id="importDialog">
-  <div class="dlg-head"><h3>スプレッドシートから取り込む</h3><button class="btn ghost small" data-close="importDialog">✕ 閉じる</button></div>
+  <div class="dlg-head"><h3>Excel・スプレッドシートから取り込む</h3><button class="btn ghost small" data-close="importDialog">✕ 閉じる</button></div>
   <div class="dlg-body">
     <fieldset class="grp" style="margin-top:0;border-top:none;padding-top:0">
+      <legend>Excelファイルから読み込む</legend>
+      <p class="note" style="margin-bottom:8px">Excelのブック（<b>.xlsx</b>）とCSV・TSVファイルを、そのまま開いて取り込めます。ファイルはこの端末の中だけで読み取られ、どこにも送信されません。</p>
+      <div class="row" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <input type="file" id="importFile" accept=".xlsx,.xlsm,.csv,.tsv,.txt" style="flex:1;min-width:220px;font-size:12px">
+        <label id="importSheetWrap" style="display:none;font-size:12px;color:var(--sub);align-items:center;gap:6px">
+          シート <select id="importSheet" style="font-size:12px"></select>
+        </label>
+      </div>
+      <p class="note" id="fileStatus"></p>
+    </fieldset>
+    <fieldset class="grp">
       <legend>URLから一括取得</legend>
       <p class="note" style="margin-bottom:8px">スプレッドシートの共有設定を<b>「リンクを知っている全員（閲覧者）」</b>にしてから、共有URLを貼り付けてください。</p>
       <div class="row" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
@@ -1020,7 +1031,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       </div>
       <p class="note" id="urlStatus"></p>
     </fieldset>
-    <p class="note" style="margin:12px 0 6px">または、下の枠にスプレッドシートの範囲を直接コピー＆貼り付け（見出し行ごとで構いません）：</p>
+    <p class="note" style="margin:12px 0 6px">または、下の枠にExcel・スプレッドシートの範囲を直接コピー＆貼り付け（見出し行ごとで構いません）：</p>
     <textarea id="importText" placeholder="ここに貼り付け"></textarea>
     <label class="chk" style="margin-top:8px"><input type="checkbox" id="impHeader" checked>1行目は見出し行として扱う</label>
     <div id="mapArea"></div>
@@ -1109,7 +1120,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     <ul>
       <li>作業内容は<b>このブラウザの中に自動保存</b>されます。別のPCやiPadには自動で移りません。</li>
       <li>移動・バックアップは「書き出し」でJSON保存し、移動先で「読み込み」。画像もJSONに含まれます。</li>
-      <li>作品台帳の<b>「CSVで書き出し（Excel）」でExcelファイルとして保存</b>、<b>「表をコピー」でGoogleスプレッドシートやExcelに直接貼り付け</b>できます。見出しは取り込みと同じ形式なので、編集後に「スプレッドシートから貼り付け」で戻せます（画像・ルビは表に含まれません）。Excelで番号「1-01」などが日付に変わる場合は、貼り付け方式（表をコピー→貼り付け先の列を「文字列」に設定）をお使いください。</li>
+      <li>作品台帳の<b>「CSVで書き出し（Excel）」でExcelファイルとして保存</b>、<b>「表をコピー」でGoogleスプレッドシートやExcelに直接貼り付け</b>できます。見出しは取り込みと同じ形式なので、編集後に<b>「Excel・スプレッドシートから取り込む」でExcelファイル（.xlsx）やCSVファイルをそのまま開いて戻せます</b>（画像・ルビは表に含まれません）。Excelで番号「1-01」などが日付に変わる場合は、貼り付け方式（表をコピー→貼り付け先の列を「文字列」に設定）をお使いください。</li>
     </ul>
     <h4>うまくいかないとき</h4>
     <ul>
@@ -1816,6 +1827,135 @@ function parsePaste(text){const t=String(text||"");const hasTab=t.slice(0,1000).
 function guessField(header){const h=String(header||"").trim().toLowerCase().replace(/\s/g,"");if(!h)return "";
   for(const key of Object.keys(GUESS)){if(GUESS[key].some(k=>h.includes(k.toLowerCase())))return key;}return "";}
 
+/* ===== Excelファイル（.xlsx）の読み取り =====
+   .xlsxは中身がZIPで固めたXML。ブラウザ標準のDecompressionStreamで展開できるので、
+   外部ライブラリを足さずに（＝オフラインでも、単一ファイルのまま）読める。
+   古い.xls（バイナリ形式）は別物なので読めない。その場合は保存し直してもらう。 */
+function u16(d,o){return d.getUint16(o,true);} function u32(d,o){return d.getUint32(o,true);}
+/* ZIPの中央ディレクトリを読み、名前→実体の対応表を作る */
+async function unzip(buf){
+  const d=new DataView(buf),bytes=new Uint8Array(buf);
+  let eocd=-1;
+  for(let i=buf.byteLength-22;i>=0&&i>=buf.byteLength-66000;i--){if(u32(d,i)===0x06054b50){eocd=i;break;}}
+  if(eocd<0)throw new Error("ZIP形式として読めません");
+  const count=u16(d,eocd+10);let p=u32(d,eocd+16);
+  if(p===0xffffffff)throw new Error("ZIP64形式には未対応です");
+  const files={};
+  for(let i=0;i<count;i++){
+    if(u32(d,p)!==0x02014b50)break;
+    const method=u16(d,p+10),csize=u32(d,p+20),nameLen=u16(d,p+28),extraLen=u16(d,p+30),
+          cmtLen=u16(d,p+32),lho=u32(d,p+42);
+    const name=new TextDecoder().decode(bytes.subarray(p+46,p+46+nameLen));
+    files[name]={method,csize,lho};
+    p+=46+nameLen+extraLen+cmtLen;
+  }
+  const read=async(name)=>{
+    const f=files[name];if(!f)return null;
+    const lh=f.lho;
+    if(u32(d,lh)!==0x04034b50)throw new Error("ZIPの構造が壊れています");
+    const start=lh+30+u16(d,lh+26)+u16(d,lh+28);
+    const raw=bytes.subarray(start,start+f.csize);
+    if(f.method===0)return new TextDecoder().decode(raw);
+    if(f.method!==8)throw new Error("未対応の圧縮方式です");
+    if(typeof DecompressionStream!=="function")throw new Error("このブラウザではExcelファイルを展開できません");
+    const st=new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return await new Response(st).text();
+  };
+  return {names:Object.keys(files),read};
+}
+const XLSX_DATE_FMT=new Set([14,15,16,17,18,19,20,21,22,45,46,47]);
+function xlsxSerialToText(n,isDate){
+  if(!isDate)return String(n);
+  /* Excelの日付連番。1900年うるう年バグぶんの2日を差し引いて基準日から数える */
+  const ms=Math.round((n-25569)*86400000);
+  const dt=new Date(ms);if(isNaN(dt))return String(n);
+  const p=v=>String(v).padStart(2,"0");
+  const ymd=`${dt.getUTCFullYear()}/${p(dt.getUTCMonth()+1)}/${p(dt.getUTCDate())}`;
+  const frac=n-Math.floor(n);
+  return frac>1e-6?`${ymd} ${p(dt.getUTCHours())}:${p(dt.getUTCMinutes())}`:ymd;
+}
+function colIndex(ref){let n=0;for(const ch of String(ref)){const c=ch.charCodeAt(0);
+  if(c<65||c>90)break;n=n*26+(c-64);}return n-1;}
+function xmlDoc(text){return new DOMParser().parseFromString(text,"application/xml");}
+function tagsOf(node,name){return [...node.getElementsByTagNameNS("*",name)];}
+/* ブックを読み、シート一覧と各シートの行データ（文字列の二次元配列）を返す */
+async function readXlsx(file){
+  const zip=await unzip(await file.arrayBuffer());
+  if(!zip.names.some(n=>n.startsWith("xl/")))throw new Error("Excelのブックではないようです");
+  /* 共有文字列 */
+  const ssText=await zip.read("xl/sharedStrings.xml");
+  const shared=ssText?tagsOf(xmlDoc(ssText),"si").map(si=>tagsOf(si,"t").map(t=>t.textContent).join("")):[];
+  /* 表示形式（日付かどうかの判定に使う） */
+  const stText=await zip.read("xl/styles.xml");
+  const dateStyle=[];
+  if(stText){
+    const doc=xmlDoc(stText);
+    const custom={};
+    tagsOf(doc,"numFmt").forEach(f=>{
+      const code=f.getAttribute("formatCode")||"";
+      custom[f.getAttribute("numFmtId")]=/[ymd]/.test(code.replace(/\[[^\]]*\]|"[^"]*"/g,""));
+    });
+    const xfs=doc.getElementsByTagNameNS("*","cellXfs")[0];
+    if(xfs)tagsOf(xfs,"xf").forEach((xf,i)=>{
+      const id=xf.getAttribute("numFmtId")||"0";
+      dateStyle[i]=custom[id]!==undefined?custom[id]:XLSX_DATE_FMT.has(+id);
+    });
+  }
+  /* シート名と実体の対応 */
+  const wbText=await zip.read("xl/workbook.xml");
+  if(!wbText)throw new Error("Excelのブックではないようです");
+  const relText=await zip.read("xl/_rels/workbook.xml.rels")||"";
+  const rels={};
+  if(relText)tagsOf(xmlDoc(relText),"Relationship").forEach(r=>{
+    let tgt=r.getAttribute("Target")||"";
+    tgt=tgt.replace(/^\/xl\//,"").replace(/^\.?\//,"");
+    rels[r.getAttribute("Id")]="xl/"+tgt;
+  });
+  const sheets=tagsOf(xmlDoc(wbText),"sheet").map((s,i)=>{
+    const rid=s.getAttribute("r:id")||s.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id");
+    return {name:s.getAttribute("name")||("シート"+(i+1)),
+            hidden:(s.getAttribute("state")||"")!=="",
+            path:rels[rid]||("xl/worksheets/sheet"+(i+1)+".xml")};
+  });
+  if(!sheets.length)throw new Error("シートが見つかりません");
+  const rowsOf=async(sheet)=>{
+    const text=await zip.read(sheet.path);
+    if(!text)return [];
+    const out=[];
+    tagsOf(xmlDoc(text),"row").forEach(r=>{
+      const row=[];
+      tagsOf(r,"c").forEach(c=>{
+        const idx=colIndex(c.getAttribute("r")||""),type=c.getAttribute("t")||"n";
+        let v="";
+        if(type==="inlineStr"){v=tagsOf(c,"t").map(t=>t.textContent).join("");}
+        else{
+          const vEl=c.getElementsByTagNameNS("*","v")[0];
+          const raw=vEl?vEl.textContent:"";
+          if(raw==="")v="";
+          else if(type==="s")v=shared[+raw]!==undefined?shared[+raw]:"";
+          else if(type==="b")v=(raw==="1")?"TRUE":"FALSE";
+          else if(type==="e")v="";
+          else if(type==="str")v=raw;
+          else v=xlsxSerialToText(+raw,!!dateStyle[+(c.getAttribute("s")||0)]);
+        }
+        if(idx>=0){while(row.length<idx)row.push("");row[idx]=v;}
+        else row.push(v);
+      });
+      out.push(row);
+    });
+    return out.filter(r=>r.some(c=>String(c).trim()!==""));
+  };
+  return {sheets,rowsOf};
+}
+/* CSV/TSVファイルの文字コード判定。Excelが書き出したCSVはShift_JISのことが多い */
+async function readTextFile(file){
+  const buf=await file.arrayBuffer(),bytes=new Uint8Array(buf);
+  if(bytes[0]===0xef&&bytes[1]===0xbb&&bytes[2]===0xbf)return new TextDecoder("utf-8").decode(bytes.subarray(3));
+  const utf8=new TextDecoder("utf-8",{fatal:false}).decode(bytes);
+  if(!utf8.includes("�"))return utf8;
+  try{return new TextDecoder("shift_jis").decode(bytes);}catch(e){return utf8;}
+}
+
 /* ===== GoogleスプレッドシートURLからの取り込み ===== */
 function parseSheetUrl(url){const m=url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);if(!m)return null;
   const id=m[1];const gidM=url.match(/[?&#]gid=([0-9]+)/);return {id,gid:gidM?gidM[1]:null};}
@@ -2256,8 +2396,60 @@ $("#btnDeleteWork").addEventListener("click",async()=>{if(editingIndex<0)return;
 let impRows=[],impMap=[];
 $("#btnOpenImport").addEventListener("click",()=>{$("#importText").value="";$("#mapArea").innerHTML="";$("#impCount").textContent="";
   $("#importUrl").value=proj().lastImportUrl||"";$("#importSheetRef").value=proj().lastImportRef||"";$("#urlStatus").textContent="";
+  $("#importFile").value="";$("#fileStatus").textContent="";$("#importSheetWrap").style.display="none";impBook=null;impFileRows=null;
   impRows=[];impMap=[];$("#importDialog").showModal();});
-$("#importText").addEventListener("input",buildMapping);$("#impHeader").addEventListener("change",buildMapping);
+/* 貼り付け欄に手で入力したら、ファイルから読んだ内容よりそちらを優先する */
+$("#importText").addEventListener("input",()=>{impFileRows=null;buildMapping();});
+$("#impHeader").addEventListener("change",buildMapping);
+
+/* ---- Excel（.xlsx）・CSV/TSVファイルからの取り込み ---- */
+let impBook=null,impFileRows=null;
+async function loadImportFile(file){
+  const status=$("#fileStatus");
+  const wrap=$("#importSheetWrap"),pick=$("#importSheet");
+  wrap.style.display="none";impBook=null;impFileRows=null;
+  if(!file)return;
+  status.textContent="読み込み中…";
+  const name=(file.name||"").toLowerCase();
+  try{
+    if(/\.xls$/.test(name)){
+      status.textContent="古い形式（.xls）は読み取れません。Excelで開いて「.xlsx」または「CSV UTF-8」で保存し直してください。";
+      return;
+    }
+    if(/\.(xlsx|xlsm)$/.test(name)){
+      impBook=await readXlsx(file);
+      const visible=impBook.sheets.filter(sh=>!sh.hidden);
+      const list=visible.length?visible:impBook.sheets;
+      pick.innerHTML=list.map((sh,i)=>`<option value="${impBook.sheets.indexOf(sh)}">${esc(sh.name)}</option>`).join("");
+      wrap.style.display=list.length>1?"inline-flex":"none";
+      await useSheet(+pick.value);
+    }else{
+      const text=await readTextFile(file);
+      impFileRows=parsePaste(text);
+      $("#importText").value="";
+      buildMapping();
+      reportFileRows(file.name);
+    }
+  }catch(err){
+    status.textContent="読み込めませんでした（"+err.message+"）。Excelで開いて「.xlsx」または「CSV UTF-8」で保存し直すと読めることがあります。";
+  }
+}
+async function useSheet(idx){
+  if(!impBook)return;
+  const sheet=impBook.sheets[idx];
+  impFileRows=await impBook.rowsOf(sheet);
+  $("#importText").value="";
+  buildMapping();
+  reportFileRows(sheet.name);
+}
+function reportFileRows(label){
+  const useHeader=$("#impHeader").checked;
+  const n=Math.max(0,(impFileRows||[]).length-(useHeader?1:0));
+  $("#fileStatus").textContent=n?`「${label}」から${n}件を読み込みました。下の列の割り当てを確認して取り込んでください。`
+                                :`「${label}」に取り込める行がありませんでした。`;
+}
+$("#importFile").addEventListener("change",e=>loadImportFile(e.target.files&&e.target.files[0]));
+$("#importSheet").addEventListener("change",e=>useSheet(+e.target.value));
 $("#btnFetchUrl").addEventListener("click",async()=>{
   const raw=$("#importUrl").value.trim();
   if(!raw){alert("スプレッドシートのURLを入力してください。");return;}
@@ -2273,7 +2465,7 @@ $("#btnFetchUrl").addEventListener("click",async()=>{
     if(trimmed.startsWith("<")){
       statusEl.textContent="取得できませんでした。共有設定が「リンクを知っている全員」になっているかご確認ください。";
     }else{
-      $("#importText").value=text;buildMapping();
+      impFileRows=null;$("#importText").value=text;buildMapping();
       const useHeader=$("#impHeader").checked;const n=Math.max(0,impRows.length-(useHeader?1:0));
       statusEl.textContent=n?`${n}件を取得しました。下の列の割り当てを確認して取り込んでください。`:"データが空でした。URLやシート名/GIDを確認してください。";
       proj().lastImportUrl=raw;proj().lastImportRef=ref;save();
@@ -2283,7 +2475,7 @@ $("#btnFetchUrl").addEventListener("click",async()=>{
   }
   $("#btnFetchUrl").disabled=false;
 });
-function buildMapping(){impRows=parsePaste($("#importText").value);const area=$("#mapArea");
+function buildMapping(){impRows=impFileRows||parsePaste($("#importText").value);const area=$("#mapArea");
   if(!impRows.length){area.innerHTML="";$("#impCount").textContent="";return;}
   const useHeader=$("#impHeader").checked;const header=useHeader?impRows[0]:impRows[0].map((_,i)=>"列"+(i+1));
   const cols=Math.max(...impRows.map(r=>r.length));impMap=[];
@@ -2295,7 +2487,7 @@ function buildMapping(){impRows=parsePaste($("#importText").value);const area=$(
   html+="</table>";area.innerHTML=html;
   $$("select[data-col]",area).forEach(s=>s.addEventListener("change",()=>{impMap[+s.dataset.col]=s.value;updateImpCount();}));updateImpCount();}
 function updateImpCount(){const useHeader=$("#impHeader").checked;const n=Math.max(0,impRows.length-(useHeader?1:0));$("#impCount").textContent=n?`${n}件の作品を取り込みます`:"";}
-async function doImport(replace){if(!impRows.length){alert("先にデータを貼り付けてください。");return;}
+async function doImport(replace){if(!impRows.length){alert("先にExcelファイルを選ぶか、データを貼り付けてください。");return;}
   if(!impMap.some(m=>m)){alert("少なくとも1列は取り込み先を選んでください。");return;}
   const useHeader=$("#impHeader").checked;const rows=impRows.slice(useHeader?1:0);if(!rows.length){alert("取り込める行がありません。");return;}
   if(replace&&proj().works.length){
