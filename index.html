@@ -676,6 +676,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     <button class="btn small" id="btnExport">書き出し</button>
     <span id="backupBadge" class="note" style="display:none;color:var(--shu);font-weight:600;margin-left:2px;cursor:help"></span>
     <button class="btn small" id="btnImportJson">読み込み</button>
+    <button class="btn small" id="btnDriveOpen" title="Googleドライブに保存したJSONを直接読み込みます。Shiftを押しながら押すと接続設定を開き直せます">☁ ドライブから読み込み</button>
     <input type="file" id="jsonFileInput" accept=".json,application/json" hidden>
     <button class="btn small ghost" id="btnHelp">？ 使い方</button>
   </div>
@@ -1016,6 +1017,32 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 </dialog>
 
 <!-- 取り込み -->
+<dialog id="driveDialog">
+  <div class="dlg-head"><h3>Googleドライブの接続設定<span class="note" style="margin-left:8px">最初に1回だけ設定します</span></h3>
+    <button class="btn ghost small" data-close="driveDialog">✕ 閉じる</button></div>
+  <div class="dlg-body">
+    <p class="note">Googleドライブから直接読み込むには、ご自身のGoogleアカウントで「このアプリからドライブを読む許可」を作る必要があります。下の2つをGoogle Cloudコンソールで取得して貼り付けてください。</p>
+    <ol class="note" style="margin:8px 0 8px 1.3em;line-height:1.9">
+      <li><a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloudコンソール</a>でプロジェクトを新規作成</li>
+      <li>「APIとサービス」→「ライブラリ」で <b>Google Drive API</b> と <b>Google Picker API</b> を有効化</li>
+      <li>「OAuth同意画面」を作成（ユーザーの種類は「外部」、テストユーザーにご自分のアドレスを追加）</li>
+      <li>「認証情報」→「OAuthクライアントID」→ 種類は「ウェブアプリケーション」。<b>承認済みのJavaScript生成元</b>に下のURLを追加します</li>
+      <li>同じ「認証情報」→「APIキー」を作成</li>
+    </ol>
+    <p class="note">このページの生成元（そのままコピーしてください）：<br><b id="driveOrigin" style="user-select:all"></b></p>
+    <div class="ctl"><label class="lbl" for="driveClientId">OAuthクライアントID</label>
+      <input type="text" id="driveClientId" placeholder="000000000000-xxxxxxxx.apps.googleusercontent.com" spellcheck="false" style="width:100%"></div>
+    <div class="ctl"><label class="lbl" for="driveApiKey">APIキー</label>
+      <input type="text" id="driveApiKey" placeholder="AIza..." spellcheck="false" style="width:100%"></div>
+    <p class="note" style="margin-top:10px">読み取りの範囲は「このアプリで選んだファイルだけ」です。ドライブ全体を見にいくことはありません。入力した値はこのブラウザの中だけに保存され、どこにも送信されません。</p>
+  </div>
+  <div class="dlg-foot">
+    <output id="driveNote" class="note" style="margin-right:auto"></output>
+    <button class="btn" data-close="driveDialog">取り消し</button>
+    <button class="btn primary" id="driveSave">保存してドライブを開く</button>
+  </div>
+</dialog>
+
 <dialog id="importDialog">
   <div class="dlg-head"><h3>Excel・スプレッドシートから取り込む</h3><button class="btn ghost small" data-close="importDialog">✕ 閉じる</button></div>
   <div class="dlg-body">
@@ -2291,14 +2318,131 @@ $("#btnExport").addEventListener("click",()=>{
   if(!store.backupMeta)store.backupMeta={};
   store.backupMeta.editsSinceExport=0;store.backupMeta.lastExportAt=Date.now();
   updateBackupBadge();});
+/* 書き出したJSONを既存データに追加で取り込む。ファイル選択とドライブの両方から使う */
+function applyProjectsJson(text){
+  const data=JSON.parse(text);
+  const list=Array.isArray(data.projects)?data.projects:(Array.isArray(data)?data:null);
+  if(!list)throw new Error("展覧会のデータが入っていません");
+  list.forEach(p=>{p.id="p"+Date.now()+Math.random().toString(36).slice(2,7);fixStyle(p);store.projects.push(p);});
+  if(list.length)store.currentId=store.projects[store.projects.length-1].id;
+  save();renderAll();
+  return list.length;
+}
 $("#btnImportJson").addEventListener("click",()=>$("#jsonFileInput").click());
 $("#jsonFileInput").addEventListener("change",e=>{const file=e.target.files[0];e.target.value="";if(!file)return;
   const reader=new FileReader();reader.onload=()=>{try{
-    const data=JSON.parse(reader.result);const list=Array.isArray(data.projects)?data.projects:(Array.isArray(data)?data:null);if(!list)throw 0;
-    list.forEach(p=>{p.id="p"+Date.now()+Math.random().toString(36).slice(2,7);fixStyle(p);store.projects.push(p);});
-    if(list.length)store.currentId=store.projects[store.projects.length-1].id;save();renderAll();
-    alert(`${list.length}件の展覧会を読み込みました（既存データに追加）。`);
+    alert(`${applyProjectsJson(reader.result)}件の展覧会を読み込みました（既存データに追加）。`);
   }catch(err){alert("読み込めませんでした。キャプション工房で書き出したJSONか確認してください。");}};reader.readAsText(file);});
+
+/* ===== Googleドライブからの読み込み =====
+   ・権限は drive.file スコープのみ。「ファイル選択画面で選んだファイル」しか読めないので、
+     ドライブ全体を見にいくことはない
+   ・クライアントIDとAPIキーは利用者ごとに違う（こちらでは用意できない）ため、
+     設定画面で入力してもらい localStorage に保存する
+   ・GoogleのJSはドライブを使うときだけ読み込む（オフラインや file:// でもアプリ本体は
+     今までどおり動かすため。読み込みは初回だけ）
+   ・同じリポジトリの図面アプリと設定が共通で使えるよう、そちらの保存値も読みにいく */
+const DRIVE_CFG_KEY="caption-koubou.driveConfig";
+const DRIVE_CFG_KEY_ALT="floorplan.driveConfig";
+const DRIVE_SCOPE="https://www.googleapis.com/auth/drive.file";
+let driveToken=null;
+function driveCfg(){
+  for(const k of [DRIVE_CFG_KEY,DRIVE_CFG_KEY_ALT]){
+    try{const v=JSON.parse(localStorage.getItem(k));if(v&&v.clientId&&v.apiKey)return v;}catch(e){}
+  }
+  return {};
+}
+function loadScriptOnce(src){
+  return new Promise((ok,ng)=>{
+    const found=document.querySelector(`script[data-ext="${src}"]`);
+    if(found){
+      if(found.dataset.loaded)return ok();
+      found.addEventListener("load",()=>ok());
+      found.addEventListener("error",()=>ng(new Error("読み込めませんでした: "+src)));
+      return;
+    }
+    const el=document.createElement("script");
+    el.src=src;el.dataset.ext=src;
+    el.onload=()=>{el.dataset.loaded="1";ok();};
+    el.onerror=()=>ng(new Error("読み込めませんでした: "+src));
+    document.head.appendChild(el);
+  });
+}
+/* アクセストークンを取る。すでに取得済みならそのまま使い回す（毎回同意画面を出さない） */
+function driveAuth(clientId){
+  return new Promise((ok,ng)=>{
+    const client=google.accounts.oauth2.initTokenClient({
+      client_id:clientId,
+      scope:DRIVE_SCOPE,
+      callback:res=>res.access_token?ok(res.access_token)
+        :ng(new Error(res.error_description||res.error||"許可が得られませんでした")),
+      error_callback:err=>ng(new Error((err&&err.message)||"許可の画面が閉じられました"))
+    });
+    client.requestAccessToken({prompt:driveToken?"":"consent"});
+  });
+}
+/* ファイル選択画面。選ばれたら {id,name,mimeType}、閉じられたら null */
+function drivePick(token,apiKey){
+  return new Promise(ok=>{
+    const view=new google.picker.DocsView(google.picker.ViewId.DOCS)
+      .setIncludeFolders(true)
+      .setMimeTypes("application/json,text/plain");
+    new google.picker.PickerBuilder()
+      .setOAuthToken(token).setDeveloperKey(apiKey).setLocale("ja")
+      .addView(view)
+      .setCallback(d=>{
+        if(d.action===google.picker.Action.PICKED)ok(d.docs[0]);
+        else if(d.action===google.picker.Action.CANCEL)ok(null);
+      })
+      .build().setVisible(true);
+  });
+}
+async function driveFetchText(id,token){
+  const url=`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`;
+  const res=await fetch(url,{headers:{Authorization:"Bearer "+token}});
+  if(!res.ok)throw new Error(`ドライブから取得できませんでした (${res.status})`);
+  return res.text();
+}
+async function openFromDrive(){
+  const cfg=driveCfg();
+  if(!cfg.clientId||!cfg.apiKey){openDriveSettings();return;}
+  const btn=$("#btnDriveOpen"),label=btn.textContent;
+  btn.disabled=true;btn.textContent="☁ 接続中…";
+  try{
+    await loadScriptOnce("https://accounts.google.com/gsi/client");
+    await loadScriptOnce("https://apis.google.com/js/api.js");
+    await new Promise((ok,ng)=>gapi.load("picker",{callback:ok,onerror:()=>ng(new Error("ファイル選択画面を読み込めませんでした"))}));
+    driveToken=await driveAuth(cfg.clientId);
+    const doc=await drivePick(driveToken,cfg.apiKey);
+    if(!doc)return;
+    btn.textContent="☁ 読み込み中…";
+    const n=applyProjectsJson(await driveFetchText(doc.id,driveToken));
+    alert(`「${doc.name}」から${n}件の展覧会を読み込みました（既存データに追加）。`);
+  }catch(e){
+    driveToken=null; // 期限切れ等をひきずらないよう取り直させる
+    // 失敗の大半は設定（IDやキー、生成元の登録漏れ）なので、その場で開き直せるようにする
+    if(await askConfirm("Googleドライブからの読み込みに失敗しました：\n"+e.message+"\n\n接続設定を開き直しますか？","設定を開く"))openDriveSettings();
+  }finally{btn.disabled=false;btn.textContent=label;}
+}
+function openDriveSettings(){
+  const cfg=driveCfg();
+  $("#driveClientId").value=cfg.clientId||"";
+  $("#driveApiKey").value=cfg.apiKey||"";
+  $("#driveOrigin").textContent=location.origin;
+  $("#driveNote").textContent=(location.protocol==="file:")
+    ? "※このファイルをパソコンから直接開いています。Googleの認証はURL（https://…）からでないと使えないので、GitHub Pagesのページを開いてお試しください。"
+    : "";
+  $("#driveDialog").showModal();
+}
+// Shiftを押しながら押すと、設定済みでも接続設定を開き直せる
+$("#btnDriveOpen").addEventListener("click",ev=>ev.shiftKey?openDriveSettings():openFromDrive());
+$("#driveSave").addEventListener("click",()=>{
+  const clientId=$("#driveClientId").value.trim(),apiKey=$("#driveApiKey").value.trim();
+  if(!clientId||!apiKey){$("#driveNote").textContent="クライアントIDとAPIキーの両方を入れてください。";return;}
+  localStorage.setItem(DRIVE_CFG_KEY,JSON.stringify({clientId,apiKey}));
+  driveToken=null; // 設定を変えたら認証もやり直す
+  $("#driveDialog").close();openFromDrive();
+});
 
 /* ===== 台帳 ===== */
 let searchQuery="",sectionQuery="";
