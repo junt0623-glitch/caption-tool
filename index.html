@@ -599,9 +599,11 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 
 /* 文字単位の字間ポップオーバー */
 #charSpacingPopover{position:fixed;z-index:110;background:var(--paper);border:1px solid var(--line);border-radius:6px;
-  box-shadow:0 10px 28px rgba(30,26,20,.28);padding:10px 12px;width:220px;display:none}
+  box-shadow:0 10px 28px rgba(30,26,20,.28);padding:10px 12px;width:262px;display:none}
 #charSpacingPopover.show{display:block}
-.cs-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--sub);margin-bottom:8px;letter-spacing:.04em}
+.cs-head{display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:12px;color:var(--sub);margin-bottom:8px;letter-spacing:.04em}
+.cs-head>span:first-child{flex:1;min-width:0}
+#charSpacingPopover input.numbox{margin-left:0}
 .cs-head output{color:var(--ink);font-variant-numeric:tabular-nums}
 .cs-track{position:relative;height:18px;display:flex;align-items:center;touch-action:none;cursor:pointer}
 .cs-track::before{content:"";position:absolute;left:0;right:0;height:3px;background:var(--line);border-radius:2px}
@@ -1182,6 +1184,12 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 </dialog>
 
 <div id="charSpacingPopover">
+  <div class="cs-head"><span>項目全体の大きさ</span>
+    <input type="number" id="csItemPt" class="numbox" min="4" max="60" step="0.5" style="width:64px" aria-label="この項目全体の文字サイズ（pt）">
+    <span class="numunit">pt</span></div>
+  <div class="cs-head"><span>選んだ文字だけ</span>
+    <input type="number" id="csSelPt" class="numbox" min="4" max="60" step="0.5" placeholder="全体" style="width:64px" aria-label="選んだ文字だけの文字サイズ（pt）">
+    <span class="numunit">pt</span></div>
   <div class="cs-head"><span>選択文字の字間</span>
     <input type="number" id="csNum" class="numbox" min="-0.1" max="0.5" step="0.01" style="width:64px" aria-label="選択文字の字間（em）">
     <span class="numunit">em</span>
@@ -2039,7 +2047,8 @@ function appendRunsWithOverrides(parentEl,text,startIndex,ranges,tcyRanges){
     const chunk=text.slice(i,j);
     if(r||tc){
       const sp=document.createElement("span");
-      if(r){sp.classList.add("cf");sp.style.letterSpacing=r.ls+"em";}
+      if(r){sp.classList.add("cf");sp.style.letterSpacing=(r.ls||0)+"em";
+        if(r.size!=null)sp.style.fontSize=r.size+"pt";}
       if(tc)sp.classList.add("tcy");
       sp.textContent=chunk;parentEl.appendChild(sp);
     }else{parentEl.appendChild(document.createTextNode(chunk));}
@@ -3359,6 +3368,9 @@ function onInlineSelectionChange(){
     const hit=anns.find(r=>r.start<end&&r.end>start);
     $("#rubyText").value=hit?hit.text:"";
   }
+  /* 文字の大きさ：項目全体は配置データ、選択範囲は文字書式から拾う */
+  $("#csItemPt").value=curLayoutRead()[inlineEditKey].size;
+  $("#csSelPt").value=(existing&&existing.size!=null)?existing.size:"";
   const tcyRow=$("#csTcyRow");
   const tcyOK=isItemVertical(inlineEditKey);
   tcyRow.style.display=tcyOK?"":"none";
@@ -3402,27 +3414,66 @@ $("#csNum").addEventListener("input",e=>{
   setMiniSliderValue(ls);applyCharSpacing(ls);
 });
 $("#csNum").addEventListener("mousedown",e=>e.stopPropagation());
-function applyCharSpacing(ls){
-  if(!charSel)return;
-  const w=currentWork();if(!w)return;
+/* 文字の大きさ（pt）。項目全体と、選んだ文字だけの2通り */
+[["csItemPt",v=>applyItemSize(v)],["csSelPt",v=>applyCharSize(v)]].forEach(([id,run])=>{
+  const el=$("#"+id);
+  el.addEventListener("mousedown",e=>e.stopPropagation());
+  el.addEventListener("input",e=>{
+    const raw=e.target.value.trim();
+    if(raw===""){ if(id==="csSelPt")run(null); return; }  // 選択範囲だけ「全体に従う」に戻せる
+    const v=parseFloat(raw);if(!isFinite(v))return;
+    run(Math.min(60,Math.max(4,v)));
+  });
+  el.addEventListener("change",e=>{
+    const raw=e.target.value.trim();
+    if(raw===""){ if(id==="csSelPt")run(null); return; }
+    const v=Math.min(60,Math.max(4,parseFloat(raw)||4));
+    e.target.value=v;run(v);
+  });
+});
+/* 選択範囲の文字書式（字間・大きさ）を足し込む。同じ範囲に既にある指定は引き継ぐので、
+   字間を決めたあとに大きさを変えても字間が消えない */
+function setCharFmt(props){
+  if(!charSel)return null;
+  const w=currentWork();if(!w)return null;
   if(!w.charFmt)w.charFmt={};
-  if(!w.charFmt[charSel.key])w.charFmt[charSel.key]=[];
-  w.charFmt[charSel.key]=w.charFmt[charSel.key].filter(r=>r.end<=charSel.start||r.start>=charSel.end);
-  w.charFmt[charSel.key].push({start:charSel.start,end:charSel.end,ls:Math.round(ls*100)/100});
+  const key=charSel.key,list=w.charFmt[key]||(w.charFmt[key]=[]);
+  const same=list.find(r=>r.start===charSel.start&&r.end===charSel.end);
+  const rec=Object.assign({start:charSel.start,end:charSel.end,ls:0},same||{},props);
+  if(rec.size==null)delete rec.size;   // 「全体に従う」に戻したとき
+  w.charFmt[key]=list.filter(r=>r.end<=charSel.start||r.start>=charSel.end);
+  w.charFmt[key].push(rec);
   save();
-  // 編集中のライブプレビュー：既存の選択範囲をspanで包んで即時反映
+  return rec;
+}
+/* 編集中のライブプレビュー：選択範囲をspanで包んで、確定を待たずに見た目へ反映する */
+function previewCharStyle(apply){
   const sel=getSelection();
-  if(sel&&sel.rangeCount>0){
-    try{
-      if(charSel.previewSpan&&charSel.previewSpan.isConnected){
-        charSel.previewSpan.style.letterSpacing=ls+"em";
-      }else{
-        const r=sel.getRangeAt(0);
-        const span=document.createElement("span");span.className="cf-preview";span.style.letterSpacing=ls+"em";
-        try{r.surroundContents(span);charSel.previewSpan=span;}catch(e){/* 複数ノードにまたがる場合は失敗することがある。保存データは正しく反映済み */}
-      }
-    }catch(e){}
-  }
+  if(!sel||sel.rangeCount===0)return;
+  try{
+    if(!(charSel.previewSpan&&charSel.previewSpan.isConnected)){
+      const r=sel.getRangeAt(0);
+      const span=document.createElement("span");span.className="cf-preview";
+      try{r.surroundContents(span);charSel.previewSpan=span;}
+      catch(e){return;/* 複数ノードにまたがると包めないことがある。保存データは正しく反映済み */}
+    }
+    apply(charSel.previewSpan);
+  }catch(e){}
+}
+function applyCharSpacing(ls){
+  if(!setCharFmt({ls:Math.round(ls*100)/100}))return;
+  previewCharStyle(sp=>{sp.style.letterSpacing=ls+"em";});
+}
+/* 選んだ文字だけの大きさ。空欄（null）なら項目全体の大きさに戻す */
+function applyCharSize(pt){
+  if(!setCharFmt({size:pt}))return;
+  previewCharStyle(sp=>{sp.style.fontSize=(pt==null)?"":pt+"pt";});
+}
+/* この項目全体の大きさ。編集中でも見た目に即反映し、確定後の描画にも残す */
+function applyItemSize(pt){
+  if(!charSel)return;
+  applyToKeys([charSel.key],L=>L.size=pt);
+  const el=itemEl(charSel.key);if(el)el.style.fontSize=pt+"pt";
 }
 let csDragging=false;
 function csPointerDown(e){
@@ -3961,7 +4012,10 @@ function updateItemPanelLabels(vertical){
   $("#ipAutoHLabel").textContent=vertical?"段の広さを自動（内容に合わせる）":"高さを自動（内容に合わせる）";
 }
 $("#ipClose").addEventListener("click",()=>{sel.clear();updateSelUI();hidePanel();});
-function applyToSel(fn){sel.forEach(k=>fn(curLayout()[k]));save();renderEditor();}
+/* 指定した項目の配置データを書き換えて保存する（再描画はしない）。
+   その場編集の最中に呼ぶと再描画で編集が終わってしまうため、再描画の有無を分けている */
+function applyToKeys(keys,fn){keys.forEach(k=>fn(curLayout()[k]));save();}
+function applyToSel(fn){applyToKeys([...sel],fn);renderEditor();}
 $("#ipFont").addEventListener("change",e=>applyToSel(L=>L.font=e.target.value));
 $("#ipSize").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.size=v);});
 $("#ipLs").addEventListener("input",e=>{const v=parseFloat(e.target.value);$("#ipLsO").textContent=v.toFixed(2)+"em";applyToSel(L=>L.ls=v);});
