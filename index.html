@@ -1840,6 +1840,21 @@ function updateUndoButtons(){
   if(u)u.disabled=!undoStack.length;
   if(r)r.disabled=!redoStack.length;
 }
+/* ===== 日本語入力（IME）の変換確定を、アプリの操作と取り違えないための判定 =====
+   ひらがなを打って変換中にEnterを押すと「変換の確定」であって「入力の終了」ではない。
+   ・多くの環境では、確定時のkeydownに isComposing=true（古い環境では keyCode 229）が立つ
+   ・環境によっては compositionend が keydown より先に来て isComposing が落ちているため、
+     直前に変換が終わったばかりの1打鍵は確定とみなす（次のkeyupで解除。
+     マウスで確定した場合など打鍵が続かないこともあるので時間でも打ち切る） */
+let imeComposing=false,imeJustEnded=false,imeEndedAt=0;
+document.addEventListener("compositionstart",()=>{imeComposing=true;imeJustEnded=false;},true);
+document.addEventListener("compositionend",()=>{imeComposing=false;imeJustEnded=true;imeEndedAt=Date.now();},true);
+document.addEventListener("keyup",()=>{imeJustEnded=false;},true);
+function isComposingKey(e){
+  if(e&&(e.isComposing||e.keyCode===229))return true;
+  if(imeComposing)return true;
+  return imeJustEnded&&(Date.now()-imeEndedAt<500);
+}
 window.addEventListener("keydown",e=>{
   if(!(e.ctrlKey||e.metaKey))return;
   const ae=document.activeElement;
@@ -3425,7 +3440,11 @@ function startInlineEdit(key){
   el.addEventListener("keydown",inlineKeys);
   document.addEventListener("selectionchange",onInlineSelectionChange);
 }
-function inlineKeys(e){ if(e.key==="Escape"){e.preventDefault();e.currentTarget.blur();} e.stopPropagation(); }
+function inlineKeys(e){
+  // 変換中のEscapeは「変換の取り消し」なので、文字の編集そのものは終わらせない
+  if(e.key==="Escape"&&!isComposingKey(e)){e.preventDefault();e.currentTarget.blur();}
+  e.stopPropagation();
+}
 function inlineBlur(e){
   const pop=document.getElementById("charSpacingPopover");
   if(e.relatedTarget&&pop&&pop.contains(e.relatedTarget))return; // ルビ入力欄などへ移っただけなら編集継続
@@ -3648,7 +3667,12 @@ function applyRubyFromPopover(){
   hideCharSpacingPopover();
 }
 $("#rubyApply").addEventListener("click",applyRubyFromPopover);
-$("#rubyText").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();applyRubyFromPopover();}e.stopPropagation();});
+$("#rubyText").addEventListener("keydown",e=>{
+  e.stopPropagation();
+  if(e.key!=="Enter")return;
+  if(isComposingKey(e))return;   // ひらがなの変換確定。ルビはまだ確定させない
+  e.preventDefault();applyRubyFromPopover();
+});
 $("#rubyRemove").addEventListener("click",()=>{
   if(!charSel)return;
   const w=currentWork();if(!w)return;
@@ -3982,7 +4006,7 @@ function onCanvasUp(){window.removeEventListener("pointermove",onCanvasMove);con
 }
 window.addEventListener("keydown",e=>{
   if(!$("#tab-layout").classList.contains("active"))return;
-  if(e.key==="Escape"){
+  if(e.key==="Escape"&&!isComposingKey(e)){   // 変換の取り消しで選択まで解除しない
     if(sel.size){sel.clear();updateSelUI();hidePanel();}
     clearImgSel();clearImg2Sel();
   }
