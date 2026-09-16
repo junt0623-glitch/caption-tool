@@ -191,6 +191,14 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 /* 個別編集モード：体裁コントロールを操作不可に */
 #tab-layout.one-mode .lock-layout{opacity:.4;pointer-events:none}
 #tab-layout.one-mode #alignBar{opacity:.4;pointer-events:none}
+/* 作品ごとの編集で上書きOFFのときは、小パネルの中身も触れないようにする。
+   ここを開けたままにすると、この作品のつもりの操作がマスター＝全作品に及んでしまう */
+#tab-layout.one-mode #itemPanel .prow,
+#tab-layout.one-mode #itemPanel .note{opacity:.4;pointer-events:none}
+#ipLocked{display:none;background:#FBF3E3;border:1px solid #E4C583;color:#6B4E1E;
+  border-radius:5px;padding:7px 8px;font-size:11px;line-height:1.6;margin-bottom:8px}
+#tab-layout.one-mode #ipLocked{display:block}
+#ipLocked button{margin-top:6px}
 #tab-layout.style-one-mode .lock-style{opacity:.4;pointer-events:none}
 .scope-tag{font-size:11px;font-weight:400;margin-left:8px;padding:2px 7px;border-radius:3px;vertical-align:middle}
 .scope-master{background:#F5DCA0;color:#6B4E1E}
@@ -706,6 +714,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <button type="button" class="btn small shu" id="bulkSetImage">選択した作品に画像を一括登録</button>
       <button type="button" class="btn small shu" id="bulkSetImageOv" title="選択した作品それぞれに画像を登録し、大きさ・位置・透明度・背景もマスターから切り離してこの作品専用にします">選択した作品に画像を個別登録（大きさ・位置・透明度・背景も上書き）</button>
       <button type="button" class="btn small" id="bulkClearImage">選択した作品の画像を外す</button>
+      <button type="button" class="btn small shu" id="bulkSetSize" title="チェックを入れた作品にだけ、札の寸法を設定します。他の作品はマスターの寸法のままです">選択した作品の札の寸法を変更</button>
       <button type="button" class="btn small" id="bulkDeselect">選択を解除</button>
       <input type="file" id="bulkImageInput" accept="image/png,image/jpeg,image/gif,image/webp,image/*" hidden>
       <input type="file" id="bulkImageInputOv" accept="image/png,image/jpeg,image/gif,image/webp,image/*" hidden>
@@ -771,6 +780,8 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       </div>
       <div id="itemPanel">
         <h5><span id="ipTitle">項目</span><button id="ipClose" title="閉じる">✕</button></h5>
+        <div id="ipLocked">この作品だけの配置にするまで、ここは編集できません。<b>マスター（＝全作品）を書き換えてしまうため</b>です。
+          <button type="button" class="btn small primary" id="ipUnlock">この作品だけ上書きする</button></div>
         <div class="prow"><label>フォント</label>
           <select id="ipFont"></select></div>
         <div class="prow"><label>サイズ</label><input type="number" id="ipSize" min="4" max="60" step="0.5"><span style="font-size:11px;color:var(--sub)">pt</span></div>
@@ -800,6 +811,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
                 <label style="font-size:12px;color:var(--sub)">幅 <input type="number" id="sizeW" min="30" max="300" step="1"> mm</label>
                 <label style="font-size:12px;color:var(--sub)">高さ <input type="number" id="sizeH" min="20" max="420" step="1"> mm</label>
               </div>
+              <p class="note" id="sizeScopeNote" style="margin-top:6px"></p>
             </div>
           </fieldset>
           <fieldset class="grp lock-layout"><legend>書体・行間</legend>
@@ -1019,6 +1031,29 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 </dialog>
 
 <!-- 取り込み -->
+<dialog id="bulkSizeDialog">
+  <div class="dlg-head"><h3>選択した作品の札の寸法</h3><button class="btn ghost small" data-close="bulkSizeDialog">✕ 閉じる</button></div>
+  <div class="dlg-body">
+    <p class="note" id="bulkSizeWho"></p>
+    <div class="ctl"><label class="lbl">面</label>
+      <select id="bulkSizeFace">
+        <option value="cap">キャプション</option>
+        <option value="desc">解説</option>
+      </select></div>
+    <div class="ctl"><label class="lbl">よく使う寸法</label><select id="bulkSizePreset"></select></div>
+    <div class="ctl"><div class="row">
+      <label style="font-size:12px;color:var(--sub)">幅 <input type="number" id="bulkSizeW" min="30" max="300" step="1"> mm</label>
+      <label style="font-size:12px;color:var(--sub)">高さ <input type="number" id="bulkSizeH" min="20" max="420" step="1"> mm</label>
+    </div></div>
+    <p class="note" style="margin-top:8px">ここで決めた寸法は<b>チェックを入れた作品だけ</b>に付きます。ほかの作品は「キャプションの寸法」で決めたマスターの寸法のままです。印刷では、寸法の違う札が混ざっていても幅の入るだけ並べて自動で折り返します。</p>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" data-close="bulkSizeDialog">取り消し</button>
+    <button class="btn" id="bulkSizeClear">マスターの寸法に戻す</button>
+    <button class="btn primary" id="bulkSizeApply">この寸法にする</button>
+  </div>
+</dialog>
+
 <dialog id="driveDialog">
   <div class="dlg-head"><h3>Googleドライブの接続設定<span class="note" style="margin-left:8px">最初に1回だけ設定します</span></h3>
     <button class="btn ghost small" data-close="driveDialog">✕ 閉じる</button></div>
@@ -1657,7 +1692,36 @@ function ensureStyleOverride(work){
   }
   return work.styleOverride;
 }
-function curSize(){return (editMode==="desc")?proj().descSize:proj().size;}
+/* ===== 札の寸法の作品ごとの上書き =====
+   寸法は展覧会（プロジェクト）にひとつだけ持つ作りだったため、「この作品だけ」に
+   チェックを入れて寸法を変えても全作品に及んでいた。作品ごとの寸法を持てるようにする。
+   work.sizeOverride = {cap:{w,h}, desc:{w,h}}（面ごと。無い面はマスターに従う） */
+function sizeOverrideOf(work,mode){return (work&&work.sizeOverride&&work.sizeOverride[mode])||null;}
+function hasSizeOverride(work){return !!(work&&work.sizeOverride&&(work.sizeOverride.cap||work.sizeOverride.desc));}
+function masterSize(p,mode){return (mode==="desc")?p.descSize:p.size;}
+/* その作品・その面で実際に使う寸法 */
+function effectiveSize(work,p,mode){
+  const ov=sizeOverrideOf(work,mode);
+  return ov?{preset:"custom",w:ov.w,h:ov.h}:masterSize(p,mode);
+}
+/* 選んだ作品に寸法を設定する。null を渡すとマスターに戻す */
+function setWorkSize(work,mode,dims){
+  if(!work)return;
+  if(!dims){ if(work.sizeOverride){delete work.sizeOverride[mode];
+      if(!work.sizeOverride.cap&&!work.sizeOverride.desc)delete work.sizeOverride;} return; }
+  if(!work.sizeOverride)work.sizeOverride={};
+  work.sizeOverride[mode]={w:clampSizeW(dims.w),h:clampSizeH(dims.h)};
+}
+function clampSizeW(v){return Math.min(300,Math.max(30,+v||140));}
+function clampSizeH(v){return Math.min(420,Math.max(20,+v||100));}
+function curSize(){
+  const p=proj();
+  if(editScope==="one"){
+    const w=currentWork();
+    if(w&&overrideActive(w))return effectiveSize(w,p,editMode);
+  }
+  return masterSize(p,editMode);
+}
 function visIn(st,key,mode){
   if(mode==="desc")return true;
   return isVisibleRaw(st,key);
@@ -2498,6 +2562,48 @@ function renderList(){const p=proj(),area=$("#worksListArea");const list=p.works
 function syncBulkAll(){const all=$("#bulkAll");if(!all)return;const chks=$$(".bulkChk");all.checked=chks.length>0&&chks.every(c=>c.checked);}
 function updateBulkBar(){const bar=$("#bulkBar");if(!bar)return;const n=bulkSel.size;
   bar.style.display=n?"":"none";const c=$("#bulkCount");if(c)c.textContent=n+"件を選択中";}
+/* ---- 選択した作品だけに札の寸法を付ける ---- */
+function bulkSizeWorks(){return [...bulkSel].map(i=>proj().works[i]).filter(Boolean);}
+function openBulkSize(){
+  const works=bulkSizeWorks();if(!works.length)return;
+  const p=proj();
+  const nos=works.map(w=>(w.no||"").trim()||"（番号なし）");
+  $("#bulkSizeWho").innerHTML=`対象は<b>${works.length}件</b>：${esc(nos.join("、"))}`;
+  $("#bulkSizeFace").value="cap";
+  $("#bulkSizePreset").innerHTML=`<option value="">（そのまま）</option>`
+    +SIZE_PRESETS.filter(x=>x.id!=="custom").map(x=>`<option value="${x.id}">${x.label}</option>`).join("");
+  const cur=effectiveSize(works[0],p,"cap");
+  $("#bulkSizeW").value=cur.w;$("#bulkSizeH").value=cur.h;
+  $("#bulkSizeDialog").showModal();
+}
+$("#bulkSetSize").addEventListener("click",openBulkSize);
+$("#bulkSizeFace").addEventListener("change",()=>{
+  const works=bulkSizeWorks();if(!works.length)return;
+  const cur=effectiveSize(works[0],proj(),$("#bulkSizeFace").value);
+  $("#bulkSizeW").value=cur.w;$("#bulkSizeH").value=cur.h;
+});
+$("#bulkSizePreset").addEventListener("change",e=>{
+  const preset=SIZE_PRESETS.find(x=>x.id===e.target.value);
+  if(!preset)return;
+  $("#bulkSizeW").value=preset.w;$("#bulkSizeH").value=preset.h;
+});
+function afterBulkSize(msg){
+  save();renderList();applyEditScope();refreshLayoutControls();renderEditor();
+  $("#bulkSizeDialog").close();alert(msg);
+}
+$("#bulkSizeApply").addEventListener("click",()=>{
+  const works=bulkSizeWorks();if(!works.length)return;
+  const face=$("#bulkSizeFace").value;
+  const dims={w:$("#bulkSizeW").value,h:$("#bulkSizeH").value};
+  works.forEach(w=>{setWorkSize(w,face,dims);w._ovEditing=true;});
+  afterBulkSize(`${works.length}件の札を ${clampSizeW(dims.w)}×${clampSizeH(dims.h)}mm にしました。`);
+});
+$("#bulkSizeClear").addEventListener("click",()=>{
+  const works=bulkSizeWorks();if(!works.length)return;
+  const face=$("#bulkSizeFace").value;
+  works.forEach(w=>setWorkSize(w,face,null));
+  afterBulkSize(`${works.length}件の札をマスターの寸法に戻しました。`);
+});
 $("#bulkSetImage").addEventListener("click",()=>{if(bulkSel.size)$("#bulkImageInput").click();});
 $("#bulkImageInput").addEventListener("change",e=>{const file=e.target.files[0];e.target.value="";if(!file||!bulkSel.size)return;
   loadImageScaled(file,1400,url=>{
@@ -2735,11 +2841,16 @@ $("#btnCopyTsv").addEventListener("click",async()=>{
 /* ===== レイアウト：全体コントロール ===== */
 let previewIndex=0, userZoom=null, editZoom=1;
 let sel=new Set();
-function refreshLayoutControls(){const p=proj();ensureLayout(p);const st=p.style,s=p.size;
+function refreshLayoutControls(){const p=proj();ensureLayout(p);const st=p.style;
+  /* 個別上書き中はその作品の寸法を出す（マスターの値ではなく、いま描かれている寸法） */
+  const s=curSize(),perWork=!!sizeEditTarget();
+  $("#sizeScopeNote").textContent=perWork
+    ?"この作品だけの寸法です（他の作品はマスターのまま）"
+    :"展覧会のすべての作品に適用されます";
   if(editMode==="desc"){
     $("#sizePreset").parentElement.style.display="none";
     $("#customSizeRow").style.display="";
-    $("#sizeW").value=p.descSize.w;$("#sizeH").value=p.descSize.h;
+    $("#sizeW").value=s.w;$("#sizeH").value=s.h;
   }else{
     $("#sizePreset").parentElement.style.display="";
     $("#sizePreset").innerHTML=SIZE_PRESETS.map(x=>`<option value="${x.id}" ${x.id===s.preset?"selected":""}>${x.label}</option>`).join("");
@@ -2881,15 +2992,34 @@ function renderBgPicker(){const cur=curStyleRead().bg;
       <span class="nm">${b.label}</span></div>`).join("");
   }).join("");
   $$("#bgPicker .bg-item").forEach(it=>it.addEventListener("click",()=>{curStyle().bg=it.dataset.bg;save();renderBgPicker();renderEditor();}));}
+/* 個別編集で「この作品だけ」がONのときは、その作品だけの寸法を書き換える */
+function sizeEditTarget(){
+  if(editScope==="one"){const w=currentWork();if(w&&overrideActive(w))return w;}
+  return null;
+}
 $("#sizePreset").addEventListener("change",e=>{const p=proj(),preset=SIZE_PRESETS.find(x=>x.id===e.target.value);
-  p.size.preset=preset.id;if(preset.id!=="custom"){p.size.w=preset.w;p.size.h=preset.h;}
-  $("#sizeW").value=p.size.w;$("#sizeH").value=p.size.h;$("#customSizeRow").style.display=(preset.id==="custom")?"":"none";
-  userZoom=null;save();renderEditor();});
+  const work=sizeEditTarget();
+  if(work){
+    const cur=effectiveSize(work,p,editMode);
+    const dims=(preset.id==="custom")?{w:cur.w,h:cur.h}:{w:preset.w,h:preset.h};
+    setWorkSize(work,editMode,dims);
+    $("#sizeW").value=dims.w;$("#sizeH").value=dims.h;
+  }else{
+    p.size.preset=preset.id;if(preset.id!=="custom"){p.size.w=preset.w;p.size.h=preset.h;}
+    $("#sizeW").value=p.size.w;$("#sizeH").value=p.size.h;
+  }
+  $("#customSizeRow").style.display=(preset.id==="custom")?"":"none";
+  userZoom=null;save();applyEditScope();renderEditor();});
 ["sizeW","sizeH"].forEach(id=>$("#"+id).addEventListener("input",()=>{const p=proj();
-  const tgt=(editMode==="desc")?p.descSize:p.size;
-  tgt.w=Math.min(300,Math.max(30,+$("#sizeW").value||140));tgt.h=Math.min(420,Math.max(20,+$("#sizeH").value||100));
-  if(editMode!=="desc"){p.size.preset="custom";$("#sizePreset").value="custom";$("#customSizeRow").style.display="";}
-  userZoom=null;save();renderEditor();}));
+  const dims={w:$("#sizeW").value,h:$("#sizeH").value};
+  const work=sizeEditTarget();
+  if(work){setWorkSize(work,editMode,dims);}
+  else{
+    const tgt=masterSize(p,editMode);
+    tgt.w=clampSizeW(dims.w);tgt.h=clampSizeH(dims.h);
+    if(editMode!=="desc"){p.size.preset="custom";$("#sizePreset").value="custom";$("#customSizeRow").style.display="";}
+  }
+  userZoom=null;save();applyEditScope();renderEditor();}));
 $$('input[name=imgFit]').forEach(r=>r.addEventListener("change",()=>{curStyle().imgFit=r.value;refreshImgCustomRow();save();renderEditor();}));
 bindRange("rubyOffset","oRubyOffset",v=>proj().style.rubyOffset=v,"pt");
 $("#rubySizePt").addEventListener("input",e=>{const v=parseFloat(e.target.value);proj().style.rubySizePt=isNaN(v)?null:v;save();renderEditor();});
@@ -3120,7 +3250,7 @@ function applyEditScope(){
   $("#emodeOne").classList.toggle("on",one);
   const w=currentWork();
   // 既に独自配置が保存されている作品は、個別モードに入った時点で編集を有効化
-  if(one&&w&&!w._ovEditing&&(hasOverride(w,"cap")||hasOverride(w,"desc")))w._ovEditing=true;
+  if(one&&w&&!w._ovEditing&&(hasOverride(w,"cap")||hasOverride(w,"desc")||hasSizeOverride(w)))w._ovEditing=true;
   if(one&&w&&!w._styleOvEditing&&hasStyleOverride(w))w._styleOvEditing=true;
   const ovOn=one&&overrideActive(w);
   const styleOn=one&&styleOverrideActive(w);
@@ -3131,7 +3261,7 @@ function applyEditScope(){
   $("#previewWorkSelect").style.display=one?"":"none";
   if(one){
     $("#ovToggle").checked=ovOn;
-    $("#ovReset").style.display=((w&&(hasOverride(w,"cap")||hasOverride(w,"desc")))?"":"none");
+    $("#ovReset").style.display=((w&&(hasOverride(w,"cap")||hasOverride(w,"desc")||hasSizeOverride(w)))?"":"none");
     updateOvStatus();
     $("#imgOvToggle").checked=styleOn;
     $("#imgOvReset").style.display=(w&&hasStyleOverride(w))?"":"none";
@@ -3148,8 +3278,8 @@ function applyEditScope(){
 function updateOvStatus(){
   const s=$("#ovStatus");if(!s)return;const w=currentWork();
   if(editScope!=="one"||!w){s.textContent="";return;}
-  const has=hasOverride(w,"cap")||hasOverride(w,"desc");
-  s.textContent=has?"（この作品は独自配置です）":"";
+  const has=hasOverride(w,"cap")||hasOverride(w,"desc")||hasSizeOverride(w);
+  s.textContent=has?(hasSizeOverride(w)?"（この作品は独自配置・独自寸法です）":"（この作品は独自配置です）"):"";
   s.className="scope-tag "+(has?"scope-master":"");
 }
 function updateImgOvStatus(){
@@ -3186,9 +3316,9 @@ $("#ovToggle").addEventListener("change",e=>{
 });
 $("#ovReset").addEventListener("click",async()=>{
   const w=currentWork();if(!w)return;
-  const ok=await askConfirm("この作品の独自配置をすべて解除し、マスターの配置に戻します。よろしいですか？","マスターに戻す");
+  const ok=await askConfirm("この作品の独自配置と独自寸法をすべて解除し、マスターに戻します。よろしいですか？","マスターに戻す");
   if(!ok)return;
-  delete w.layoutOverride;delete w._ovEditing;
+  delete w.layoutOverride;delete w._ovEditing;delete w.sizeOverride;
   sel.clear();save();applyEditScope();refreshLayoutControls();renderEditor();
 });
 $("#imgOvToggle").addEventListener("change",e=>{
@@ -4017,6 +4147,14 @@ $("#ipClose").addEventListener("click",()=>{sel.clear();updateSelUI();hidePanel(
 function applyToKeys(keys,fn){keys.forEach(k=>fn(curLayout()[k]));save();}
 function applyToSel(fn){applyToKeys([...sel],fn);renderEditor();}
 $("#ipFont").addEventListener("change",e=>applyToSel(L=>L.font=e.target.value));
+/* 「この作品だけ上書きする」を押したら、上書きをONにして選択を保ったまま編集を続けられるようにする */
+$("#ipUnlock").addEventListener("click",()=>{
+  const t=$("#ovToggle");if(!t)return;
+  const keep=[...sel];                       // 上書きの切替で選択が消えるので、選び直さずに済むよう持ち越す
+  t.checked=true;t.dispatchEvent(new Event("change",{bubbles:true}));
+  sel.clear();keep.forEach(k=>sel.add(k));
+  renderEditor();updateSelUI();showPanel();
+});
 $("#ipSize").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.size=v);});
 $("#ipLs").addEventListener("input",e=>{const v=parseFloat(e.target.value);$("#ipLsO").textContent=v.toFixed(2)+"em";applyToSel(L=>L.ls=v);});
 /* 項目ごとの行間。空欄なら「全体の設定に従う」に戻す */
@@ -4130,13 +4268,32 @@ function buildSheets(){const p=proj();ensureLayout(p);
   function marksFor(sheet,x,y,w,h){const x2=x+w,y2=y+h,g=1.5,len=3;
     tick(sheet,x-g-len,y,"h");tick(sheet,x,y-g-len,"v");tick(sheet,x2+g,y,"h");tick(sheet,x2,y-g-len,"v");
     tick(sheet,x-g-len,y2,"h");tick(sheet,x,y2+g,"v");tick(sheet,x2+g,y2,"h");tick(sheet,x2,y2+g,"v");}
-  function place(sheet,work,x,y,edgeL,edgeT){const card=buildCard(work,st,size,{plain:true,mode:face});
+  /* 作品ごとの独自寸法。指定が無ければマスターの寸法 */
+  const sizeOf=w=>effectiveSize(w,p,face);
+  const uniform=works.every(w=>{const z=sizeOf(w);return z.w===size.w&&z.h===size.h;});
+  function place(sheet,work,x,y,edgeL,edgeT){const z=sizeOf(work);
+    const card=buildCard(work,st,z,{plain:true,mode:face});
     card.style.left=x+"mm";card.style.top=y+"mm";
     if(tight){if(edgeL)card.classList.add("edge-l");if(edgeT)card.classList.add("edge-t");}
-    sheet.appendChild(card);if(!tight&&o.marks)marksFor(sheet,x,y,size.w,size.h);}
+    sheet.appendChild(card);if(!tight&&o.marks)marksFor(sheet,x,y,z.w,z.h);}
   if(!works.length)return sheets;
+  /* 寸法が混ざっているときは、幅の入るだけ横に並べ、入らなくなったら行の最大高さぶん下げる
+     （均一なときは従来どおりの等間隔の格子のまま） */
+  function packMixed(M,G){
+    let sheet=null,x=M,y=M,rowH=0;
+    works.forEach(w=>{
+      const z=sizeOf(w);
+      if(!sheet){sheet=newSheet();x=M;y=M;rowH=0;}
+      if(x>M&&x+z.w>SW-M){x=M;y+=rowH+G;rowH=0;}          // 行を変える
+      if(y+z.h>SH-M&&!(x===M&&y===M)){sheet=newSheet();x=M;y=M;rowH=0;} // 次の用紙へ
+      place(sheet,w,round1(x),round1(y),x===M,y===M);
+      x+=z.w+G;rowH=Math.max(rowH,z.h);
+    });
+  }
   const single=o.mode==="single"||size.w>SW-16||size.h>SH-16;
-  if(single){works.forEach(w=>{const s=newSheet();place(s,w,Math.max(0,(SW-size.w)/2),Math.max(0,(SH-size.h)/2),true,true);});}
+  if(single){works.forEach(w=>{const z=sizeOf(w);const s=newSheet();
+    place(s,w,Math.max(0,(SW-z.w)/2),Math.max(0,(SH-z.h)/2),true,true);});}
+  else if(!uniform){packMixed(tight?SAFE_EDGE:(o.marks?12:8),tight?0:(o.marks?10:5));}
   else if(tight){
     // 多くのプリンタは用紙端から3〜5mmが印字不可領域のため、外周の枠線がそこに入ると
     // 上端・左端の線が印刷されない。安全な余白（SAFE_EDGE）を確保し、並べたブロックを
