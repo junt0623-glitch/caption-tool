@@ -200,6 +200,13 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 #tab-layout.one-mode #ipLocked{display:block}
 #ipLocked button{margin-top:6px}
 #tab-layout.style-one-mode .lock-style{opacity:.4;pointer-events:none}
+/* 作品ごとに持てない（展覧会にひとつだけの）設定は、個別の上書き編集中は閉じておく。
+   ここを開けたままだと「この作品だけ」のつもりの操作がマスター＝全作品に及ぶ */
+#tab-layout.perwork-mode .master-only>:not(.master-only-hint):not(legend){opacity:.4;pointer-events:none}
+.master-only-hint{display:none;color:#6B4E1E;background:#FBF3E3;border:1px solid #E4C583;
+  border-radius:4px;padding:5px 7px;margin-bottom:6px;line-height:1.6}
+#tab-layout.perwork-mode .master-only-hint{display:block}
+.scope-note{margin-top:6px}
 .scope-tag{font-size:11px;font-weight:400;margin-left:8px;padding:2px 7px;border-radius:3px;vertical-align:middle}
 .scope-master{background:#F5DCA0;color:#6B4E1E}
 .scope-one{background:#E6E2D6;color:var(--sub)}
@@ -824,9 +831,13 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
               <label class="chk" style="margin-top:4px"><input type="checkbox" id="gfontToggle">Googleフォント（Noto系）をオンラインで読み込む（要ネット接続）</label>
               <p class="note" id="gfontNote" style="margin-top:2px;display:none">オンラインフォントの読み込み中はインターネット接続が必要です。オフラインや館内ネットワークで使う場合は、オンラインフォントを選ばずOFFのままにしてください。</p></div>
             <div class="ctl"><label class="lbl">行間</label><div class="row"><input type="range" id="stLh" min="1.05" max="2.4" step="0.05"><output id="oLh"></output></div></div>
-            <div class="ctl"><label class="lbl">初期配置の余白</label><div class="row"><input type="range" id="stPad" min="2" max="24" step="0.5"><output id="oPad"></output></div></div>
             <label class="chk"><input type="checkbox" id="stBracket">作品名を《　》で囲む</label>
-            <label class="chk" style="display:block;margin-top:6px"><input type="checkbox" id="stVertical">縦書き（試験的）</label>
+            <p class="note scope-note" id="textScopeNote"></p>
+            <div class="master-only">
+              <p class="note master-only-hint">次の設定は展覧会にひとつだけの設定です。作品ごとの編集中は変更できません（マスター＝全作品に及んでしまうため）。</p>
+              <div class="ctl"><label class="lbl">初期配置の余白</label><div class="row"><input type="range" id="stPad" min="2" max="24" step="0.5"><output id="oPad"></output></div></div>
+              <label class="chk" style="display:block;margin-top:6px"><input type="checkbox" id="stVertical">縦書き（試験的）</label>
+            </div>
             <label class="chk" style="display:block;margin-top:4px;margin-left:18px" id="stTcyDigitsRow"><input type="checkbox" id="stTcyDigits">数字を自動で横向きに（縦中横・最大4桁）</label>
             <p class="note" style="margin-top:4px">作品名（英訳）・産地（英訳）など英字項目は横書きのまま表示されます。項目の幅・整列は横書き用の初期値のままなので、縦書きに合わせて「幅」を個別に調整してください。</p>
           </fieldset>
@@ -909,6 +920,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
               <label class="chk"><input type="checkbox" id="shCollEn">所蔵（英訳）</label>
               <label class="chk"><input type="checkbox" id="shDesc">解説文</label>
             </div>
+            <p class="note scope-note" id="showScopeNote"></p>
           </fieldset>
           <fieldset class="grp lock-layout"><legend>ルビの体裁（日本語の項目すべて）</legend>
             <p class="note" style="margin-bottom:6px">ルビの付け方：キャンバスで項目をダブルクリック→文字を選択→パネルの「ルビ」欄によみを入力。<b>文字ごとに振るときはスペース区切り</b>（例：東 海 道）、区切らなければ選択範囲全体に均等割付。<b>作品名・産地（作者）・時代・所蔵・キャッチコピー・解説文など、日本語の項目すべてに振れます</b>（英訳の項目は対象外）。</p>
@@ -930,10 +942,12 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
                 <option value="center">中央</option>
                 <option value="start">行頭寄せ</option>
               </select></div>
+            <p class="note scope-note" id="rubyScopeNote"></p>
           </fieldset>
         </div>
       </div>
-      <fieldset class="grp lock-layout"><legend>スタイルの複製</legend>
+      <fieldset class="grp lock-layout master-only"><legend>スタイルの複製</legend>
+        <p class="note master-only-hint">展覧会まるごとの体裁を入れ替えるため、作品ごとの編集中は使えません。</p>
         <p class="note" style="margin-bottom:8px">この体裁（寸法・配置・背景など）を他の展覧会にも使えます。</p>
         <button class="btn small" id="btnCopyStyle">体裁を書き出し（クリップボード）</button>
         <button class="btn small" id="btnPasteStyle">体裁を貼り付け</button>
@@ -1672,10 +1686,24 @@ function ensureOverrideLayer(work,mode){
 /* ===== 画像・背景の作品ごとの上書き（配置とは別枠） ===== */
 function hasStyleOverride(work){return !!(work&&work.styleOverride&&Object.keys(work.styleOverride).length);}
 function styleOverrideActive(work){return !!(work&&work._styleOvEditing);}
-/* 表示用の実効スタイル（画像・背景）。上書きデータがあれば常に反映（編集ON/OFFに関わらず表示は維持） */
+/* ===== 書体・行間・ルビの体裁・表示項目の作品ごとの上書き =====
+   これらは展覧会（プロジェクト）にひとつだけ持つ作りだったため、「この作品だけ配置を上書きする」に
+   チェックを入れて行間などを変えても、マスター＝他の全作品に及んでしまっていた。
+   work.textOverride = 触れた項目だけを持つ差分（無い項目はマスターに従うので、
+   マスター側を後から変えてもそのまま追随する）。show だけは入れ子なので中身も差分で持つ。 */
+const TEXT_OV_KEYS=["font","lh","bracket","tcyDigits",
+  "rubyOffset","rubySizePt","rubyFont","rubyLs","rubyAlign","rubyFit","show"];
+function hasTextOverride(work){return !!(work&&work.textOverride&&Object.keys(work.textOverride).length);}
+/* 表示用の実効スタイル（画像・背景＋書体まわり）。上書きデータがあれば常に反映（編集ON/OFFに関わらず表示は維持） */
 function effectiveStyle(work,st){
-  if(hasStyleOverride(work))return Object.assign({},st,work.styleOverride);
-  return st;
+  let out=st;
+  if(hasStyleOverride(work))out=Object.assign({},out,work.styleOverride);
+  if(hasTextOverride(work)){
+    const ov=work.textOverride;
+    out=Object.assign({},out,ov);
+    if(ov.show)out.show=Object.assign({},st.show,ov.show);
+  }
+  return out;
 }
 /* 表示・計算用の読み取り専用実効スタイル */
 function curStyleRead(){return effectiveStyle(currentWork(),proj().style);}
@@ -1691,6 +1719,32 @@ function ensureStyleOverride(work){
     work.styleOverride=snap;
   }
   return work.styleOverride;
+}
+/* 「全体の設定」の書体まわりを読むとき用。個別編集で上書きONの作品ならその作品の値、
+   それ以外（マスター編集）はマスターの値を返す */
+function textStyleRead(){
+  const p=proj(),w=(editScope==="one")?currentWork():null;
+  if(!w||!hasTextOverride(w))return p.style;
+  const ov=w.textOverride,out=Object.assign({},p.style,ov);
+  if(ov.show)out.show=Object.assign({},p.style.show,ov.show);
+  return out;
+}
+/* 個別編集で「この作品だけ」がONのときは、その作品だけに書き込む */
+function textEditTarget(){
+  if(editScope==="one"){const w=currentWork();if(w&&overrideActive(w))return w;}
+  return null;
+}
+function setTextStyle(key,val){
+  const w=textEditTarget();
+  if(w){if(!w.textOverride)w.textOverride={};w.textOverride[key]=val;}
+  else proj().style[key]=val;
+}
+function setShowStyle(key,val){
+  const w=textEditTarget();
+  if(w){if(!w.textOverride)w.textOverride={};
+    if(!w.textOverride.show)w.textOverride.show={};
+    w.textOverride.show[key]=val;}
+  else proj().style.show[key]=val;
 }
 /* ===== 札の寸法の作品ごとの上書き =====
    寸法は展覧会（プロジェクト）にひとつだけ持つ作りだったため、「この作品だけ」に
@@ -2289,12 +2343,12 @@ function buildCard(work,st,size,opts){
   card.style.setProperty("--bg-scale",String((est.bgScale==null?100:est.bgScale)/100));
   if(est.bgAccent){const [r,g,b]=cmykToRgb(est.bgAccent.c,est.bgAccent.m,est.bgAccent.y,est.bgAccent.k);card.style.setProperty("--bg-accent",`rgb(${r},${g},${b})`);}
   if(est.textColor){const [r,g,b]=cmykToRgb(est.textColor.c,est.textColor.m,est.textColor.y,est.textColor.k);card.style.color=`rgb(${r},${g},${b})`;}
-  card.style.setProperty("--ruby-offset",((st.rubyOffset==null?2:st.rubyOffset))+"pt");
-  if(st.rubySizePt)card.style.setProperty("--ruby-size",st.rubySizePt+"pt");
-  card.style.setProperty("--ruby-ls",((st.rubyLs||0))+"em");
-  if(st.rubyFont&&st.rubyFont!=="inherit"){card.style.setProperty("--ruby-font",fontStack(st.rubyFont));
-    const rfw=fontWeight(st.rubyFont);if(rfw)card.style.setProperty("--ruby-weight",String(rfw));}
-  card.style.setProperty("--ruby-align",st.rubyAlign||"space-around");
+  card.style.setProperty("--ruby-offset",((est.rubyOffset==null?2:est.rubyOffset))+"pt");
+  if(est.rubySizePt)card.style.setProperty("--ruby-size",est.rubySizePt+"pt");
+  card.style.setProperty("--ruby-ls",((est.rubyLs||0))+"em");
+  if(est.rubyFont&&est.rubyFont!=="inherit"){card.style.setProperty("--ruby-font",fontStack(est.rubyFont));
+    const rfw=fontWeight(est.rubyFont);if(rfw)card.style.setProperty("--ruby-weight",String(rfw));}
+  card.style.setProperty("--ruby-align",est.rubyAlign||"space-around");
   if(mode!=="desc"&&work.image){const im=document.createElement("div");im.className="cap-img";
     im.style.backgroundImage=`url("${work.image}")`;
     if(est.imgFit==="custom"){
@@ -2314,11 +2368,11 @@ function buildCard(work,st,size,opts){
     im2.style.opacity=(m.opacity==null)?1:m.opacity;
     card.appendChild(im2);
   });
-  const defFont=fontStack(st.font);
+  const defFont=fontStack(est.font);
   const LAY=effectiveLayout(work,st,mode);
   modeItems(mode).forEach(it=>{
-    if(!visIn(st,it.key,mode))return;
-    const val=valueOf(work,st,it.key);
+    if(!visIn(est,it.key,mode))return;
+    const val=valueOf(work,est,it.key);
     if(!val&&!opts.editor)return;
     const L=LAY[it.key];
     const el=document.createElement("div");
@@ -2343,9 +2397,9 @@ function buildCard(work,st,size,opts){
     }
     el.dataset.sx=String(sx);el.dataset.sy=String(sy);
     el.style.fontFamily=(L.font==="inherit")?defFont:fontStack(L.font);
-    const effFontKey=(L.font==="inherit")?st.font:L.font;
+    const effFontKey=(L.font==="inherit")?est.font:L.font;
     const fw=fontWeight(effFontKey);if(fw)el.style.fontWeight=fw;
-    el.style.fontSize=L.size+"pt";el.style.lineHeight=(L.lh==null?st.lh:L.lh);
+    el.style.fontSize=L.size+"pt";el.style.lineHeight=(L.lh==null?est.lh:L.lh);
     el.style.letterSpacing=(L.ls||0)+"em";
     el.style.textAlign=(L.align==="inherit")?st.align:L.align;
     if(L.color){const [r,g,b]=cmykToRgb(L.color.c,L.color.m,L.color.y,L.color.k);el.style.color=`rgb(${r},${g},${b})`;}
@@ -2353,16 +2407,16 @@ function buildCard(work,st,size,opts){
     const rubyR=RUBY_KEYS.includes(it.key)?rubyRangesFor(work,it.key):[];
     /* ルビを親文字の幅に収めるのは横書きの項目だけ。縦書きではルビを流れから外すと
        ブラウザ側で親文字の送りが潰れて重なってしまうため、従来どおりの掛け方にする */
-    rubyFitOn=(st.rubyFit==="fit")&&!(st.vertical&&it.group!=="en");
-    const tcyAutoEnabled=st.vertical&&st.tcyDigits!==false&&it.group!=="en";
+    rubyFitOn=(est.rubyFit==="fit")&&!(st.vertical&&it.group!=="en");
+    const tcyAutoEnabled=st.vertical&&est.tcyDigits!==false&&it.group!=="en";
     const tcyAutoSrc=(it.key==="title")?(work.title||""):val;
     const tcyR=tcyRangesFor(work,it.key).concat(tcyAutoEnabled?autoDigitTcyRanges(tcyAutoSrc):[]);
     if(!val){
       el.textContent="（"+it.label+"）";
     }else if(it.key==="title"){
-      if(st.bracket)el.appendChild(document.createTextNode("《"));
+      if(est.bracket)el.appendChild(document.createTextNode("《"));
       buildAnnotated(el,work.title||"",ranges,rubyR,tcyR);
-      if(st.bracket)el.appendChild(document.createTextNode("》"));
+      if(est.bracket)el.appendChild(document.createTextNode("》"));
     }else if(mode==="desc"&&it.key==="description"){
       if(rubyR.length){buildAnnotated(el,val,ranges,rubyR,tcyR);}
       else{buildDescContent(el,val,ranges,tcyR);}
@@ -2882,24 +2936,38 @@ function refreshLayoutControls(){const p=proj();ensureLayout(p);const st=p.style
   setRange("bgOpacity","oBgOp",Math.round((cst.bgOpacity==null?1:cst.bgOpacity)*100),"%");
   setRange("bgScale","oBgScale",Math.round(cst.bgScale==null?100:cst.bgScale),"%");
   $("#textScrim").checked=st.textScrim;
-  $("#fontKind").value=st.font;updateFontMissingWarn();
-  setRange("stLh","oLh",st.lh,"");setRange("stPad","oPad",st.pad,"mm");
-  $("#stBracket").checked=st.bracket;
+  /* 書体・行間・ルビの体裁・表示項目は作品ごとに持てる。いま描かれている値を出す */
+  const tst=textStyleRead();
+  $("#fontKind").value=tst.font;updateFontMissingWarn();
+  setRange("stLh","oLh",tst.lh,"");setRange("stPad","oPad",st.pad,"mm");
+  $("#stBracket").checked=tst.bracket;
   $("#stVertical").checked=!!st.vertical;
-  $("#stTcyDigits").checked=st.tcyDigits!==false;
+  $("#stTcyDigits").checked=tst.tcyDigits!==false;
   $("#stTcyDigitsRow").style.display=st.vertical?"":"none";
-  $("#shNo").checked=st.show.no;$("#shOrigin").checked=st.show.origin;$("#shPeriod").checked=st.show.period;
-  $("#shColl").checked=st.show.collection;$("#shCatch").checked=st.show.catch;$("#shTitleEn").checked=st.show.titleEn;
-  $("#shOriginEn").checked=st.show.originEn;$("#shPeriodEn").checked=st.show.periodEn;$("#shCollEn").checked=st.show.collectionEn;$("#shDesc").checked=st.show.desc;
-  $("#shYomigana").checked=st.show.yomigana;
-  setRange("rubyOffset","oRubyOffset",st.rubyOffset==null?2:st.rubyOffset,"pt");
-  $("#rubySizePt").value=st.rubySizePt||"";
-  $("#rubyFont").value=st.rubyFont||"inherit";
-  setRange("rubyLs","oRubyLs",st.rubyLs||0,"em");
-  $("#rubyAlign").value=st.rubyAlign||"space-around";
-  $("#rubyFit").value=st.rubyFit||"normal";
+  $("#shNo").checked=tst.show.no;$("#shOrigin").checked=tst.show.origin;$("#shPeriod").checked=tst.show.period;
+  $("#shColl").checked=tst.show.collection;$("#shCatch").checked=tst.show.catch;$("#shTitleEn").checked=tst.show.titleEn;
+  $("#shOriginEn").checked=tst.show.originEn;$("#shPeriodEn").checked=tst.show.periodEn;$("#shCollEn").checked=tst.show.collectionEn;$("#shDesc").checked=tst.show.desc;
+  $("#shYomigana").checked=tst.show.yomigana;
+  setRange("rubyOffset","oRubyOffset",tst.rubyOffset==null?2:tst.rubyOffset,"pt");
+  $("#rubySizePt").value=tst.rubySizePt||"";
+  $("#rubyFont").value=tst.rubyFont||"inherit";
+  setRange("rubyLs","oRubyLs",tst.rubyLs||0,"em");
+  $("#rubyAlign").value=tst.rubyAlign||"space-around";
+  $("#rubyFit").value=tst.rubyFit||"normal";
+  updateTextScopeNotes(perWork);
   updateColorSwatches();
   renderPreviewSelect();}
+/* 「この作品だけ」のときに、どこまでがその作品だけの設定なのかを各欄に書き添える */
+function updateTextScopeNotes(perWork){
+  const one="この作品だけの設定です（他の作品はマスターのまま）";
+  const all="展覧会のすべての作品に適用されます";
+  ["textScopeNote","rubyScopeNote","showScopeNote"].forEach(id=>{
+    const el=$("#"+id);if(el)el.textContent=perWork?one:all;
+  });
+  /* 余白・縦書き・体裁の複製は展覧会にひとつしか持てない設定。
+     作品ごとの編集中に触らせるとマスター＝全作品に及んでしまうので閉じておく */
+  $("#tab-layout").classList.toggle("perwork-mode",!!perWork);
+}
 function updateColorSwatches(){
   const cst=curStyleRead();
   setSwatchUI("swTextColor",cst.textColor,"既定（黒）");
@@ -3036,14 +3104,14 @@ $("#sizePreset").addEventListener("change",e=>{const p=proj(),preset=SIZE_PRESET
   }
   userZoom=null;save();applyEditScope();renderEditor();}));
 $$('input[name=imgFit]').forEach(r=>r.addEventListener("change",()=>{curStyle().imgFit=r.value;refreshImgCustomRow();save();renderEditor();}));
-bindRange("rubyOffset","oRubyOffset",v=>proj().style.rubyOffset=v,"pt");
-$("#rubySizePt").addEventListener("input",e=>{const v=parseFloat(e.target.value);proj().style.rubySizePt=isNaN(v)?null:v;save();renderEditor();});
-$("#rubyFont").addEventListener("change",e=>{proj().style.rubyFont=e.target.value;save();renderEditor();});
-bindRange("rubyLs","oRubyLs",v=>proj().style.rubyLs=v,"em");
-$("#rubyAlign").addEventListener("change",e=>{proj().style.rubyAlign=e.target.value;save();renderEditor();});
-$("#rubyFit").addEventListener("change",e=>{proj().style.rubyFit=e.target.value;save();renderEditor();});
+bindRange("rubyOffset","oRubyOffset",v=>setTextStyle("rubyOffset",v),"pt");
+$("#rubySizePt").addEventListener("input",e=>{const v=parseFloat(e.target.value);setTextStyle("rubySizePt",isNaN(v)?null:v);save();renderEditor();});
+$("#rubyFont").addEventListener("change",e=>{setTextStyle("rubyFont",e.target.value);save();renderEditor();});
+bindRange("rubyLs","oRubyLs",v=>setTextStyle("rubyLs",v),"em");
+$("#rubyAlign").addEventListener("change",e=>{setTextStyle("rubyAlign",e.target.value);save();renderEditor();});
+$("#rubyFit").addEventListener("change",e=>{setTextStyle("rubyFit",e.target.value);save();renderEditor();});
 $("#textScrim").addEventListener("change",e=>{proj().style.textScrim=e.target.checked;save();renderEditor();});
-$("#fontKind").addEventListener("change",e=>{proj().style.font=e.target.value;save();renderEditor();updateFontMissingWarn();$("#fontCheckResult").style.display="none";});
+$("#fontKind").addEventListener("change",e=>{setTextStyle("font",e.target.value);save();renderEditor();updateFontMissingWarn();$("#fontCheckResult").style.display="none";});
 
 /* ===== フォント診断：選択中の書体の実フォントがこの端末に入っているか判定する =====
    canvasで総称フォント(monospace/sans-serif/serif)の文字幅と、
@@ -3079,7 +3147,7 @@ function selectedFontUnavailable(key){
 }
 function updateFontMissingWarn(){
   const w=$("#fontMissingWarn");if(!w)return;
-  const key=proj()&&proj().style?proj().style.font:null;
+  const key=(proj()&&proj().style)?textStyleRead().font:null;
   if(key&&selectedFontUnavailable(key)){
     w.style.display="";
     const nm=(FONTS[key]&&FONTS[key].label)||"選択中の書体";
@@ -3090,7 +3158,7 @@ function updateFontMissingWarn(){
   }else{w.style.display="none";}
 }
 $("#btnFontCheck").addEventListener("click",()=>{
-  const key=proj().style.font,f=FONTS[key];const out=$("#fontCheckResult");
+  const key=textStyleRead().font,f=FONTS[key];const out=$("#fontCheckResult");
   if(!f){out.style.display="none";return;}
   const fams=stackFamilies(f.stack);
   const rows=fams.map(n=>`${isFontAvailable(n)?"✓ 利用可":"×  なし"}：${esc(n)}`);
@@ -3125,7 +3193,10 @@ function ensureProjectFonts(){
   const p=proj();if(!p||!p.style)return;
   const keys=new Set([p.style.font,p.style.rubyFont]);
   [p.style.layout,p.style.descLayout].forEach(L=>{if(L)Object.values(L).forEach(it=>{if(it&&it.font)keys.add(it.font);});});
-  (p.works||[]).forEach(w=>{const ov=w.layoutOverride;if(!ov)return;
+  (p.works||[]).forEach(w=>{
+    if(w.textOverride){if(w.textOverride.font)keys.add(w.textOverride.font);
+      if(w.textOverride.rubyFont)keys.add(w.textOverride.rubyFont);}
+    const ov=w.layoutOverride;if(!ov)return;
     ["cap","desc"].forEach(m=>{if(ov[m])Object.values(ov[m]).forEach(it=>{if(it&&it.font)keys.add(it.font);});});});
   keys.forEach(k=>ensureFontLoaded(k));
 }
@@ -3203,15 +3274,15 @@ $("#btnImgRemoveLayout").addEventListener("click",()=>{
 bindRange("imgScale","oImgScale",v=>curStyle().imgScale=v,"%");
 bindRange("imgOffX","oImgOffX",v=>curStyle().imgOffX=v,"mm");
 bindRange("imgOffY","oImgOffY",v=>curStyle().imgOffY=v,"mm");
-bindRange("stLh","oLh",v=>proj().style.lh=v,"");
-bindRange("stPad","oPad",v=>proj().style.pad=v,"mm");
+bindRange("stLh","oLh",v=>setTextStyle("lh",v),"");
+bindRange("stPad","oPad",v=>proj().style.pad=v,"mm");   /* 余白は初期配置を作るときだけ使う展覧会共通の設定 */
 [["shNo","no"],["shOrigin","origin"],["shPeriod","period"],["shColl","collection"],["shCatch","catch"],
  ["shTitleEn","titleEn"],["shOriginEn","originEn"],["shPeriodEn","periodEn"],["shCollEn","collectionEn"],["shDesc","desc"],
  ["shYomigana","yomigana"]].forEach(([id,key])=>{
-  $("#"+id).addEventListener("change",e=>{proj().style.show[key]=e.target.checked;
+  $("#"+id).addEventListener("change",e=>{setShowStyle(key,e.target.checked);
     if(!e.target.checked){const it=ITEMS.find(x=>x.show===key);if(it)sel.delete(it.key);}
     save();renderEditor();});});
-$("#stBracket").addEventListener("change",e=>{proj().style.bracket=e.target.checked;save();renderEditor();});
+$("#stBracket").addEventListener("change",e=>{setTextStyle("bracket",e.target.checked);save();renderEditor();});
 /* 縦書きON/OFF切り替え：切り替え前の配置を横書き用(layoutH)／縦書き用(layoutV)としてそれぞれバックアップし、
    切り替え先に対応するバックアップがあれば復元、なければ初期配置を新規生成する（既存の手動調整を失わないため） */
 $("#stVertical").addEventListener("change",e=>{
@@ -3227,14 +3298,24 @@ $("#stVertical").addEventListener("change",e=>{
   st.vertical=next;
   save();refreshLayoutControls();renderEditor();
 });
-$("#stTcyDigits").addEventListener("change",e=>{proj().style.tcyDigits=e.target.checked;save();renderEditor();});
+$("#stTcyDigits").addEventListener("change",e=>{setTextStyle("tcyDigits",e.target.checked);save();renderEditor();});
 $("#btnResetLayout").addEventListener("click",async()=>{
   const nm=(editMode==="desc")?"解説":"キャプション";
-  const ok=await askConfirm(nm+"面の配置・項目ごとのサイズを初期状態に戻します。よろしいですか？","初期状態に戻す");
+  /* 「この作品だけ」のときは、その作品の上書きだけを捨ててマスターの配置に戻す。
+     ここでマスターを作り直すと他の全作品まで初期状態になってしまう */
+  const work=textEditTarget();
+  const ok=await askConfirm(work
+    ?(nm+"面の配置・項目ごとのサイズを、この作品だけマスターの状態に戻します。よろしいですか？")
+    :(nm+"面の配置・項目ごとのサイズを初期状態に戻します。よろしいですか？"),
+    work?"マスターの配置に戻す":"初期状態に戻す");
   if(!ok)return;
-  if(editMode==="desc")proj().style.descLayout=defaultDescLayout();
+  if(work){
+    if(work.layoutOverride)delete work.layoutOverride[editMode];
+    if(work.layoutOverride&&!work.layoutOverride.cap&&!work.layoutOverride.desc)delete work.layoutOverride;
+    setWorkSize(work,editMode,null);
+  }else if(editMode==="desc")proj().style.descLayout=defaultDescLayout();
   else proj().style.layout=pickDefaultLayout(proj().size,proj().style);
-  sel.clear();save();renderEditor();});
+  sel.clear();save();applyEditScope();refreshLayoutControls();renderEditor();});
 $("#btnCopyStyle").addEventListener("click",async()=>{const text=JSON.stringify({app:"caption-koubou-style",style:proj().style,size:proj().size,descSize:proj().descSize});
   try{await navigator.clipboard.writeText(text);alert("体裁をコピーしました。別の展覧会を開いて「体裁を貼り付け」を押してください。");}catch(e){prompt("この文字列をコピーしてください",text);}});
 $("#btnPasteStyle").addEventListener("click",async()=>{let text="";try{text=await navigator.clipboard.readText();}catch(e){}
@@ -3256,7 +3337,7 @@ let editScope="master"; // "master" | "one"
 function renderPreviewSelect(){const p=proj(),sel2=$("#previewWorkSelect");
   if(previewIndex<0||previewIndex>=p.works.length)previewIndex=p.works.length?0:0;
   sel2.innerHTML=p.works.length?p.works.map((w,i)=>{
-    const marks=(hasOverride(w,"cap")||hasOverride(w,"desc")?" ◆":"")+(hasStyleOverride(w)?" 🖼":"");
+    const marks=(hasOverride(w,"cap")||hasOverride(w,"desc")||hasSizeOverride(w)||hasTextOverride(w)?" ◆":"")+(hasStyleOverride(w)?" 🖼":"");
     return `<option value="${i}" ${i===previewIndex?"selected":""}>${esc((w.no?w.no+"　":"")+oneLine(w.title||w.origin||"（無題）"))}${marks}</option>`;
   }).join(""):`<option value="0">（作品がありません）</option>`;}
 function applyEditScope(){
@@ -3265,7 +3346,7 @@ function applyEditScope(){
   $("#emodeOne").classList.toggle("on",one);
   const w=currentWork();
   // 既に独自配置が保存されている作品は、個別モードに入った時点で編集を有効化
-  if(one&&w&&!w._ovEditing&&(hasOverride(w,"cap")||hasOverride(w,"desc")||hasSizeOverride(w)))w._ovEditing=true;
+  if(one&&w&&!w._ovEditing&&(hasOverride(w,"cap")||hasOverride(w,"desc")||hasSizeOverride(w)||hasTextOverride(w)))w._ovEditing=true;
   if(one&&w&&!w._styleOvEditing&&hasStyleOverride(w))w._styleOvEditing=true;
   const ovOn=one&&overrideActive(w);
   const styleOn=one&&styleOverrideActive(w);
@@ -3276,7 +3357,7 @@ function applyEditScope(){
   $("#previewWorkSelect").style.display=one?"":"none";
   if(one){
     $("#ovToggle").checked=ovOn;
-    $("#ovReset").style.display=((w&&(hasOverride(w,"cap")||hasOverride(w,"desc")||hasSizeOverride(w)))?"":"none");
+    $("#ovReset").style.display=((w&&(hasOverride(w,"cap")||hasOverride(w,"desc")||hasSizeOverride(w)||hasTextOverride(w)))?"":"none");
     updateOvStatus();
     $("#imgOvToggle").checked=styleOn;
     $("#imgOvReset").style.display=(w&&hasStyleOverride(w))?"":"none";
@@ -3293,8 +3374,12 @@ function applyEditScope(){
 function updateOvStatus(){
   const s=$("#ovStatus");if(!s)return;const w=currentWork();
   if(editScope!=="one"||!w){s.textContent="";return;}
-  const has=hasOverride(w,"cap")||hasOverride(w,"desc")||hasSizeOverride(w);
-  s.textContent=has?(hasSizeOverride(w)?"（この作品は独自配置・独自寸法です）":"（この作品は独自配置です）"):"";
+  const marks=[];
+  if(hasOverride(w,"cap")||hasOverride(w,"desc"))marks.push("独自配置");
+  if(hasSizeOverride(w))marks.push("独自寸法");
+  if(hasTextOverride(w))marks.push("独自の書体・行間");
+  const has=marks.length>0;
+  s.textContent=has?("（この作品は"+marks.join("・")+"です）"):"";
   s.className="scope-tag "+(has?"scope-master":"");
 }
 function updateImgOvStatus(){
@@ -3331,9 +3416,9 @@ $("#ovToggle").addEventListener("change",e=>{
 });
 $("#ovReset").addEventListener("click",async()=>{
   const w=currentWork();if(!w)return;
-  const ok=await askConfirm("この作品の独自配置と独自寸法をすべて解除し、マスターに戻します。よろしいですか？","マスターに戻す");
+  const ok=await askConfirm("この作品の独自配置・独自寸法・独自の書体／行間をすべて解除し、マスターに戻します。よろしいですか？","マスターに戻す");
   if(!ok)return;
-  delete w.layoutOverride;delete w._ovEditing;delete w.sizeOverride;
+  delete w.layoutOverride;delete w._ovEditing;delete w.sizeOverride;delete w.textOverride;
   sel.clear();save();applyEditScope();refreshLayoutControls();renderEditor();
 });
 $("#imgOvToggle").addEventListener("change",e=>{
@@ -3998,7 +4083,7 @@ function onCanvasUp(){window.removeEventListener("pointermove",onCanvasMove);con
     else if(!drag.shift && sel.size>1){ sel.clear(); sel.add(drag.pressedKey); updateSelUI(); }
     drag=null;if(sel.size)showPanel();else hidePanel();}
   else if(marq){$("#marquee").style.display="none";
-    if(marq.box){const [x,y,w,h]=marq.box;ITEMS.forEach(it=>{if(!visIn(proj().style,it.key,editMode))return;
+    if(marq.box){const [x,y,w,h]=marq.box;ITEMS.forEach(it=>{if(!visIn(curStyleRead(),it.key,editMode))return;
       const L=curLayout()[it.key];const el=itemEl(it.key);
       const ix=L.x*MM2PX*z,iy=L.y*MM2PX*z,iw=(el?el.offsetWidth:L.w*MM2PX)*z,ih=(el?el.offsetHeight:10)*z;
       if(ix<x+w&&ix+iw>x&&iy<y+h&&iy+ih>y)sel.add(it.key);});}
@@ -4214,7 +4299,7 @@ $("#ipAutoH").addEventListener("change",e=>{
   showPanel();
 });
 
-function checkOverflow(){const p=proj(),st=p.style,size=curSize();let over=false;
+function checkOverflow(){const p=proj(),st=curStyleRead(),size=curSize();let over=false;
   modeItems(editMode).forEach(it=>{if(!visIn(st,it.key,editMode))return;const L=curLayoutRead()[it.key];const h=heightMM(it.key);const w=widthMM(it.key);
     if(L.x<-0.5||L.y<-0.5||L.x+w>size.w+0.5||L.y+h>size.h+0.5)over=true;
     const el=itemEl(it.key);
