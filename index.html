@@ -191,6 +191,14 @@ fieldset.grp legend{font-size:11.5px;color:var(--sub);letter-spacing:.14em;paddi
 /* 個別編集モード：体裁コントロールを操作不可に */
 #tab-layout.one-mode .lock-layout{opacity:.4;pointer-events:none}
 #tab-layout.one-mode #alignBar{opacity:.4;pointer-events:none}
+/* 作品ごとの編集で上書きOFFのときは、小パネルの中身も触れないようにする。
+   ここを開けたままにすると、この作品のつもりの操作がマスター＝全作品に及んでしまう */
+#tab-layout.one-mode #itemPanel .prow,
+#tab-layout.one-mode #itemPanel .note{opacity:.4;pointer-events:none}
+#ipLocked{display:none;background:#FBF3E3;border:1px solid #E4C583;color:#6B4E1E;
+  border-radius:5px;padding:7px 8px;font-size:11px;line-height:1.6;margin-bottom:8px}
+#tab-layout.one-mode #ipLocked{display:block}
+#ipLocked button{margin-top:6px}
 #tab-layout.style-one-mode .lock-style{opacity:.4;pointer-events:none}
 .scope-tag{font-size:11px;font-weight:400;margin-left:8px;padding:2px 7px;border-radius:3px;vertical-align:middle}
 .scope-master{background:#F5DCA0;color:#6B4E1E}
@@ -772,6 +780,8 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       </div>
       <div id="itemPanel">
         <h5><span id="ipTitle">項目</span><button id="ipClose" title="閉じる">✕</button></h5>
+        <div id="ipLocked">この作品だけの配置にするまで、ここは編集できません。<b>マスター（＝全作品）を書き換えてしまうため</b>です。
+          <button type="button" class="btn small primary" id="ipUnlock">この作品だけ上書きする</button></div>
         <div class="prow"><label>フォント</label>
           <select id="ipFont"></select></div>
         <div class="prow"><label>サイズ</label><input type="number" id="ipSize" min="4" max="60" step="0.5"><span style="font-size:11px;color:var(--sub)">pt</span></div>
@@ -4137,6 +4147,14 @@ $("#ipClose").addEventListener("click",()=>{sel.clear();updateSelUI();hidePanel(
 function applyToKeys(keys,fn){keys.forEach(k=>fn(curLayout()[k]));save();}
 function applyToSel(fn){applyToKeys([...sel],fn);renderEditor();}
 $("#ipFont").addEventListener("change",e=>applyToSel(L=>L.font=e.target.value));
+/* 「この作品だけ上書きする」を押したら、上書きをONにして選択を保ったまま編集を続けられるようにする */
+$("#ipUnlock").addEventListener("click",()=>{
+  const t=$("#ovToggle");if(!t)return;
+  const keep=[...sel];                       // 上書きの切替で選択が消えるので、選び直さずに済むよう持ち越す
+  t.checked=true;t.dispatchEvent(new Event("change",{bubbles:true}));
+  sel.clear();keep.forEach(k=>sel.add(k));
+  renderEditor();updateSelUI();showPanel();
+});
 $("#ipSize").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.size=v);});
 $("#ipLs").addEventListener("input",e=>{const v=parseFloat(e.target.value);$("#ipLsO").textContent=v.toFixed(2)+"em";applyToSel(L=>L.ls=v);});
 /* 項目ごとの行間。空欄なら「全体の設定に従う」に戻す */
