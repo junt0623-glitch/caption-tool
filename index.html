@@ -1800,8 +1800,24 @@ function migrateWork(w){
   if(!w.charFmt||typeof w.charFmt!=="object")w.charFmt={};
   if(!w.ruby||typeof w.ruby!=="object")w.ruby={};
   if(w.layoutOverride!=null&&typeof w.layoutOverride!=="object")delete w.layoutOverride;
+  normalizeOverrides(w);
   delete w._ovEditing; // 一時的な編集フラグは読込時にクリア
   return w;
+}
+/* 作品ごとの上書き層を、書き込み時と同じ形にそろえる。
+   これをしないと「作った状態」と「書き出して読み直した状態」で組版がずれる。 */
+function normalizeOverrides(w){
+  if(w.sizeOverride&&typeof w.sizeOverride==="object"){
+    ["cap","desc"].forEach(m=>{const s=w.sizeOverride[m];
+      if(!s||typeof s!=="object"){delete w.sizeOverride[m];return;}
+      s.w=clampSizeW(s.w);s.h=clampSizeH(s.h);});
+    if(!w.sizeOverride.cap&&!w.sizeOverride.desc)delete w.sizeOverride;
+  }else if(w.sizeOverride!=null)delete w.sizeOverride;
+  if(w.textOverride&&typeof w.textOverride==="object"){
+    Object.keys(w.textOverride).forEach(k=>{if(!TEXT_OV_KEYS.includes(k))delete w.textOverride[k];});
+    delete w.textOverride.bracket;   // 《》はマスターと同じく毎回OFF（fixStyleと同じ扱い）
+    if(!Object.keys(w.textOverride).length)delete w.textOverride;
+  }else if(w.textOverride!=null)delete w.textOverride;
 }
 
 /* ===== 保存 ===== */
@@ -2267,15 +2283,19 @@ function fitRubyIn(root){
   $$("ruby.fit",root).forEach(ruby=>{
     const rt=ruby.querySelector("rt");if(!rt)return;
     rt.style.setProperty("--rk","1");
-    /* 親文字は漢字1字なので、送り幅は本文の1em。<ruby>の実測は縦書きだと0になることがあり、
-       画面上の矩形は項目の長体やプレビューの倍率を含んでしまうため、どちらの影響も受けない
-       「1em」と「rtのレイアウト上の寸法（offset系はtransformを含まない）」で比べる */
-    const baseSize=parseFloat(getComputedStyle(ruby).fontSize)||0;   // 親文字は漢字1字＝1em
-    const rtSize=rt.offsetWidth;                                      // offset系はtransformを含まない
-    if(!baseSize||!rtSize)return;
+    /* 親文字とルビを同じ測り方（実測の矩形）で比べる。どちらにも項目の長体やプレビューの
+       倍率が同じだけ掛かっているので、比そのものは倍率に依らず、編集プレビューでも
+       印刷でも同じ値になる。offsetWidth は整数に丸められてしまい、小さなルビほど
+       誤差が効いて画面と印刷で親文字からのはみ出し方が変わるため使わない。 */
+    let baseSize=ruby.getBoundingClientRect().width, rtSize=rt.getBoundingClientRect().width;
+    if(!baseSize||!rtSize){
+      /* 縦書きなどで矩形が取れないときだけ、1em＝親文字1字の送り幅として概算する */
+      baseSize=parseFloat(getComputedStyle(ruby).fontSize)||0;rtSize=rt.offsetWidth;
+      if(!baseSize||!rtSize)return;
+    }
     const k=Math.min(1,baseSize/rtSize);
     /* 縮めすぎると読めないので下限を設ける（既定の下限はDTPの慣例に近い50%） */
-    rt.style.setProperty("--rk",String(Math.max(RUBY_FIT_MIN,k).toFixed(3)));
+    rt.style.setProperty("--rk",String(Math.max(RUBY_FIT_MIN,k).toFixed(5)));
   });
 }
 const RUBY_FIT_MIN=.5;
