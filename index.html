@@ -646,6 +646,9 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 .img-handle{position:absolute;background:var(--shu);border:1.5px solid #fff;border-radius:50%;
   box-shadow:0 0 0 1px rgba(0,0,0,.25);cursor:nwse-resize;z-index:6}
 /* 追加画像（複数貼り付け可・文字の下のレイヤー） */
+/* 印刷時に文字を焼き付けた画像。文字項目と同じ層に、カード全面と同じ寸法で重ねる */
+.cap-card .cap-textlayer{position:absolute;left:0;top:0;z-index:2;pointer-events:none;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
 .cap-card .cap-img2{position:absolute;height:auto;z-index:0;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact;-webkit-user-select:none;user-select:none}
 .edit-holder.editing .cap-img2{pointer-events:auto;cursor:move;touch-action:none}
 .cap-img2.sel-img2{outline:2px dashed var(--shu);outline-offset:-2px;z-index:3} /* 選択中は文字項目より前面に出し、ドラッグ・ホイールを確実に受ける */
@@ -988,6 +991,19 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
           <label class="chk"><input type="checkbox" id="prBorder">切り取り用の枠線を印刷する</label>
           <label class="chk"><input type="checkbox" id="prRuler">原寸確認用の目盛り（100mm）を入れる</label>
           <p class="note" style="margin:2px 0 0 24px">印刷した紙の目盛りを定規で測り、ちょうど100mmなら実際のサイズで出力できています。ずれていれば印刷ダイアログの倍率が100%になっていません。</p></div>
+        <div class="ctl" id="outlineRow"><label class="lbl">文字の扱い</label>
+          <label class="chk"><input type="checkbox" id="prOutline">テキストを画像に変換して印刷（アウトライン化の代わり）</label>
+          <div class="row" id="outlineDpiRow" style="margin:4px 0 0 24px;display:none;align-items:center">
+            <label style="font-size:12px;color:var(--sub)">解像度
+              <select id="prOutlineDpi">
+                <option value="300">300dpi（軽い）</option>
+                <option value="600">600dpi（推奨）</option>
+                <option value="1200">1200dpi（最高品質・重い）</option>
+              </select></label>
+          </div>
+          <p class="note" id="outlineGfWarn" style="margin:4px 0 0 24px;display:none;color:var(--shu)">⚠ <b>オンラインフォントを使っています。</b>画像化の際にはネットから読み込んだ書体を使えないため、代替書体の字形になります。画像化して出す場合は、端末に入っている書体（UDデジタル教科書体・游明朝など）をお選びください。</p>
+          <p class="note" style="margin:2px 0 0 24px"><b>出力先にその書体が入っていなくても字形が変わらない</b>ようにします。文字だけを高解像度の画像に焼き付け、背景デザインと写真はそのまま残すので、粗くなるのは文字だけです。印刷を実行したときに変換します（プレビューは文字のまま表示されます）。<br>※ ブラウザからは書体の字形データを取り出せないため、<b>印刷所が求める本来のベクターのアウトライン化とは異なります</b>（大きく拡大すると輪郭が粗くなります）。厳密なアウトライン化が要る入稿では、PDFに書き出したうえでDTPソフトで処理してください。</p>
+        </div>
         <button class="btn shu" id="btnPrint" style="width:100%;padding:10px;font-size:14px;letter-spacing:.1em">印刷する（実際のサイズ／PDF保存）</button>
         <p class="note" style="margin-top:10px">ボタンを押すと<b>原寸（実際のサイズ）で印刷するための案内</b>が出て、そこから<b>プリンターの詳細設定（印刷ダイアログ）</b>へ進めます。印刷ダイアログで<b>「実際のサイズ／倍率100%」「余白：なし」「背景のグラフィックON」</b>を選ぶと、寸法・背景どおりに出力されます（既定の「用紙に合わせる」のままだと縮小されます）。大型プリンターの場合は用紙サイズをその機種の設定（例：ロール紙・カスタムサイズ）に合わせてください。</p>
       </div>
@@ -4367,12 +4383,16 @@ function refreshPrintControls(){const p=proj();ensureLayout(p);
   $("#sheetCustomW").value=o.sheetCustomW;$("#sheetCustomH").value=o.sheetCustomH;
   $("#prTight").checked=o.tight;$("#prRuler").checked=!!o.ruler;
   $("#prMarks").disabled=o.tight;$("#finishRow").style.opacity=o.tight?.45:1;
+  o.outlineDpi=clampDpi(o.outlineDpi);refreshOutlineRow();
   const secs=sectionsOf(p),sel2=$("#printSection");sel2.innerHTML=`<option value="">すべての作品</option>`+secs.map(s=>`<option value="${esc(s)}" ${s===o.section?"selected":""}>${esc(s)}</option>`).join("");}
 $$('input[name=printMode]').forEach(r=>r.addEventListener("change",()=>{proj().printOpt.mode=r.value;save();renderSheets();}));
 $$('input[name=printFace]').forEach(r=>r.addEventListener("change",()=>{proj().printOpt.face=r.value;save();renderSheets();}));
 $("#prMarks").addEventListener("change",e=>{proj().printOpt.marks=e.target.checked;save();renderSheets();});
 $("#prBorder").addEventListener("change",e=>{proj().printOpt.border=e.target.checked;save();renderSheets();});
 $("#prRuler").addEventListener("change",e=>{proj().printOpt.ruler=e.target.checked;save();renderSheets();});
+/* 文字の画像化は印刷を実行したときに行うので、プレビューの描き直しは要らない */
+$("#prOutline").addEventListener("change",e=>{proj().printOpt.outline=e.target.checked;save();refreshOutlineRow();});
+$("#prOutlineDpi").addEventListener("change",e=>{proj().printOpt.outlineDpi=clampDpi(e.target.value);save();refreshOutlineRow();});
 $("#printSection").addEventListener("change",e=>{proj().printOpt.section=e.target.value;save();renderSheets();});
 $("#sheetKind").addEventListener("change",e=>{proj().printOpt.sheetKind=e.target.value;$("#customSheetRow").style.display=(e.target.value==="custom")?"":"none";save();renderSheets();});
 $("#sheetCustomW").addEventListener("input",e=>{proj().printOpt.sheetCustomW=Math.max(100,+e.target.value||1000);save();renderSheets();});
@@ -4455,8 +4475,97 @@ function renderSheets(){if(!$("#tab-print").classList.contains("active"))return;
     holder.style.width=(dims.w*MM2PX*sheetZoom)+"px";holder.style.height=(dims.h*MM2PX*sheetZoom)+"px";
     s.style.transform=`scale(${sheetZoom})`;s.style.transformOrigin="top left";holder.appendChild(s);scroll.appendChild(holder);});
   fitDescIn(scroll);fitRubyIn(scroll);}
+/* ===== 印刷時のテキストの画像化（アウトライン化の代わり） =====
+   ブラウザからは書体の字形（アウトライン）データを取り出せないので、真のベクター
+   アウトライン化はできない。代わりに、いま画面で組まれているとおりの文字を
+   そのまま高解像度の画像に焼き付けて、出力先にその書体が入っていなくても
+   字形が変わらないようにする。焼き付けるのは文字だけで、背景デザインと写真は
+   元のまま残すため、粗くなるのは文字に限られる。
+   組版そのものはブラウザのレイアウトをそっくり複製して描くので、位置はずれない。 */
+const OUTLINE_DPIS=[300,600,1200];
+function clampDpi(v){v=+v;return OUTLINE_DPIS.includes(v)?v:600;}
+function appCss(){return $$("style").map(s=>s.textContent).join("\n");}
+/* カードから「文字だけの層」を切り出して、SVG（foreignObject）の文字列にする */
+function textLayerSvg(card,dpi){
+  const wmm=parseFloat(card.style.width)||0,hmm=parseFloat(card.style.height)||0;
+  const pxW=Math.max(1,Math.round(wmm/25.4*dpi)),pxH=Math.max(1,Math.round(hmm/25.4*dpi));
+  const clone=card.cloneNode(true);
+  /* 背景・枠線・影は元のカードに残すので、複製側からは消して文字だけにする。
+     縦書きの指定だけは文字の組み方そのものなので引き継ぐ */
+  clone.className="cap-card"+(card.classList.contains("vertical")?" vertical":"");
+  clone.style.transform="";clone.style.boxShadow="none";clone.style.outline="none";
+  clone.style.background="transparent";clone.style.backgroundColor="transparent";
+  /* 用紙に面付けされたカードは left/top（＝用紙内の位置）を持っている。
+     .cap-card は position:relative なので、そのまま複製するとSVGの中で
+     その位置ぶんずれて描かれてしまう。文字の層はカード自身の原点から描く */
+  clone.style.left="0";clone.style.top="0";clone.style.right="auto";clone.style.bottom="auto";
+  clone.style.margin="0";
+  $$(".cap-img,.cap-img2,.scale-ruler",clone).forEach(e=>e.remove());
+  /* outerHTML はXMLとして不正なことがある（<br>など）ので、XMLSerializerでXHTMLにする */
+  const host=document.createElement("div");host.appendChild(clone);
+  const body=new XMLSerializer().serializeToString(host)
+    .replace(/^<div[^>]*>/,"").replace(/<\/div>$/,"");
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${pxW}" height="${pxH}" `
+    +`viewBox="0 0 ${wmm*MM2PX} ${hmm*MM2PX}"><foreignObject width="100%" height="100%">`
+    +`<div xmlns="http://www.w3.org/1999/xhtml"><style>/*<![CDATA[*/${appCss()}/*]]>*/</style>`
+    +`${body}</div></foreignObject></svg>`;
+  return {svg,pxW,pxH,wmm,hmm};
+}
+function rasterizeSvg(spec){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const cv=document.createElement("canvas");cv.width=spec.pxW;cv.height=spec.pxH;
+        cv.getContext("2d").drawImage(img,0,0,spec.pxW,spec.pxH);
+        const url=cv.toDataURL("image/png");
+        cv.width=cv.height=0;           // 大きなキャンバスはすぐ手放す
+        resolve(url);
+      }catch(e){reject(e);}
+    };
+    img.onerror=()=>reject(new Error("文字を画像に変換できませんでした"));
+    img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(spec.svg);
+  });
+}
+/* 印刷用DOMの中の全カードで、文字を1枚の画像に差し替える */
+async function outlineTextIn(root,dpi){
+  const cards=$$(".cap-card",root).filter(c=>c.querySelector(".cap-item"));
+  for(const card of cards){
+    const spec=textLayerSvg(card,dpi);
+    const url=await rasterizeSvg(spec);
+    $$(".cap-item",card).forEach(e=>e.remove());
+    const layer=document.createElement("img");
+    layer.className="cap-textlayer";layer.src=url;layer.alt="";
+    layer.style.width=spec.wmm+"mm";layer.style.height=spec.hmm+"mm";
+    card.appendChild(layer);
+    // 印刷ダイアログを開く前に、画像が確実に貼られた状態にしておく
+    if(!layer.complete)await new Promise(r=>{layer.onload=r;layer.onerror=r;});
+  }
+  return cards.length;
+}
+/* いまの展覧会でオンラインフォント（ネットから読み込む書体）を使っているか。
+   画像化の際は読み込めず代替書体になるため、その旨を知らせるのに使う */
+function usesOnlineFont(){
+  const p=proj();if(!p||!p.style)return false;
+  const keys=new Set([p.style.font,p.style.rubyFont]);
+  [p.style.layout,p.style.descLayout].forEach(L=>{if(L)Object.values(L).forEach(it=>{if(it&&it.font)keys.add(it.font);});});
+  (p.works||[]).forEach(w=>{
+    if(w.textOverride){if(w.textOverride.font)keys.add(w.textOverride.font);
+      if(w.textOverride.rubyFont)keys.add(w.textOverride.rubyFont);}
+    const ov=w.layoutOverride;if(!ov)return;
+    ["cap","desc"].forEach(m=>{if(ov[m])Object.values(ov[m]).forEach(it=>{if(it&&it.font)keys.add(it.font);});});});
+  return [...keys].some(k=>FONTS[k]&&FONTS[k].gf);
+}
+function refreshOutlineRow(){
+  const o=proj().printOpt||{};
+  const on=!!o.outline;
+  $("#prOutline").checked=on;
+  $("#prOutlineDpi").value=String(clampDpi(o.outlineDpi));
+  $("#outlineDpiRow").style.display=on?"":"none";
+  $("#outlineGfWarn").style.display=(on&&usesOnlineFont())?"":"none";
+}
 /* 実際にブラウザの印刷ダイアログ（＝プリンターの詳細設定への入口）を開く */
-function doPrint(){
+async function doPrint(){
   const root=$("#print-root");root.innerHTML="";const sheets=buildSheets();
   if(!sheets.length){alert("印刷できる作品がありません。作品台帳に登録してください。");return false;}
   const dims=sheetDims(proj().printOpt||{sheetKind:"a4"});
@@ -4465,6 +4574,17 @@ function doPrint(){
   // 解説文の自動流し込み調整は寸法計測が必要なため、一時的に画面外で可視化して実行
   root.style.cssText=`display:block;position:absolute;left:-${Math.round(dims.w*3+2000)}px;top:0;width:${dims.w}mm`;
   fitDescIn(root);fitRubyIn(root);
+  /* 文字の画像化は、組版（解説文の自動調整・ルビの収め）が済んだあとに、
+     その結果をそのまま焼き付ける。だから画像化しても位置はずれない */
+  const o=proj().printOpt||{};
+  if(o.outline){
+    try{await outlineTextIn(root,clampDpi(o.outlineDpi));}
+    catch(e){
+      root.style.cssText="";root.innerHTML="";
+      alert("文字を画像に変換できませんでした。\n「テキストを画像に変換して印刷」のチェックを外すか、解像度を下げてお試しください。");
+      return false;
+    }
+  }
   root.style.cssText="";
   window.print();
   return true;
