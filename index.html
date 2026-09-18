@@ -1002,7 +1002,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
               </select></label>
           </div>
           <p class="note" id="outlineGfWarn" style="margin:4px 0 0 24px;display:none;color:var(--shu)">⚠ <b>オンラインフォントを使っています。</b>画像化の際にはネットから読み込んだ書体を使えないため、代替書体の字形になります。画像化して出す場合は、端末に入っている書体（UDデジタル教科書体・游明朝など）をお選びください。</p>
-          <p class="note" style="margin:2px 0 0 24px"><b>出力先にその書体が入っていなくても字形が変わらない</b>ようにします。文字だけを高解像度の画像に焼き付け、背景デザインと写真はそのまま残すので、粗くなるのは文字だけです。印刷を実行したときに変換します（プレビューは文字のまま表示されます）。<br>※ ブラウザからは書体の字形データを取り出せないため、<b>印刷所が求める本来のベクターのアウトライン化とは異なります</b>（大きく拡大すると輪郭が粗くなります）。厳密なアウトライン化が要る入稿では、PDFに書き出したうえでDTPソフトで処理してください。</p>
+          <p class="note" style="margin:2px 0 0 24px"><b>出力先にその書体が入っていなくても字形が変わらない</b>ようにします。文字だけを高解像度の画像に焼き付け、背景デザインと写真はそのまま残すので、粗くなるのは文字だけです。<b>右のプレビューも、実際に印刷されるのと同じ画像化した状態で表示します</b>ので、印刷する前に見て確かめられます（枚数が多いと変換に少し時間がかかります）。<br>※ ブラウザからは書体の字形データを取り出せないため、<b>印刷所が求める本来のベクターのアウトライン化とは異なります</b>（大きく拡大すると輪郭が粗くなります）。厳密なアウトライン化が要る入稿では、PDFに書き出したうえでDTPソフトで処理してください。</p>
         </div>
         <button class="btn shu" id="btnPrint" style="width:100%;padding:10px;font-size:14px;letter-spacing:.1em">印刷する（実際のサイズ／PDF保存）</button>
         <p class="note" style="margin-top:10px">ボタンを押すと<b>原寸（実際のサイズ）で印刷するための案内</b>が出て、そこから<b>プリンターの詳細設定（印刷ダイアログ）</b>へ進めます。印刷ダイアログで<b>「実際のサイズ／倍率100%」「余白：なし」「背景のグラフィックON」</b>を選ぶと、寸法・背景どおりに出力されます（既定の「用紙に合わせる」のままだと縮小されます）。大型プリンターの場合は用紙サイズをその機種の設定（例：ロール紙・カスタムサイズ）に合わせてください。</p>
@@ -1010,6 +1010,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <div>
         <div class="edit-topbar">
           <output id="sheetCount" class="note"></output>
+          <output id="outlineBakeNote" class="note" style="color:var(--shu)"></output>
           <span style="flex:1"></span>
           <button class="btn small" data-szoom="-">縮小 −</button>
           <output id="sheetZoomLabel" style="font-size:12px;min-width:44px;text-align:center">50%</output>
@@ -4390,9 +4391,9 @@ $$('input[name=printFace]').forEach(r=>r.addEventListener("change",()=>{proj().p
 $("#prMarks").addEventListener("change",e=>{proj().printOpt.marks=e.target.checked;save();renderSheets();});
 $("#prBorder").addEventListener("change",e=>{proj().printOpt.border=e.target.checked;save();renderSheets();});
 $("#prRuler").addEventListener("change",e=>{proj().printOpt.ruler=e.target.checked;save();renderSheets();});
-/* 文字の画像化は印刷を実行したときに行うので、プレビューの描き直しは要らない */
-$("#prOutline").addEventListener("change",e=>{proj().printOpt.outline=e.target.checked;save();refreshOutlineRow();});
-$("#prOutlineDpi").addEventListener("change",e=>{proj().printOpt.outlineDpi=clampDpi(e.target.value);save();refreshOutlineRow();});
+/* 画像化の切り替えはプレビューにもそのまま出す（印刷前に見て確かめられるように） */
+$("#prOutline").addEventListener("change",e=>{proj().printOpt.outline=e.target.checked;save();refreshOutlineRow();renderSheets();});
+$("#prOutlineDpi").addEventListener("change",e=>{proj().printOpt.outlineDpi=clampDpi(e.target.value);save();refreshOutlineRow();renderSheets();});
 $("#printSection").addEventListener("change",e=>{proj().printOpt.section=e.target.value;save();renderSheets();});
 $("#sheetKind").addEventListener("change",e=>{proj().printOpt.sheetKind=e.target.value;$("#customSheetRow").style.display=(e.target.value==="custom")?"":"none";save();renderSheets();});
 $("#sheetCustomW").addEventListener("input",e=>{proj().printOpt.sheetCustomW=Math.max(100,+e.target.value||1000);save();renderSheets();});
@@ -4474,7 +4475,13 @@ function renderSheets(){if(!$("#tab-print").classList.contains("active"))return;
   sheets.forEach(s=>{const holder=document.createElement("div");holder.className="sheet-holder";
     holder.style.width=(dims.w*MM2PX*sheetZoom)+"px";holder.style.height=(dims.h*MM2PX*sheetZoom)+"px";
     s.style.transform=`scale(${sheetZoom})`;s.style.transformOrigin="top left";holder.appendChild(s);scroll.appendChild(holder);});
-  fitDescIn(scroll);fitRubyIn(scroll);}
+  fitDescIn(scroll);fitRubyIn(scroll);
+  /* 「テキストを画像に変換して印刷」を選んでいるときは、プレビューも
+     実際に出るのと同じ画像化した状態にする（時間がかかるので裏で1枚ずつ） */
+  previewBakeId++;                        // 前回の変換は打ち切る
+  previewBakeNote("");
+  if(o.outline)outlinePreviewIn(scroll,clampDpi(o.outlineDpi));
+}
 /* ===== 印刷時のテキストの画像化（アウトライン化の代わり） =====
    ブラウザからは書体の字形（アウトライン）データを取り出せないので、真のベクター
    アウトライン化はできない。代わりに、いま画面で組まれているとおりの文字を
@@ -4527,21 +4534,71 @@ function rasterizeSvg(spec){
     img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(spec.svg);
   });
 }
+/* 焼き上がりの控え。同じ見た目・同じ解像度なら焼き直さない。
+   プレビューの拡大縮小や、プレビューのあとの印刷が待たされないようにするため。
+   SVGの文字列そのものが「見た目が同じか」の答えなので、それを短く縮めた値を鍵にする */
+const outlineCache=new Map();
+const OUTLINE_CACHE_MAX=80;
+function hashStr(s){let h=5381;for(let i=0;i<s.length;i++)h=(((h<<5)+h)+s.charCodeAt(i))|0;return h.toString(36);}
+async function rasterizeCached(spec){
+  const key=hashStr(spec.svg)+"|"+spec.pxW+"x"+spec.pxH;
+  if(outlineCache.has(key)){
+    const url=outlineCache.get(key);
+    outlineCache.delete(key);outlineCache.set(key,url);   // 使ったものを新しい側へ
+    return url;
+  }
+  const url=await rasterizeSvg(spec);
+  outlineCache.set(key,url);
+  while(outlineCache.size>OUTLINE_CACHE_MAX)outlineCache.delete(outlineCache.keys().next().value);
+  return url;
+}
+/* 焼いた文字をカードに貼り、元の文字項目を外す */
+function applyTextLayer(card,spec,url){
+  $$(".cap-item",card).forEach(e=>e.remove());
+  const layer=document.createElement("img");
+  layer.className="cap-textlayer";layer.src=url;layer.alt="";
+  layer.style.width=spec.wmm+"mm";layer.style.height=spec.hmm+"mm";
+  card.appendChild(layer);
+  return layer;
+}
 /* 印刷用DOMの中の全カードで、文字を1枚の画像に差し替える */
 async function outlineTextIn(root,dpi){
   const cards=$$(".cap-card",root).filter(c=>c.querySelector(".cap-item"));
   for(const card of cards){
     const spec=textLayerSvg(card,dpi);
-    const url=await rasterizeSvg(spec);
-    $$(".cap-item",card).forEach(e=>e.remove());
-    const layer=document.createElement("img");
-    layer.className="cap-textlayer";layer.src=url;layer.alt="";
-    layer.style.width=spec.wmm+"mm";layer.style.height=spec.hmm+"mm";
-    card.appendChild(layer);
+    const url=await rasterizeCached(spec);
+    const layer=applyTextLayer(card,spec,url);
     // 印刷ダイアログを開く前に、画像が確実に貼られた状態にしておく
     if(!layer.complete)await new Promise(r=>{layer.onload=r;layer.onerror=r;});
   }
   return cards.length;
+}
+/* 印刷プレビューでも、実際に出るのと同じ「画像化した文字」を見せる。
+   枚数が多いと時間がかかるので、1枚ずつ差し替えながら進み具合を出し、
+   途中で設定が変わったら（＝描き直しが始まったら）その場でやめる。 */
+let previewBakeId=0;
+function previewBakeNote(text){const el=$("#outlineBakeNote");if(el)el.textContent=text||"";}
+async function outlinePreviewIn(scroll,dpi){
+  const myId=++previewBakeId;
+  const cards=$$(".cap-card",scroll).filter(c=>c.querySelector(".cap-item"));
+  if(!cards.length){previewBakeNote("");return 0;}
+  let done=0;
+  for(const card of cards){
+    if(myId!==previewBakeId)return done;        // 別の描き直しに追い越された
+    previewBakeNote(`文字を画像に変換中… ${done+1}/${cards.length}`);
+    try{
+      const spec=textLayerSvg(card,dpi);
+      const url=await rasterizeCached(spec);
+      if(myId!==previewBakeId)return done;
+      applyTextLayer(card,spec,url);
+      done++;
+    }catch(e){
+      previewBakeNote("文字を画像に変換できませんでした（印刷は文字のまま出ます）");
+      return done;
+    }
+  }
+  if(myId===previewBakeId)previewBakeNote(`文字を画像に変換した状態で表示中（${dpi}dpi・印刷でもこのとおり出ます）`);
+  return done;
 }
 /* いまの展覧会でオンラインフォント（ネットから読み込む書体）を使っているか。
    画像化の際は読み込めず代替書体になるため、その旨を知らせるのに使う */

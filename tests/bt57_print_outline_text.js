@@ -323,6 +323,102 @@ async function run() {
     });
     t.eq([clamped.v, clamped.ui], [600, '600'], '想定外の解像度は600dpiに丸める');
 
+    /* ===== 9. 印刷プレビューでも、画像化した状態で確かめられる ===== */
+    await page.evaluate(() => { proj().printOpt.face = 'cap'; save(); refreshPrintControls(); renderSheets(); });
+    await page.waitForTimeout(600);
+
+    const prev = () => page.evaluate(() => ({
+      cards: document.querySelectorAll('#sheetScroll .cap-card').length,
+      items: document.querySelectorAll('#sheetScroll .cap-item').length,
+      layers: document.querySelectorAll('#sheetScroll .cap-textlayer').length,
+      note: document.getElementById('outlineBakeNote').textContent
+    }));
+    /* 変換が終わるまで待つ（枚数ぶん焼けたら完了） */
+    const waitBake = async (n) => {
+      for (let i = 0; i < 60; i++) {
+        const s = await prev();
+        if (s.layers >= n && s.items === 0) return s;
+        await page.waitForTimeout(200);
+      }
+      return prev();
+    };
+
+    await setOutline(false);
+    await page.waitForTimeout(500);
+    const pOff = await prev();
+    t.ok(pOff.items > 0, `OFFのプレビューは文字のまま（${pOff.items}項目）`);
+    t.eq(pOff.layers, 0, 'OFFのプレビューには画像化した文字が無い');
+    t.eq(pOff.note, '', 'OFFのときは案内も出さない');
+
+    await setOutline(true, 600);
+    const pOn = await waitBake(pOff.cards);
+    t.eq(pOn.items, 0, 'ONにするとプレビューの文字も画像に置き換わる');
+    t.eq(pOn.layers, pOff.cards, `プレビューでも枚数ぶん画像化される（${pOn.layers}枚）`);
+    t.ok(pOn.note.includes('600dpi'), `どの解像度で見ているかを示す（${pOn.note}）`);
+    t.ok(pOn.note.includes('印刷でもこのとおり'), '印刷と同じものだと案内する');
+
+    // プレビューの画像も、選んだ解像度どおりに焼かれている
+    const prevPx = await page.evaluate(() => {
+      const l = document.querySelector('#sheetScroll .cap-textlayer');
+      const card = l.closest('.cap-card');
+      return { px: [l.naturalWidth, l.naturalHeight], w: card.style.width,
+               layerW: l.style.width, layerH: l.style.height, cardH: card.style.height };
+    });
+    t.eq(prevPx.px, [Math.round(parseFloat(prevPx.w) / 25.4 * 600), Math.round(parseFloat(prevPx.cardH) / 25.4 * 600)],
+      `プレビューの画像も600dpiで焼かれている（${prevPx.px.join('×')}）`);
+    t.eq([prevPx.layerW, prevPx.layerH], [prevPx.w, prevPx.cardH], 'プレビューでもカードと同じ寸法に置く');
+
+    // 解像度を変えるとプレビューも焼き直す
+    await setOutline(true, 300);
+    await waitBake(pOff.cards);
+    const px300 = await page.evaluate(() => {
+      const l = document.querySelector('#sheetScroll .cap-textlayer');
+      return { px: [l.naturalWidth, l.naturalHeight], note: document.getElementById('outlineBakeNote').textContent };
+    });
+    t.eq(px300.px, [Math.round(parseFloat(prevPx.w) / 25.4 * 300), Math.round(parseFloat(prevPx.cardH) / 25.4 * 300)],
+      `解像度を変えるとプレビューも焼き直す（${px300.px.join('×')}）`);
+    t.ok(px300.note.includes('300dpi'), '案内の解像度も変わる');
+
+    // 拡大縮小しても画像化した状態のまま（焼き直しは控えを使うので待たされない）
+    const zoomed = await page.evaluate(async () => {
+      sheetZoom = 0.8; renderSheets();
+      await new Promise(r => setTimeout(r, 400));
+      return { items: document.querySelectorAll('#sheetScroll .cap-item').length,
+               layers: document.querySelectorAll('#sheetScroll .cap-textlayer').length };
+    });
+    t.eq(zoomed.items, 0, 'プレビューを拡大縮小しても文字のままには戻らない');
+    t.eq(zoomed.layers, pOff.cards, '拡大縮小後も画像化した文字がそろっている');
+
+    // 変換の途中で切り替えても、中途半端な状態で止まらない
+    await page.evaluate(() => {
+      const s = document.getElementById('prOutlineDpi');
+      s.value = '1200'; s.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.waitForTimeout(150);
+    await setOutline(false);
+    await page.waitForTimeout(1500);
+    const aborted = await prev();
+    t.eq(aborted.layers, 0, '変換の途中でOFFにしたら、画像化を打ち切って文字に戻す');
+    t.ok(aborted.items > 0, '文字が全部そろった状態に戻る');
+    t.eq(aborted.note, '', '途中経過の案内も消える');
+
+    // プレビューで画像化したあとに印刷しても、同じものが出る
+    await setOutline(true, 600);
+    await waitBake(pOff.cards);
+    await page.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
+    const printedAfterPreview = await page.evaluate(async () => {
+      const prevSrc = document.querySelector('#sheetScroll .cap-textlayer').src;
+      await doPrint();
+      const l = document.querySelector('#print-root .cap-textlayer');
+      return { same: !!l && l.src === prevSrc,
+               items: document.querySelectorAll('#print-root .cap-item').length,
+               printed: window.__printed };
+    });
+    t.eq(printedAfterPreview.printed, 1, 'プレビューのあとでも印刷できる');
+    t.eq(printedAfterPreview.items, 0, '印刷でも文字は画像になっている');
+    t.eq(printedAfterPreview.same, true, 'プレビューで見た画像がそのまま印刷に使われる');
+    await page.evaluate(() => { document.getElementById('print-root').innerHTML = ''; });
+
     t.noErrors(errors);
     const r = t.finish();
     await browser.close();
