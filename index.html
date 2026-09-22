@@ -905,8 +905,8 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
               <div class="ctl row-ctl"><label class="lbl">位置ずらし（縦）</label><div class="row"><input type="range" id="imgOffY" min="-150" max="150" step="1"><output id="oImgOffY"></output></div></div>
             </div>
             <div class="ctl"><label class="lbl">画像の濃さ（透明度）</label><div class="row"><input type="range" id="imgOpacity" min="0" max="100" step="1"><output id="oImgOp"></output></div></div>
-            </div>
             <label class="chk"><input type="checkbox" id="textScrim">文字の下に白い敷きを入れる</label>
+            </div>
             <p class="note" style="margin-top:6px">画像は「見本にする作品」に登録されます（作品台帳の「編集」画面からも登録できます）。「自由」を選ぶと、<b>キャンバス上の画像を直接ドラッグで移動、右下の橙のハンドルで拡大・縮小</b>できます（Escで選択解除）。</p>
           </fieldset>
           <fieldset class="grp lock-layout"><legend>表示する項目（作品名は常に表示）</legend>
@@ -2367,7 +2367,7 @@ function fitDescEl(el){
 function fitDescIn(root){let ok=true;$$(".fit-desc",root).forEach(el=>{if(!fitDescEl(el))ok=false;});return ok;}
 
 /* 画像・背景の作品ごとの上書き（styleOverride）：無ければマスターの値をそのまま使う */
-const STYLE_OV_KEYS=["bg","bgFill","bgAccent","bgOpacity","textColor","imgFit","imgScale","imgOffX","imgOffY","imgOpacity"];
+const STYLE_OV_KEYS=["bg","bgFill","bgAccent","bgOpacity","textColor","imgFit","imgScale","imgOffX","imgOffY","imgOpacity","textScrim"];
 function buildCard(work,st,size,opts){
   opts=opts||{};ensureLayoutStyle(st,size);
   const mode=opts.mode||"cap";
@@ -2415,7 +2415,7 @@ function buildCard(work,st,size,opts){
     if(!val&&!opts.editor)return;
     const L=LAY[it.key];
     const el=document.createElement("div");
-    el.className="cap-item it-"+it.key+(it.group==="en"?" cap-item-en":"")+((mode!=="desc"&&work.image&&st.textScrim)?" scrim":"")+((!val&&opts.editor)?" ph":"");
+    el.className="cap-item it-"+it.key+(it.group==="en"?" cap-item-en":"")+((mode!=="desc"&&work.image&&est.textScrim)?" scrim":"")+((!val&&opts.editor)?" ph":"");
     el.dataset.item=it.key;
     el.style.left=L.x+"mm";el.style.top=L.y+"mm";
     /* 文字の縦横幅（長体・平体）：字形だけを伸縮させ、枠の実寸(L.w/L.h)は変えない。
@@ -2974,7 +2974,7 @@ function refreshLayoutControls(){const p=proj();ensureLayout(p);const st=p.style
   refreshImgCustomRow();
   setRange("bgOpacity","oBgOp",Math.round((cst.bgOpacity==null?1:cst.bgOpacity)*100),"%");
   setRange("bgScale","oBgScale",Math.round(cst.bgScale==null?100:cst.bgScale),"%");
-  $("#textScrim").checked=st.textScrim;
+  $("#textScrim").checked=cst.textScrim;
   /* 書体・行間・ルビの体裁・表示項目は作品ごとに持てる。いま描かれている値を出す */
   const tst=textStyleRead();
   $("#fontKind").value=tst.font;updateFontMissingWarn();
@@ -3149,7 +3149,7 @@ $("#rubyFont").addEventListener("change",e=>{setTextStyle("rubyFont",e.target.va
 bindRange("rubyLs","oRubyLs",v=>setTextStyle("rubyLs",v),"em");
 $("#rubyAlign").addEventListener("change",e=>{setTextStyle("rubyAlign",e.target.value);save();renderEditor();});
 $("#rubyFit").addEventListener("change",e=>{setTextStyle("rubyFit",e.target.value);save();renderEditor();});
-$("#textScrim").addEventListener("change",e=>{proj().style.textScrim=e.target.checked;save();renderEditor();});
+$("#textScrim").addEventListener("change",e=>{curStyle().textScrim=e.target.checked;save();renderEditor();});
 $("#fontKind").addEventListener("change",e=>{setTextStyle("font",e.target.value);save();renderEditor();updateFontMissingWarn();$("#fontCheckResult").style.display="none";});
 
 /* ===== フォント診断：選択中の書体の実フォントがこの端末に入っているか判定する =====
@@ -4278,7 +4278,12 @@ function doAlign(mode){const p=proj();if(!sel.size)return;const keys=[...sel];co
 
 /* 小パネル */
 function commonVal(getter){const keys=[...sel];const first=getter(keys[0]);return keys.every(k=>getter(k)===first)?first:null;}
-function showPanel(){const p=proj();if(!sel.size){hidePanel();return;}const keys=[...sel];
+function showPanel(){const p=proj();
+  /* いまの面（キャプション／解説）に無い項目が選ばれたままのことがある。
+     そのまま読むと落ちるので、いまの面にある項目だけに絞ってから開く */
+  const LAY0=curLayoutRead();
+  [...sel].forEach(k=>{if(!LAY0[k])sel.delete(k);});
+  if(!sel.size){hidePanel();return;}const keys=[...sel];
   $("#ipTitle").textContent = keys.length===1?ITEM_BY_KEY[keys[0]].label:keys.length+"項目を編集";
   updateItemPanelLabels(keys.length===1?isItemVertical(keys[0]):(proj().style.vertical&&keys.every(k=>isItemVertical(k))));
   const font=commonVal(k=>curLayoutRead()[k].font); $("#ipFont").value=font==null?"inherit":font;
