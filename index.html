@@ -2230,6 +2230,60 @@ const RUBY_KEYS=ITEMS.filter(i=>i.group!=="en").map(i=>i.key);
 function rubyRangesFor(work,key){return (work&&work.ruby&&work.ruby[key])||[];}
 /* 縦中横（手動指定分）：work.tcy[key] = [{start,end}, ...] */
 function tcyRangesFor(work,key){return (work&&work.tcy&&work.tcy[key])||[];}
+
+/* ===== 文字を編集しても、ルビや文字ごとの書式が同じ文字に付いたままになるようにする =====
+   ルビは「何文字目から何文字目まで」で覚えているので、前のほうに文字を足したり消したり
+   すると、そのぶん後ろのルビが別の文字にずれてしまう。
+   編集の前後の文章を見比べ、「先頭から変わっていない長さ」と「末尾から変わっていない長さ」を
+   手がかりに、付いていた文字を追いかけて付け直す。 */
+function textEditMap(oldText,newText){
+  const o=String(oldText==null?"":oldText), n=String(newText==null?"":newText);
+  let head=0;
+  const lim=Math.min(o.length,n.length);
+  while(head<lim&&o[head]===n[head])head++;                 // 先頭から一致する長さ
+  let tail=0;
+  const rest=Math.min(o.length-head,n.length-head);
+  while(tail<rest&&o[o.length-1-tail]===n[n.length-1-tail])tail++;   // 末尾から一致する長さ
+  return {head,oTail:o.length-tail,nTail:n.length-tail,delta:n.length-o.length};
+}
+/* 位置をひとつ付け替える。
+   範囲の始まりは「後ろの文字について行く」、終わりは「前の文字について行く」ように寄せると、
+   ルビのすぐ前後に文字を打ってもルビが余計に伸びない。 */
+function mapTextPos(m,pos,isEnd){
+  if(isEnd){
+    if(pos<=m.head)return pos;
+    if(pos>=m.oTail)return pos+m.delta;
+    return m.nTail;                       // 書き換えられた範囲の中
+  }
+  if(pos>=m.oTail)return pos+m.delta;
+  if(pos<=m.head)return pos;
+  return m.head;
+}
+function remapRanges(list,m){
+  if(!Array.isArray(list))return [];
+  return list.map(r=>{
+    /* 付いていた文字がまるごと書き換え（削除）の中に入ってしまったものは、
+       行き先が無いので落とす。文章をそっくり差し替えたときに、
+       古いルビが全体に残ってしまうのを防ぐ */
+    if(r.start>=m.head&&r.end<=m.oTail)return null;
+    const s=mapTextPos(m,r.start,false), e=mapTextPos(m,r.end,true);
+    return (e>s)?Object.assign({},r,{start:s,end:e}):null;
+  }).filter(Boolean);
+}
+/* 文章を差し替える。ルビ・文字ごとの書式・縦中横は同じ文字に付いたまま残す */
+function setWorkText(work,key,text){
+  if(!work)return;
+  const before=work[key];
+  if(before===text){work[key]=text;return;}
+  const m=textEditMap(before,text);
+  ["ruby","charFmt","tcy"].forEach(bag=>{
+    const box=work[bag];
+    if(!box||!Array.isArray(box[key])||!box[key].length)return;
+    const next=remapRanges(box[key],m);
+    if(next.length)box[key]=next;else delete box[key];
+  });
+  work[key]=text;
+}
 /* 数字の自動縦中横：半角数字の連続run（最大4桁まで）を自動検出してtcy範囲として返す。
    5桁以上のrunは対象外（回転させず通常の縦書き数字のまま表示） */
 function autoDigitTcyRanges(text){
@@ -2793,7 +2847,7 @@ $("#f_imageInput").addEventListener("change",e=>{const file=e.target.files[0];e.
   loadImageScaled(file,1400,url=>{if(!url){alert("画像を読み込めませんでした。");return;}editImage=url;setThumb();});});
 $("#btnRemoveImage").addEventListener("click",()=>{editImage="";setThumb();});
 $("#btnSaveWork").addEventListener("click",()=>{const p=proj();const w=editingIndex>=0?p.works[editingIndex]:newWork();
-  FIELDS.forEach(f=>{w[f.key]=$("#f_"+f.key).value.trim();});w.image=editImage;if(editingIndex<0)p.works.push(w);
+  FIELDS.forEach(f=>{setWorkText(w,f.key,$("#f_"+f.key).value.trim());});w.image=editImage;if(editingIndex<0)p.works.push(w);
   save();$("#workDialog").close();renderSectionFilter();renderList();renderPreviewSelect();renderEditor();});
 $("#btnDeleteWork").addEventListener("click",async()=>{if(editingIndex<0)return;const w=proj().works[editingIndex];
   const ok=await askConfirm(`作品「${w.title||w.no||"（無題）"}」を削除します。よろしいですか？`,"削除する");
@@ -3604,7 +3658,7 @@ function refitInlineEdit(el){
   if(key&&w){
     const pos=caretOffsetIn(el);
     const text=(el.innerText||"").replace(/ /g," ").replace(/\n+$/,"");
-    w[key]=text;   // 組み直しの材料にする（保存は編集を終えたとき）
+    setWorkText(w,key,text);   // 組み直しの材料にする（保存は編集を終えたとき）
     el.innerHTML="";   // buildDescContent は足すだけなので、先に空にする
     buildDescContent(el,text,(w.charFmt&&w.charFmt[key])||[],tcyRangesFor(w,key));
     setCaretOffset(el,pos);
@@ -3632,7 +3686,7 @@ function finishInlineEdit(){
     el.removeEventListener("blur",inlineBlur);
     el.removeEventListener("input",onInlineInput);
     let text=(el.innerText||"").replace(/\u00a0/g," ").replace(/\n+$/,"");
-    w[key]=text;save();
+    setWorkText(w,key,text);save();
   }
   renderEditor();renderList();renderPreviewSelect();
 }
