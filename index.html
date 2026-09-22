@@ -1935,7 +1935,9 @@ function updateUndoButtons(){
      マウスで確定した場合など打鍵が続かないこともあるので時間でも打ち切る） */
 let imeComposing=false,imeJustEnded=false,imeEndedAt=0;
 document.addEventListener("compositionstart",()=>{imeComposing=true;imeJustEnded=false;},true);
-document.addEventListener("compositionend",()=>{imeComposing=false;imeJustEnded=true;imeEndedAt=Date.now();},true);
+document.addEventListener("compositionend",()=>{imeComposing=false;imeJustEnded=true;imeEndedAt=Date.now();
+  // 変換が決まったら、その字形で枠に収め直す
+  if(inlineEditKey)refitInlineEdit(itemEl(inlineEditKey));},true);
 document.addEventListener("keyup",()=>{imeJustEnded=false;},true);
 function isComposingKey(e){
   if(e&&(e.isComposing||e.keyCode===229))return true;
@@ -3545,14 +3547,17 @@ function startInlineEdit(key){
   inlineEditKey=key;
   el.classList.remove("ph");
   el.innerHTML="";
-  buildRichText(el,w[key]||"",(w.charFmt&&w.charFmt[key])||[],tcyRangesFor(w,key)); // 文字単位の字間・縦中横を保持したまま編集
-  /* 解説文の自動調整ぶんの倍率は編集中だけ外し、項目に指定された文字の縦横幅はそのまま残す
-     （見たままの字形で編集できるようにするため） */
-  const ux=parseFloat(el.dataset.sx||"1")||1, uy=parseFloat(el.dataset.sy||"1")||1;
-  const wmm=parseFloat(el.dataset.wmm||"");
-  if(!isNaN(wmm))el.style.width=(wmm/ux)+"mm";
-  el.style.transform=(ux!==1||uy!==1)?`scale(${ux},${uy})`:"";
+  /* 解説文は、確定表示と同じ組み方（分かち書き）で並べる。
+     編集中だけ組み方が変わると、行の折り返しが動いて別物に見えてしまうため */
+  if(el.classList.contains("fit-desc"))
+    buildDescContent(el,w[key]||"",(w.charFmt&&w.charFmt[key])||[],tcyRangesFor(w,key));
+  else
+    buildRichText(el,w[key]||"",(w.charFmt&&w.charFmt[key])||[],tcyRangesFor(w,key)); // 文字単位の字間・縦中横を保持したまま編集
+  /* 枠に収めるための自動調整は、編集中もそのまま効かせたまま始める。
+     ここで倍率を外すと、せっかく枠に収めた文字がその場で組み直されて
+     枠からあふれた状態で編集が始まってしまう */
   el.style.transformOrigin="left top";
+  refitInlineEdit(el);
   try{el.contentEditable="plaintext-only";}catch(_){el.contentEditable="true";}
   el.classList.add("editing-text");
   el.focus();
@@ -3560,8 +3565,53 @@ function startInlineEdit(key){
   const sn=getSelection();sn.removeAllRanges();sn.addRange(r);
   el.addEventListener("blur",inlineBlur);
   el.addEventListener("keydown",inlineKeys);
+  el.addEventListener("input",onInlineInput);
   document.addEventListener("selectionchange",onInlineSelectionChange);
 }
+/* カーソルの位置を「先頭から何文字目か」で数える／戻す。
+   組み直しても打っていた場所を見失わないようにするため */
+function caretOffsetIn(el){
+  const s=getSelection();if(!s||!s.rangeCount)return null;
+  const r=s.getRangeAt(0);
+  if(!el.contains(r.endContainer))return null;
+  const pre=document.createRange();
+  pre.selectNodeContents(el);pre.setEnd(r.endContainer,r.endOffset);
+  return pre.toString().length;
+}
+function setCaretOffset(el,n){
+  if(n==null)return;
+  const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
+  let acc=0,node;
+  while((node=walker.nextNode())){
+    const len=node.nodeValue.length;
+    if(acc+len>=n){
+      const r=document.createRange();r.setStart(node,Math.max(0,n-acc));r.collapse(true);
+      const s=getSelection();s.removeAllRanges();s.addRange(r);return;
+    }
+    acc+=len;
+  }
+  const r=document.createRange();r.selectNodeContents(el);r.collapse(false);
+  const s=getSelection();s.removeAllRanges();s.addRange(r);
+}
+/* 打ち込むたびに、確定表示とまったく同じ組み方に直してから枠へ収め直す。
+   ここで組み直さないと、打った文字だけ分かち書きにならず行の折り返しが変わり、
+   編集を終えた瞬間に組みが変わって枠からあふれてしまう。
+   変換中は字形が定まらないので触らない（確定時にあらためて収め直す）。 */
+function refitInlineEdit(el){
+  if(!el||!el.classList.contains("fit-desc"))return;
+  if(imeComposing)return;
+  const key=inlineEditKey,w=currentWork();
+  if(key&&w){
+    const pos=caretOffsetIn(el);
+    const text=(el.innerText||"").replace(/ /g," ").replace(/\n+$/,"");
+    w[key]=text;   // 組み直しの材料にする（保存は編集を終えたとき）
+    el.innerHTML="";   // buildDescContent は足すだけなので、先に空にする
+    buildDescContent(el,text,(w.charFmt&&w.charFmt[key])||[],tcyRangesFor(w,key));
+    setCaretOffset(el,pos);
+  }
+  fitDescEl(el);
+}
+function onInlineInput(e){refitInlineEdit(e.currentTarget);}
 function inlineKeys(e){
   // 変換中のEscapeは「変換の取り消し」なので、文字の編集そのものは終わらせない
   if(e.key==="Escape"&&!isComposingKey(e)){e.preventDefault();e.currentTarget.blur();}
@@ -3580,6 +3630,7 @@ function finishInlineEdit(){
   const el=itemEl(key);const w=currentWork();
   if(el&&w){
     el.removeEventListener("blur",inlineBlur);
+    el.removeEventListener("input",onInlineInput);
     let text=(el.innerText||"").replace(/\u00a0/g," ").replace(/\n+$/,"");
     w[key]=text;save();
   }
