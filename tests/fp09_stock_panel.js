@@ -51,6 +51,10 @@ async function run() {
   t.eq(await page.$eval('g[data-stock="c_andonh"] rect', r =>
     [+r.getAttribute('width'), +r.getAttribute('height')]), [1000, 1000],
     '行燈非免震のサイズは行燈免震と同じ1.0×1.0m');
+  t.eq(totalMap['p_210'], '4', '展示台2.1×0.825の合計は4台');
+  t.eq(await page.$eval('g[data-stock="p_210"] rect', r =>
+    [+r.getAttribute('width'), +r.getAttribute('height')]), [2100, 825],
+    '展示台2.1×0.825のサイズは幅2100mm・奥行825mm');
 
   // --- 背景つきケースは長辺の1本が3倍の太線で描かれる ---
   const backEdge = await page.$eval('g[data-stock="c_ymb"]', g => {

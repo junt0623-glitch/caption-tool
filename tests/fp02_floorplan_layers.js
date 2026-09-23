@@ -28,15 +28,15 @@ async function run() {
   const cx = svgBox.x + svgBox.width / 2, cy = svgBox.y + svgBox.height / 2;
 
   // --- 在庫パレット: 種類ごと1つだけ+残数表示 ---
-  t.eq(await page.locator('g[data-stock]').count(), 15, '在庫パレットは種類ごと1つ(ケース10+展示台5=15)');
+  t.eq(await page.locator('g[data-stock]').count(), 16, '在庫パレットは種類ごと1つ(ケース10+展示台6=16)');
   const caseXs = await page.$$eval('g[data-stock^="c_"]', gs =>
     gs.map(g => +g.getAttribute('transform').match(/translate\(([-\d.]+)/)[1]));
   t.ok(caseXs.length === 10 && caseXs.every(x => x === caseXs[0] && x < 0),
     'ケース10種は印刷範囲の左外に縦一列');
   const pedXs = await page.$$eval('g[data-stock^="p_"]', gs =>
     gs.map(g => +g.getAttribute('transform').match(/translate\(([-\d.]+)/)[1]));
-  t.ok(pedXs.length === 5 && pedXs.every(x => x === pedXs[0] && x > 42000),
-    '展示台5種は印刷範囲の右外に縦一列');
+  t.ok(pedXs.length === 6 && pedXs.every(x => x === pedXs[0] && x > 42000),
+    '展示台6種は印刷範囲の右外に縦一列');
   const remainOf = key => page.$eval(`g[data-stock="${key}"] .stock-remain`, e => e.textContent);
   t.eq(await remainOf('c_alpha'), '残 2 / 2', 'αの残数は2');
   t.eq(await remainOf('p_120'), '残 30 / 30', '展示台1.2×0.9の残数は30');
