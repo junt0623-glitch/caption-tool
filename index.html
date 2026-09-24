@@ -725,7 +725,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <button type="button" class="btn small shu" id="bulkSetImageOv" title="選択した作品それぞれに画像を登録し、大きさ・位置・透明度・背景もマスターから切り離してこの作品専用にします">選択した作品に画像を個別登録（大きさ・位置・透明度・背景も上書き）</button>
       <button type="button" class="btn small" id="bulkClearImage">選択した作品の画像を外す</button>
       <button type="button" class="btn small shu" id="bulkSetSize" title="チェックを入れた作品にだけ、札の寸法を設定します。他の作品はマスターの寸法のままです">選択した作品の札の寸法を変更</button>
-      <button type="button" class="btn small" id="bulkDuplicate" title="チェックを入れた作品をそのままコピーして、それぞれの1つ下の行に加えます。画像・ルビ・作品ごとの体裁もそのまま引き継ぎます">選択した作品をコピーして追加</button>
+      <button type="button" class="btn small" id="bulkDuplicate" title="チェックを入れた作品をそのままコピーして、それぞれの1つ下の行に加えます。番号・画像・ルビ・作品ごとの体裁まで、そっくり同じものができます">選択した作品をコピーして追加</button>
       <button type="button" class="btn small" id="bulkDeselect">選択を解除</button>
       <input type="file" id="bulkImageInput" accept="image/png,image/jpeg,image/gif,image/webp,image/*" hidden>
       <input type="file" id="bulkImageInputOv" accept="image/png,image/jpeg,image/gif,image/webp,image/*" hidden>
@@ -1212,7 +1212,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
   <div class="dlg-body help-body">
     <h4>基本の流れ</h4>
     <ol>
-      <li><b>作品台帳</b>で作品を登録（貼り付け取り込み／手入力）。画像は「編集」画面から。▲▼で並び替えると、<b>番号は行の位置に合わせて自動で振り直されます</b>（入れ替えた作品どうしで番号が入れ替わります）。行の左のチェックを入れて<b>「選択した作品をコピーして追加」</b>を押すと、その作品をそっくり複製して1つ下の行に加えられます（同じ体裁でもう1枚作りたいときに便利です。番号が重ならないよう、コピー側の番号だけは空になります）。</li>
+      <li><b>作品台帳</b>で作品を登録（貼り付け取り込み／手入力）。画像は「編集」画面から。▲▼で並び替えると、<b>番号は行の位置に合わせて自動で振り直されます</b>（入れ替えた作品どうしで番号が入れ替わります）。行の左のチェックを入れて<b>「選択した作品をコピーして追加」</b>を押すと、その作品をそっくり複製して1つ下の行に加えられます（同じ体裁でもう1枚作りたいときに便利です。<b>番号もそのまま複製される</b>ので、番号を分けたいときは「編集」から入れ直してください）。</li>
       <li><b>レイアウト</b>の上部キャンバスで、各項目をドラッグして配置。クリックで小パネルを開きフォント・サイズ・文字間を調整。複数選択して整列ツールで揃える。</li>
       <li><b>印刷・PDF</b>で配置を選び「印刷する」→ 案内に従い、印刷ダイアログで<b>倍率を「実際のサイズ／100%」</b>に（原寸で出力）。PDFにするときは送信先を「PDFに保存」に。</li>
     </ol>
@@ -2806,7 +2806,8 @@ function duplicateWork(src){
   const copy=JSON.parse(JSON.stringify(src));
   copy.id="w"+Date.now()+Math.random().toString(36).slice(2,7);
   delete copy._ovEditing;delete copy._styleOvEditing;   // 一時的な編集フラグは持ち越さない
-  copy.no="";                                           // 番号は重複しないよう空にする
+  /* 番号もそのまま引き継ぐ（同じ番号の札を複数枚刷るなど、そのまま使うことが多いため）。
+     番号を分けたいときは、コピーした行の「編集」から入れ直す */
   /* 追加画像は作品の中で id を目印にしているので、コピー側は振り直す */
   ["images","descImages"].forEach(k=>{
     if(!Array.isArray(copy[k]))return;
@@ -2821,8 +2822,8 @@ $("#bulkDuplicate").addEventListener("click",async()=>{
   if(!idxs.length)return;
   const ok=await askConfirm(
     `選択した${idxs.length}件をコピーして、それぞれ1つ下の行に加えます。\n`+
-    `画像・ルビ・文字ごとの書式・作品ごとの体裁（配置・寸法・書体・背景）もそのまま引き継ぎます。\n`+
-    `番号が重ならないよう、コピーした側の番号は空にします。あとから入れ直してください。`,
+    `番号・画像・ルビ・文字ごとの書式・作品ごとの体裁（配置・寸法・書体・背景）まで、\n`+
+    `そっくり同じものができます。番号を分けたいときは、あとから入れ直してください。`,
     "コピーして加える");
   if(!ok)return;
   const keepId=(p.works[previewIndex]||{}).id;   // 見ていた作品を見失わないように控える

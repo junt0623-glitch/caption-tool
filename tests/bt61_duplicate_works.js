@@ -70,11 +70,11 @@ async function run() {
     await page.evaluate(() => { previewIndex = 3; });   // Dを見ている状態
     const msg = await duplicate();
     t.ok(msg.includes('2件'), `何件コピーするか知らせる（${msg.split('\n')[0]}）`);
-    t.ok(msg.includes('番号'), '番号を空にすることを知らせる');
+    t.ok(msg.includes('番号'), '番号もそのままコピーされることを知らせる');
 
     t.eq(await rows(),
-      ['1/作品A', '2/作品B', '(空)/作品B', '3/作品C', '4/作品D', '(空)/作品D'],
-      'それぞれの1つ下にコピーが入り、コピーの番号は空になる');
+      ['1/作品A', '2/作品B', '2/作品B', '3/作品C', '4/作品D', '4/作品D'],
+      'それぞれの1つ下に、番号も含めてそっくり同じものが入る');
     t.eq(await page.evaluate(() => [...bulkSel].sort((a, b) => a - b)), [2, 5],
       'コピーしてできた行が選ばれた状態になる（続けて操作しやすいように）');
     t.eq(await page.evaluate(() => proj().works[previewIndex].title), '作品D',
@@ -102,7 +102,7 @@ async function run() {
     });
     t.eq([deep.title, deep.origin, deep.desc, deep.section],
       ['作品B', '産地B', '解説B', '第一章'], '文章と章はそのまま引き継ぐ');
-    t.eq(deep.no, '', '番号だけは空にする（番号が重ならないように）');
+    t.eq(deep.no, '2', '番号もそのまま引き継ぐ（既定）');
     t.eq(deep.idDiffers, true, 'コピーには別の作品として印を付ける');
     t.eq(deep.image, true, '作品の画像を引き継ぐ');
     t.eq(deep.img2Url, true, '追加画像も引き継ぐ');
@@ -144,10 +144,10 @@ async function run() {
     await page.waitForTimeout(400);
     await pick([0]);
     await duplicate();
-    t.eq(await rows(), ['1/作品A', '(空)/作品A', '2/作品B', '3/作品C', '4/作品D'],
+    t.eq(await rows(), ['1/作品A', '1/作品A', '2/作品B', '3/作品C', '4/作品D'],
       '1件だけでもその下に入る');
     await duplicate();   // いまは「コピーしてできた行」が選ばれている
-    t.eq(await rows(), ['1/作品A', '(空)/作品A', '(空)/作品A', '2/作品B', '3/作品C', '4/作品D'],
+    t.eq(await rows(), ['1/作品A', '1/作品A', '1/作品A', '2/作品B', '3/作品C', '4/作品D'],
       '続けてコピーすると、コピーのコピーがそのまた下に入る');
 
     /* ===== 7. 表示中をすべて選んでコピーしても順番が崩れない ===== */
@@ -156,7 +156,7 @@ async function run() {
     await pick([0, 1, 2, 3]);
     await duplicate();
     t.eq(await rows(),
-      ['1/作品A', '(空)/作品A', '2/作品B', '(空)/作品B', '3/作品C', '(空)/作品C', '4/作品D', '(空)/作品D'],
+      ['1/作品A', '1/作品A', '2/作品B', '2/作品B', '3/作品C', '3/作品C', '4/作品D', '4/作品D'],
       'すべて選んでも、元とコピーが交互に正しく並ぶ');
     t.eq(await page.evaluate(() => proj().works.length), 8, '件数が倍になる');
 
@@ -165,7 +165,7 @@ async function run() {
     await page.reload();
     await page.waitForTimeout(900);
     t.eq(await rows(),
-      ['1/作品A', '(空)/作品A', '2/作品B', '(空)/作品B', '3/作品C', '(空)/作品C', '4/作品D', '(空)/作品D'],
+      ['1/作品A', '1/作品A', '2/作品B', '2/作品B', '3/作品C', '3/作品C', '4/作品D', '4/作品D'],
       '読み直してもコピーが残る');
 
     /* ===== 9. 絞り込み中でもコピーできる ===== */
@@ -180,7 +180,7 @@ async function run() {
     t.eq(filtered, 1, '検索で1件に絞り込まれる');
     await pick([1]);
     await duplicate();
-    t.eq(await rows(), ['1/作品A', '2/作品B', '(空)/作品B', '3/作品C', '4/作品D'],
+    t.eq(await rows(), ['1/作品A', '2/作品B', '2/作品B', '3/作品C', '4/作品D'],
       '絞り込み中でも、元の並びの正しい位置にコピーが入る');
     t.eq(await page.evaluate(() => document.querySelectorAll('#worksListArea tr.work-row').length), 2,
       'コピーも同じ検索に引っかかるので一覧に出る');
