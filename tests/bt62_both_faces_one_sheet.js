@@ -333,7 +333,7 @@ async function run() {
       p.style.descLayout = {
         no: { x: 120, y: 88, w: 16, h: null, font: 'inherit', size: 10, ls: 0,
               align: 'right', color: null, sx: 100, sy: 100, lh: null },
-        description: { x: 10, y: 10, w: 120, h: 50, font: 'inherit', size: 13, ls: 0,
+        description: { x: 10, y: 10, w: 120, h: 50, font: 'inherit', size: 20, ls: 0,
                        align: 'justify', color: null, sx: 100, sy: 100, lh: null }
       };
       save(); renderSheets();
@@ -341,7 +341,8 @@ async function run() {
     await page.waitForTimeout(900);
     const pushed = await page.evaluate(() => {
       const s0 = document.querySelector('#sheetScroll .sheet');
-      const S = s0.getBoundingClientRect().width / parseFloat(s0.style.width);
+      // 用紙の縮小と、用紙に収めるための縮小の両方を戻して、札そのものの寸法で測る
+      const S = s0.getBoundingClientRect().width / parseFloat(s0.style.width) * lastBothScale;
       const mm = v => +(v / S).toFixed(1);
       const desc = [...s0.querySelectorAll('.cap-card')][1];
       const dr = desc.getBoundingClientRect();
@@ -365,6 +366,55 @@ async function run() {
     t.ok(pushed.gapBelowNo >= 5 && pushed.gapBelowNo <= 9,
       `番号の下の余白が元のまま保たれる（${pushed.gapBelowNo}mm）`);
 
+    /* 高さを決めていない（枠に収めない）解説文でも同じこと。
+       この場合は文章がそのまま札の外へ流れ出てしまうので、札を伸ばして番号を下げる。 */
+    await page.evaluate(() => {
+      const p = proj();
+      p.style.descLayout.description.h = null;
+      save(); renderSheets();
+    });
+    await page.waitForTimeout(900);
+    const freeH = await page.evaluate(() => {
+      const s0 = document.querySelector('#sheetScroll .sheet');
+      const S = s0.getBoundingClientRect().width / parseFloat(s0.style.width) * lastBothScale;
+      const mm = v => +(v / S).toFixed(1);
+      const desc = [...s0.querySelectorAll('.cap-card')][1];
+      const dr = desc.getBoundingClientRect();
+      const nr = desc.querySelector('[data-item="no"]').getBoundingClientRect();
+      const ir = desc.querySelector('[data-item="description"]').getBoundingClientRect();
+      return {
+        cardH: mm(dr.height), noTop: mm(nr.top - dr.top),
+        textInside: ir.bottom <= dr.bottom + 1,
+        overlap: ir.bottom > nr.top + 1,
+        gapBelowNo: mm(dr.bottom - nr.bottom)
+      };
+    });
+    t.eq(freeH.textInside, true, '高さを決めていない解説文も札からはみ出さない');
+    t.ok(freeH.cardH > 100, `そのぶん札が伸びる（100mm → ${freeH.cardH}mm）`);
+    t.ok(freeH.noTop > 88, `番号も一緒に下がる（88mm → ${freeH.noTop}mm）`);
+    t.eq(freeH.overlap, false, '解説文が番号に重ならない');
+    t.ok(freeH.gapBelowNo >= 5 && freeH.gapBelowNo <= 9,
+      `番号の下の余白が元のまま保たれる（${freeH.gapBelowNo}mm）`);
+
+    /* 逆に、文章が番号まで届かないときは何も動かさない（勝手に動くほうが困る） */
+    await page.evaluate(() => {
+      const p = proj();
+      p.works[0].description = '短い解説。';
+      p.style.descLayout.description.h = 50;
+      save(); renderSheets();
+    });
+    await page.waitForTimeout(800);
+    const calm = await page.evaluate(() => {
+      const s0 = document.querySelector('#sheetScroll .sheet');
+      const S = s0.getBoundingClientRect().width / parseFloat(s0.style.width) * lastBothScale;
+      const mm = v => +(v / S).toFixed(1);
+      const desc = [...s0.querySelectorAll('.cap-card')][1];
+      const dr = desc.getBoundingClientRect();
+      const nr = desc.querySelector('[data-item="no"]').getBoundingClientRect();
+      return { cardH: mm(dr.height), noTop: mm(nr.top - dr.top) };
+    });
+    t.eq(calm.cardH, 100, '文章が下の項目まで届かないときは札を伸ばさない');
+    t.eq(calm.noTop, 88, '文章が下の項目まで届かないときは番号を動かさない');
     t.noErrors(errors);
     const r = t.finish();
     await browser.close();

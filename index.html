@@ -4700,35 +4700,40 @@ function neededCardH(card,origH){
     const sy=parseFloat(el.dataset.sy||"1")||1;
     return (el.classList.contains("fixed-h")?el.clientHeight:el.scrollHeight)*sy;
   };
-  const rec=items.map(el=>({el,top:el.offsetTop,bottom0:el.offsetTop+heightOf(el)}));
+  const rec=items.map(el=>{
+    const sx=parseFloat(el.dataset.sx||"1")||1;
+    return {el,top:el.offsetTop,left:el.offsetLeft,right:el.offsetLeft+el.offsetWidth*sx};
+  });
   /* 解説文は「枠に収める」項目なので、文章が全部入る高さまで枠を広げる */
   items.forEach(el=>{
     if(!el.classList.contains("fit-desc"))return;
     const over=el.scrollHeight-el.clientHeight;
     if(over>1)el.style.height=(el.clientHeight+over+1)+"px";
   });
-  /* いちばん伸びた項目を探す。その項目が札を押し広げる */
-  let grow=0,driverBottom=0;
-  rec.forEach(r=>{
-    r.bottom1=r.top+heightOf(r.el);
-    const g=r.bottom1-r.bottom0;
-    if(g>grow){grow=g;driverBottom=r.bottom0;}
+  rec.forEach(r=>{r.bottom=r.top+heightOf(r.el);});
+  /* 横にずれて並んでいる項目どうしはぶつからない（英文を右半分に置く組みなど） */
+  const hits=(a,b)=>!(a.right<=b.left+0.5||b.right<=a.left+0.5);
+  const floor=(origH-2)*MM2PX;            // 札の下端に残しておきたい余白
+  /* いちばん下まで届いた項目が、その下にある項目（番号など）や
+     札の下端をどれだけ押し下げるかを測る */
+  let push=0,from=Infinity;
+  rec.forEach(a=>{
+    let limit=floor;
+    rec.forEach(b=>{if(b!==a&&b.top>a.top+0.5&&hits(a,b)&&b.top<limit)limit=b.top;});
+    const need=a.bottom-limit+((limit<floor)?MM2PX:0);   // 下の項目とは1mmだけ離す
+    if(need>push){push=need;from=limit;}
   });
-  /* 押し広げた項目より下にあったもの（番号を下端に置いている場合など）は、
-     伸びたぶんだけ一緒に下げる。置き去りにすると文章と重なったり、
-     札の下に大きな空白ができたりしてしまう */
-  let shifted=false;
-  if(grow>0.5){
+  /* 押し下げる。置き去りにすると文章と重なったり、札の下に空白ができたりする */
+  if(push>0.5){
     rec.forEach(r=>{
-      if(r.top>0&&r.top>=driverBottom-0.5){
-        r.el.style.top=round1(r.top/MM2PX+grow/MM2PX)+"mm";
-        r.bottom1+=grow;shifted=true;
-      }
+      if(r.top<from-0.5)return;
+      r.el.style.top=round1((r.top+push)/MM2PX)+"mm";
+      r.top+=push;r.bottom+=push;
     });
-  }
-  let low=0;rec.forEach(r=>{if(r.bottom1>low)low=r.bottom1;});
+  }else push=0;
+  let low=0;rec.forEach(r=>{if(r.bottom>low)low=r.bottom;});
   /* 下端の余白は元のまま保ちたいので、下げたぶんは札も同じだけ伸ばす */
-  const newH=Math.max(shifted?origH+grow/MM2PX:0, low/MM2PX+2, origH);
+  const newH=Math.max(origH,origH+push/MM2PX,low/MM2PX+2);
   return (newH<=origH+0.01)?origH:Math.ceil(newH);
 }
 function fitBothIn(root){
