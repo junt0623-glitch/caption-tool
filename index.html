@@ -646,6 +646,8 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
 .img-handle{position:absolute;background:var(--shu);border:1.5px solid #fff;border-radius:50%;
   box-shadow:0 0 0 1px rgba(0,0,0,.25);cursor:nwse-resize;z-index:6}
 /* 追加画像（複数貼り付け可・文字の下のレイヤー） */
+/* キャプションと解説を1枚にまとめるときの入れ物。中の2枚をまとめて縮める */
+.pair-wrap{position:absolute}
 /* 印刷時に文字を焼き付けた画像。文字項目と同じ層に、カード全面と同じ寸法で重ねる */
 .cap-card .cap-textlayer{position:absolute;left:0;top:0;z-index:2;pointer-events:none;
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -966,7 +968,9 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
         <h2 class="sec">印刷・PDF書き出し</h2>
         <div class="ctl"><label class="lbl">印刷する面</label>
           <label class="chk"><input type="radio" name="printFace" value="cap">キャプション</label>
-          <label class="chk"><input type="radio" name="printFace" value="desc">解説（番号＋解説文）</label></div>
+          <label class="chk"><input type="radio" name="printFace" value="desc">解説（番号＋解説文）</label>
+          <label class="chk"><input type="radio" name="printFace" value="both">キャプション＋解説（1作品を1枚に）</label>
+          <p class="note" id="bothFaceNote" style="margin:2px 0 0 24px;display:none">1作品につき用紙1枚に、キャプションと解説の両方を並べます。<b>用紙に収まらないときだけ、両方を同じ比率で自動的に縮めます</b>（縮めた場合は下のプレビューに倍率が出ます）。縦並び・横並びのうち、より大きく置けるほうを自動で選びます。原寸より大きくすることはありません。</p></div>
         <div class="ctl"><label class="lbl">対象</label>
           <select id="printSection" style="width:100%"><option value="">すべての作品</option></select></div>
         <div class="ctl"><label class="lbl">用紙サイズ</label>
@@ -980,10 +984,10 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
             <label style="font-size:12px;color:var(--sub)">長さ <input type="number" id="sheetCustomH" min="100" max="3000" step="10"> mm</label>
           </div>
         </div>
-        <div class="ctl"><label class="lbl">配置</label>
+        <div class="ctl" id="printModeRow"><label class="lbl">配置</label>
           <label class="chk"><input type="radio" name="printMode" value="impose">用紙に面付け（複数枚まとめて）</label>
           <label class="chk"><input type="radio" name="printMode" value="single">1点ずつ用紙中央に配置</label></div>
-        <div class="ctl"><label class="lbl">詰め方</label>
+        <div class="ctl" id="tightRow"><label class="lbl">詰め方</label>
           <label class="chk"><input type="checkbox" id="prTight">できるだけ詰めて並べる（枠線を共有・すき間なし）</label>
           <p class="note" style="margin:2px 0 0 24px">余白と断裁ロスを減らし、1枚あたりの取り数を増やします。隣り合うキャプションは1本の枠線（1px）を共有します。プリンターの印字できない用紙端（約5mm）に外周の枠線が入って消えないよう、並べたブロックは用紙の中央に配置されます。</p>
         </div>
@@ -1011,6 +1015,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <div>
         <div class="edit-topbar">
           <output id="sheetCount" class="note"></output>
+          <output id="bothFitNote" class="note"></output>
           <output id="outlineBakeNote" class="note" style="color:var(--shu)"></output>
           <span style="flex:1"></span>
           <button class="btn small" data-szoom="-">縮小 −</button>
@@ -1214,7 +1219,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     <ol>
       <li><b>作品台帳</b>で作品を登録（貼り付け取り込み／手入力）。画像は「編集」画面から。▲▼で並び替えると、<b>番号は行の位置に合わせて自動で振り直されます</b>（入れ替えた作品どうしで番号が入れ替わります）。行の左のチェックを入れて<b>「選択した作品をコピーして追加」</b>を押すと、その作品をそっくり複製して1つ下の行に加えられます（同じ体裁でもう1枚作りたいときに便利です。<b>番号もそのまま複製される</b>ので、番号を分けたいときは「編集」から入れ直してください）。</li>
       <li><b>レイアウト</b>の上部キャンバスで、各項目をドラッグして配置。クリックで小パネルを開きフォント・サイズ・文字間を調整。複数選択して整列ツールで揃える。</li>
-      <li><b>印刷・PDF</b>で配置を選び「印刷する」→ 案内に従い、印刷ダイアログで<b>倍率を「実際のサイズ／100%」</b>に（原寸で出力）。PDFにするときは送信先を「PDFに保存」に。</li>
+      <li><b>印刷・PDF</b>の「印刷する面」で<b>「キャプション＋解説（1作品を1枚に）」</b>を選ぶと、1作品につき用紙1枚に両方を並べて刷れます（用紙に収まらないときだけ、両方を同じ比率で自動的に縮めます）。配置を選び「印刷する」→ 案内に従い、印刷ダイアログで<b>倍率を「実際のサイズ／100%」</b>に（原寸で出力）。PDFにするときは送信先を「PDFに保存」に。</li>
     </ol>
     <h4>レイアウトの操作</h4>
     <ul>
@@ -4509,6 +4514,8 @@ const SHEET_FUDGE_W=0.5;
 /* プリンタの印字不可領域（用紙端の余白）。多くの機種で3〜5mm程度あるため、
    枠線やトンボがこの内側に入らないよう最低限これだけ用紙端から離す */
 const SAFE_EDGE=5;
+/* 「キャプション＋解説」を1枚に収めるとき、原寸から縮めた倍率（1なら原寸のまま） */
+let lastBothScale=1;
 function sheetDims(o){
   const k=SHEET_KINDS[o.sheetKind]||SHEET_KINDS.a4;
   const w=(o.sheetKind==="custom")?Math.max(100,+o.sheetCustomW||1000):k.w;
@@ -4536,10 +4543,22 @@ function refreshPrintControls(){const p=proj();ensureLayout(p);
   $("#sheetCustomW").value=o.sheetCustomW;$("#sheetCustomH").value=o.sheetCustomH;
   $("#prTight").checked=o.tight;$("#prRuler").checked=!!o.ruler;
   $("#prMarks").disabled=o.tight;$("#finishRow").style.opacity=o.tight?.45:1;
+  refreshBothFaceRow();
   o.outlineDpi=clampDpi(o.outlineDpi);refreshOutlineRow();
   const secs=sectionsOf(p),sel2=$("#printSection");sel2.innerHTML=`<option value="">すべての作品</option>`+secs.map(s=>`<option value="${esc(s)}" ${s===o.section?"selected":""}>${esc(s)}</option>`).join("");}
 $$('input[name=printMode]').forEach(r=>r.addEventListener("change",()=>{proj().printOpt.mode=r.value;save();renderSheets();}));
-$$('input[name=printFace]').forEach(r=>r.addEventListener("change",()=>{proj().printOpt.face=r.value;save();renderSheets();}));
+$$('input[name=printFace]').forEach(r=>r.addEventListener("change",()=>{
+  proj().printOpt.face=r.value;save();refreshBothFaceRow();renderSheets();}));
+/* 「キャプション＋解説」は1作品につき1枚に決め打ちなので、
+   面付けの配置や詰め方は使わない。触れないようにして迷わせない */
+function refreshBothFaceRow(){
+  const both=(proj().printOpt||{}).face==="both";
+  const note=$("#bothFaceNote");if(note)note.style.display=both?"":"none";
+  [["printModeRow",both],["tightRow",both]].forEach(([id,off])=>{
+    const el=$("#"+id);if(!el)return;
+    el.style.opacity=off?.45:1;el.style.pointerEvents=off?"none":"";
+  });
+}
 $("#prMarks").addEventListener("change",e=>{proj().printOpt.marks=e.target.checked;save();renderSheets();});
 $("#prBorder").addEventListener("change",e=>{proj().printOpt.border=e.target.checked;save();renderSheets();});
 $("#prRuler").addEventListener("change",e=>{proj().printOpt.ruler=e.target.checked;save();renderSheets();});
@@ -4556,6 +4575,7 @@ $("#prTight").addEventListener("change",e=>{proj().printOpt.tight=e.target.check
 $$("button[data-szoom]").forEach(b=>b.addEventListener("click",()=>{sheetZoom=Math.min(1.2,Math.max(.15,sheetZoom+(b.dataset.szoom==="+"?.1:-.1)));$("#sheetZoomLabel").textContent=Math.round(sheetZoom*100)+"%";renderSheets();}));
 function buildSheets(){const p=proj();ensureLayout(p);
   const o=p.printOpt||{mode:"impose",marks:false,border:true,section:"",face:"cap",sheetKind:"a4",tight:false};
+  const both=(o.face==="both");
   const face=(o.face==="desc")?"desc":"cap";
   const works=p.works.filter(w=>!o.section||(w.section||"").trim()===o.section);
   const size=(face==="desc")?p.descSize:p.size,st=p.style,sheets=[];
@@ -4579,6 +4599,52 @@ function buildSheets(){const p=proj();ensureLayout(p);
     if(tight){if(edgeL)card.classList.add("edge-l");if(edgeT)card.classList.add("edge-t");}
     sheet.appendChild(card);if(!tight&&o.marks)marksFor(sheet,x,y,z.w,z.h);}
   if(!works.length)return sheets;
+  /* ===== キャプション＋解説を、1作品につき用紙1枚にまとめる =====
+     縦並び・横並びのうち大きく置けるほうを選び、用紙に収まらないときだけ
+     両方を同じ比率で縮める（原寸より大きくはしない）。
+     縮めた倍率は、あとでプレビューに出すため lastBothScale に控える。 */
+  if(both){
+    const M=SAFE_EDGE, GAP=6;                  // 用紙端の安全余白と、2枚のあいだの間隔
+    const availW=SW-2*M, availH=SH-2*M;
+    let minScale=1;
+    works.forEach(w=>{
+      const cz=effectiveSize(w,p,"cap"), dz=effectiveSize(w,p,"desc");
+      /* 縦並び（上にキャプション・下に解説）と横並びで、それぞれ入る倍率を出す */
+      const vW=Math.max(cz.w,dz.w), vH=cz.h+GAP+dz.h;
+      const hW=cz.w+GAP+dz.w, hH=Math.max(cz.h,dz.h);
+      const vs=Math.min(availW/vW, availH/vH);
+      const hs=Math.min(availW/hW, availH/hH);
+      const vertical=vs>=hs;                   // 大きく置けるほうを採る
+      const scale=Math.min(1,Math.max(vertical?vs:hs,0.05));
+      if(scale<minScale)minScale=scale;
+      const boxW=(vertical?vW:hW), boxH=(vertical?vH:hH);
+      const sheet=document.createElement("div");
+      sheet.className="sheet"+(o.border?" cut-border":"");
+      sheet.style.width=SW+"mm";sheet.style.height=SH+"mm";
+      sheets.push(sheet);
+      const wrap=document.createElement("div");
+      wrap.className="pair-wrap";
+      wrap.style.width=boxW+"mm";wrap.style.height=boxH+"mm";
+      /* 縮めたぶんも含めて用紙の中央に置く */
+      wrap.style.left=round1((SW-boxW*scale)/2)+"mm";
+      wrap.style.top=round1((SH-boxH*scale)/2)+"mm";
+      if(scale!==1){wrap.style.transform=`scale(${scale.toFixed(4)})`;wrap.style.transformOrigin="top left";}
+      const cap=buildCard(w,st,cz,{plain:true,mode:"cap"});
+      const desc=buildCard(w,st,dz,{plain:true,mode:"desc"});
+      if(vertical){
+        cap.style.left=round1((boxW-cz.w)/2)+"mm";cap.style.top="0mm";
+        desc.style.left=round1((boxW-dz.w)/2)+"mm";desc.style.top=(cz.h+GAP)+"mm";
+      }else{
+        cap.style.left="0mm";cap.style.top=round1((boxH-cz.h)/2)+"mm";
+        desc.style.left=(cz.w+GAP)+"mm";desc.style.top=round1((boxH-dz.h)/2)+"mm";
+      }
+      wrap.appendChild(cap);wrap.appendChild(desc);
+      sheet.appendChild(wrap);
+    });
+    lastBothScale=minScale;
+    if(o.ruler&&minScale===1)sheets.forEach(s=>s.appendChild(makeScaleRuler()));
+    return sheets;
+  }
   /* 寸法が混ざっているときは、幅の入るだけ横に並べ、入らなくなったら行の最大高さぶん下げる
      （均一なときは従来どおりの等間隔の格子のまま） */
   function packMixed(M,G){
@@ -4624,6 +4690,16 @@ function renderSheets(){if(!$("#tab-print").classList.contains("active"))return;
   const sheets=buildSheets();
   const perSheetCount=sheets.length?Math.round(proj().works.filter(w=>!o.section||(w.section||"").trim()===o.section).length/sheets.length):0;
   $("#sheetCount").textContent=sheets.length?`用紙(${dims.w}×${dims.h}mm) ${sheets.length}枚`:"印刷できる作品がありません";
+  /* 「キャプション＋解説」で縮めて収めたときは、その倍率を知らせる（原寸でない旨） */
+  const fitNote=$("#bothFitNote");
+  if(fitNote){
+    const on=(o.face==="both")&&sheets.length;
+    fitNote.textContent=!on?""
+      :(lastBothScale<1
+        ?`用紙に収めるため 原寸の${Math.round(lastBothScale*1000)/10}% に縮めています`
+        :"原寸のまま用紙に収まっています");
+    fitNote.style.color=(on&&lastBothScale<1)?"var(--shu)":"var(--sub)";
+  }
   sheets.forEach(s=>{const holder=document.createElement("div");holder.className="sheet-holder";
     holder.style.width=(dims.w*MM2PX*sheetZoom)+"px";holder.style.height=(dims.h*MM2PX*sheetZoom)+"px";
     s.style.transform=`scale(${sheetZoom})`;s.style.transformOrigin="top left";holder.appendChild(s);scroll.appendChild(holder);});
