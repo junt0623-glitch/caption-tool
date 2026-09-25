@@ -970,7 +970,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
           <label class="chk"><input type="radio" name="printFace" value="cap">キャプション</label>
           <label class="chk"><input type="radio" name="printFace" value="desc">解説（番号＋解説文）</label>
           <label class="chk"><input type="radio" name="printFace" value="both">キャプション＋解説（1作品を1枚に）</label>
-          <p class="note" id="bothFaceNote" style="margin:2px 0 0 24px;display:none">1作品につき用紙1枚に、キャプションと解説の両方を並べます。<b>用紙に収まらないときだけ、両方を同じ比率で自動的に縮めます</b>（縮めた場合は下のプレビューに倍率が出ます）。<b>解説文が札に収まらないときは、用紙の余白を使って札を下へ伸ばし、文章が切れないようにします。</b>縦並び・横並びのうち、より大きく置けるほうを自動で選びます。原寸より大きくすることはありません。</p></div>
+          <p class="note" id="bothFaceNote" style="margin:2px 0 0 24px;display:none">1作品につき用紙1枚に、キャプションと解説の両方を並べます。<b>用紙に収まらないときだけ、両方を同じ比率で自動的に縮めます</b>（縮めた場合は下のプレビューに倍率が出ます）。縦並び・横並びのうち、より大きく置けるほうを自動で選びます。原寸より大きくすることはありません。</p></div>
         <div class="ctl"><label class="lbl">対象</label>
           <select id="printSection" style="width:100%"><option value="">すべての作品</option></select></div>
         <div class="ctl"><label class="lbl">用紙サイズ</label>
@@ -4693,21 +4693,43 @@ function layoutPair(wrap,capH,descH){
    用紙には余白が残っているのに文章の下が切り取られる、ということが起きないよう、
    あふれたぶんだけ解説の枠を下へ伸ばしてから置き直す。 */
 function neededCardH(card,origH){
-  let low=0;
-  $$(".cap-item",card).forEach(el=>{
-    /* 解説文は「枠に収める」項目なので、まず文章が全部入る高さまで枠を広げてから測る */
-    if(el.classList.contains("fit-desc")){
-      const over=el.scrollHeight-el.clientHeight;
-      if(over>1)el.style.height=(el.clientHeight+over+1)+"px";
-    }
+  const items=$$(".cap-item",card);
+  if(!items.length)return origH;
+  /* 高さを決め打ちした項目はその高さを尊重し、自動の項目は中身の高さで測る */
+  const heightOf=el=>{
     const sy=parseFloat(el.dataset.sy||"1")||1;
-    /* 高さを決め打ちした項目はその高さを尊重し、自動の項目は中身の高さで測る */
-    const h=(el.classList.contains("fixed-h")?el.clientHeight:el.scrollHeight)*sy;
-    low=Math.max(low,el.offsetTop+h);
+    return (el.classList.contains("fixed-h")?el.clientHeight:el.scrollHeight)*sy;
+  };
+  const rec=items.map(el=>({el,top:el.offsetTop,bottom0:el.offsetTop+heightOf(el)}));
+  /* 解説文は「枠に収める」項目なので、文章が全部入る高さまで枠を広げる */
+  items.forEach(el=>{
+    if(!el.classList.contains("fit-desc"))return;
+    const over=el.scrollHeight-el.clientHeight;
+    if(over>1)el.style.height=(el.clientHeight+over+1)+"px";
   });
-  if(!low)return origH;
-  const lowMM=low/MM2PX+2;                      // 下に2mmだけ余裕をもたせる
-  return (lowMM<=origH)?origH:Math.ceil(lowMM);
+  /* いちばん伸びた項目を探す。その項目が札を押し広げる */
+  let grow=0,driverBottom=0;
+  rec.forEach(r=>{
+    r.bottom1=r.top+heightOf(r.el);
+    const g=r.bottom1-r.bottom0;
+    if(g>grow){grow=g;driverBottom=r.bottom0;}
+  });
+  /* 押し広げた項目より下にあったもの（番号を下端に置いている場合など）は、
+     伸びたぶんだけ一緒に下げる。置き去りにすると文章と重なったり、
+     札の下に大きな空白ができたりしてしまう */
+  let shifted=false;
+  if(grow>0.5){
+    rec.forEach(r=>{
+      if(r.top>0&&r.top>=driverBottom-0.5){
+        r.el.style.top=round1(r.top/MM2PX+grow/MM2PX)+"mm";
+        r.bottom1+=grow;shifted=true;
+      }
+    });
+  }
+  let low=0;rec.forEach(r=>{if(r.bottom1>low)low=r.bottom1;});
+  /* 下端の余白は元のまま保ちたいので、下げたぶんは札も同じだけ伸ばす */
+  const newH=Math.max(shifted?origH+grow/MM2PX:0, low/MM2PX+2, origH);
+  return (newH<=origH+0.01)?origH:Math.ceil(newH);
 }
 function fitBothIn(root){
   const wraps=$$(".pair-wrap",root);

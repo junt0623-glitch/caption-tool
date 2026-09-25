@@ -323,6 +323,48 @@ async function run() {
     });
     t.eq(notGrown, [100, 100], '収まっているときは札の寸法をそのまま使う（勝手に伸ばさない）');
 
+    /* ===== 11. 札を伸ばしたとき、下に置いた項目（番号など）が取り残されない =====
+       文章の枠を下へ伸ばした分だけ、その下にある項目も一緒に下がる。
+       伸ばした分だけ札も伸びるので、下の余白は元のまま保たれる。 */
+    await page.evaluate((long) => {
+      const p = proj();
+      p.works[0].description = long;
+      p.descSize = { w: 140, h: 100 };
+      p.style.descLayout = {
+        no: { x: 120, y: 88, w: 16, h: null, font: 'inherit', size: 10, ls: 0,
+              align: 'right', color: null, sx: 100, sy: 100, lh: null },
+        description: { x: 10, y: 10, w: 120, h: 50, font: 'inherit', size: 13, ls: 0,
+                       align: 'justify', color: null, sx: 100, sy: 100, lh: null }
+      };
+      save(); renderSheets();
+    }, LONG);
+    await page.waitForTimeout(900);
+    const pushed = await page.evaluate(() => {
+      const s0 = document.querySelector('#sheetScroll .sheet');
+      const S = s0.getBoundingClientRect().width / parseFloat(s0.style.width);
+      const mm = v => +(v / S).toFixed(1);
+      const desc = [...s0.querySelectorAll('.cap-card')][1];
+      const dr = desc.getBoundingClientRect();
+      const no = desc.querySelector('[data-item="no"]');
+      const item = desc.querySelector('[data-item="description"]');
+      const nr = no.getBoundingClientRect(), ir = item.getBoundingClientRect();
+      return {
+        cardH: mm(dr.height),
+        noTop: mm(nr.top - dr.top),
+        gapBelowNo: mm(dr.bottom - nr.bottom),   // 番号の下に残る余白
+        overlap: ir.bottom > nr.top + 1,          // 解説文が番号に重なっていないか
+        noInside: nr.bottom <= dr.bottom + 1,
+        itemOverflow: item.scrollHeight - item.clientHeight
+      };
+    });
+    t.eq(pushed.itemOverflow, 0, '枠を指定していても解説文があふれない');
+    t.ok(pushed.cardH > 100, `文章を伸ばした分だけ札も伸びる（100mm → ${pushed.cardH}mm）`);
+    t.ok(pushed.noTop > 88, `下に置いた番号も一緒に下がる（88mm → ${pushed.noTop}mm）`);
+    t.eq(pushed.overlap, false, '伸ばした解説文が番号に重ならない');
+    t.eq(pushed.noInside, true, '番号が札の外に出ない');
+    t.ok(pushed.gapBelowNo >= 5 && pushed.gapBelowNo <= 9,
+      `番号の下の余白が元のまま保たれる（${pushed.gapBelowNo}mm）`);
+
     t.noErrors(errors);
     const r = t.finish();
     await browser.close();
