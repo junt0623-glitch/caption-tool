@@ -239,6 +239,132 @@ async function run() {
     t.eq(kept.noteShown, true, '読み直しても説明が出ている');
     t.eq(kept.wraps, 3, '読み直しても1作品1枚で組まれる');
 
+    /* ===== 10. 長い解説文が下で切れない（用紙に余白があるのに切るのはおかしい） =====
+       札が足りなければ札を、文章の枠が足りなければ枠を、それぞれ下へ伸ばして全文を出す。 */
+    const LONG = '盤の中央に描かれた、真っ二つに分断された三層の楼閣。山に向かって伸びる白い光の道と、'
+      + '水上に浮かぶ三つの楼閣門、傍らには橋を渡る人物と船を漕ぐ人物。'
+      + '欧米で「スプリッド・パゴダ」と呼ばれるこの奇抜な意匠は、染付と五彩のいずれにも見られ、'
+      + '明代末期の漳州窯を代表する図様として知られる。分断された楼閣が何を意味するのかは'
+      + '諸説あるが、いまだ定説をみない。同様の図様は伊万里焼にも写され、十九世紀の丸山窯の'
+      + '作例が知られる。本作は産業技術総合研究所中部センターの旧蔵品で、当館が管理している。';
+    await page.evaluate((long) => {
+      const p = proj();
+      p.works = [p.works[0]];
+      p.works[0].description = long;
+      p.size = { preset: 'custom', w: 140, h: 100 };
+      p.descSize = { w: 140, h: 70 };          // わざと足りない高さにしておく
+      p.printOpt = Object.assign({}, p.printOpt, { face: 'both', sheetKind: 'a4' });
+      save(); renderSheets();
+    }, LONG);
+    await page.waitForTimeout(900);
+
+    const grown = await page.evaluate((long) => {
+      const s0 = document.querySelector('#sheetScroll .sheet');
+      const sr = s0.getBoundingClientRect();
+      const S = sr.width / parseFloat(s0.style.width);
+      const mm = v => +(v / S).toFixed(1);
+      const cards = [...s0.querySelectorAll('.cap-card')];
+      const desc = cards[1], item = desc.querySelector('[data-item="description"]');
+      const dr = desc.getBoundingClientRect(), ir = item.getBoundingClientRect();
+      return {
+        descCardH: mm(dr.height),
+        itemOverflow: item.scrollHeight - item.clientHeight,
+        itemInsideCard: ir.bottom <= dr.bottom + 1,
+        lastBottomMM: mm(cards[cards.length - 1].getBoundingClientRect().bottom - sr.top),
+        sheetH: parseFloat(s0.style.height),
+        // 文章が最後まで出ているか
+        endsWith: item.textContent.trim().endsWith(long.slice(-12)),
+        scale: lastBothScale
+      };
+    }, LONG);
+    t.ok(grown.descCardH > 70, `解説の札が足りなければ下へ伸ばす（70mm → ${grown.descCardH}mm）`);
+    t.eq(grown.itemOverflow, 0, '解説文が枠からあふれない（切り取られない）');
+    t.eq(grown.itemInsideCard, true, '文章の枠が札からはみ出さない（札に切り取られない）');
+    t.eq(grown.endsWith, true, '解説文が最後の一文まで出ている');
+    t.ok(grown.lastBottomMM <= grown.sheetH,
+      `伸ばしても用紙に収まる（下端${grown.lastBottomMM}mm ≦ 用紙${grown.sheetH}mm）`);
+
+    // 実際の印刷でも同じ
+    await page.evaluate(() => { window.print = () => {}; });
+    const printedLong = await page.evaluate(async (long) => {
+      await doPrint();
+      const root = document.getElementById('print-root');
+      root.style.cssText = 'display:block;position:absolute;left:-4000px;top:0';
+      const s0 = root.querySelector('.sheet');
+      const cards = [...s0.querySelectorAll('.cap-card')];
+      const desc = cards[1], item = desc.querySelector('[data-item="description"]');
+      const out = {
+        overflow: item.scrollHeight - item.clientHeight,
+        inside: item.getBoundingClientRect().bottom <= desc.getBoundingClientRect().bottom + 1,
+        endsWith: item.textContent.trim().endsWith(long.slice(-12)),
+        bottomOK: desc.getBoundingClientRect().bottom <= s0.getBoundingClientRect().bottom + 1
+      };
+      root.style.cssText = ''; root.innerHTML = '';
+      return out;
+    }, LONG);
+    t.eq(printedLong.overflow, 0, '印刷でも解説文が枠からあふれない');
+    t.eq(printedLong.inside, true, '印刷でも札に切り取られない');
+    t.eq(printedLong.endsWith, true, '印刷でも最後の一文まで出る');
+    t.eq(printedLong.bottomOK, true, '印刷でも用紙の中に収まる');
+
+    // 収まる長さのときは、札の寸法を勝手に変えない
+    await page.evaluate(() => {
+      const p = proj();
+      p.works[0].description = '短い解説。';
+      p.descSize = { w: 140, h: 100 };
+      save(); renderSheets();
+    });
+    await page.waitForTimeout(800);
+    const notGrown = await page.evaluate(() => {
+      const s0 = document.querySelector('#sheetScroll .sheet');
+      const S = s0.getBoundingClientRect().width / parseFloat(s0.style.width);
+      const cards = [...s0.querySelectorAll('.cap-card')];
+      return cards.map(c => +(c.getBoundingClientRect().height / S).toFixed(1));
+    });
+    t.eq(notGrown, [100, 100], '収まっているときは札の寸法をそのまま使う（勝手に伸ばさない）');
+
+    /* ===== 11. 札を伸ばしたとき、下に置いた項目（番号など）が取り残されない =====
+       文章の枠を下へ伸ばした分だけ、その下にある項目も一緒に下がる。
+       伸ばした分だけ札も伸びるので、下の余白は元のまま保たれる。 */
+    await page.evaluate((long) => {
+      const p = proj();
+      p.works[0].description = long;
+      p.descSize = { w: 140, h: 100 };
+      p.style.descLayout = {
+        no: { x: 120, y: 88, w: 16, h: null, font: 'inherit', size: 10, ls: 0,
+              align: 'right', color: null, sx: 100, sy: 100, lh: null },
+        description: { x: 10, y: 10, w: 120, h: 50, font: 'inherit', size: 13, ls: 0,
+                       align: 'justify', color: null, sx: 100, sy: 100, lh: null }
+      };
+      save(); renderSheets();
+    }, LONG);
+    await page.waitForTimeout(900);
+    const pushed = await page.evaluate(() => {
+      const s0 = document.querySelector('#sheetScroll .sheet');
+      const S = s0.getBoundingClientRect().width / parseFloat(s0.style.width);
+      const mm = v => +(v / S).toFixed(1);
+      const desc = [...s0.querySelectorAll('.cap-card')][1];
+      const dr = desc.getBoundingClientRect();
+      const no = desc.querySelector('[data-item="no"]');
+      const item = desc.querySelector('[data-item="description"]');
+      const nr = no.getBoundingClientRect(), ir = item.getBoundingClientRect();
+      return {
+        cardH: mm(dr.height),
+        noTop: mm(nr.top - dr.top),
+        gapBelowNo: mm(dr.bottom - nr.bottom),   // 番号の下に残る余白
+        overlap: ir.bottom > nr.top + 1,          // 解説文が番号に重なっていないか
+        noInside: nr.bottom <= dr.bottom + 1,
+        itemOverflow: item.scrollHeight - item.clientHeight
+      };
+    });
+    t.eq(pushed.itemOverflow, 0, '枠を指定していても解説文があふれない');
+    t.ok(pushed.cardH > 100, `文章を伸ばした分だけ札も伸びる（100mm → ${pushed.cardH}mm）`);
+    t.ok(pushed.noTop > 88, `下に置いた番号も一緒に下がる（88mm → ${pushed.noTop}mm）`);
+    t.eq(pushed.overlap, false, '伸ばした解説文が番号に重ならない');
+    t.eq(pushed.noInside, true, '番号が札の外に出ない');
+    t.ok(pushed.gapBelowNo >= 5 && pushed.gapBelowNo <= 9,
+      `番号の下の余白が元のまま保たれる（${pushed.gapBelowNo}mm）`);
+
     t.noErrors(errors);
     const r = t.finish();
     await browser.close();
