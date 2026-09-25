@@ -970,7 +970,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
           <label class="chk"><input type="radio" name="printFace" value="cap">キャプション</label>
           <label class="chk"><input type="radio" name="printFace" value="desc">解説（番号＋解説文）</label>
           <label class="chk"><input type="radio" name="printFace" value="both">キャプション＋解説（1作品を1枚に）</label>
-          <p class="note" id="bothFaceNote" style="margin:2px 0 0 24px;display:none">1作品につき用紙1枚に、キャプションと解説の両方を並べます。<b>用紙に収まらないときだけ、両方を同じ比率で自動的に縮めます</b>（縮めた場合は下のプレビューに倍率が出ます）。縦並び・横並びのうち、より大きく置けるほうを自動で選びます。原寸より大きくすることはありません。</p></div>
+          <p class="note" id="bothFaceNote" style="margin:2px 0 0 24px;display:none">1作品につき用紙1枚に、キャプションと解説の両方を並べます。<b>用紙に収まらないときだけ、両方を同じ比率で自動的に縮めます</b>（縮めた場合は下のプレビューに倍率が出ます）。<b>解説文が札に収まらないときは、用紙の余白を使って札を下へ伸ばし、文章が切れないようにします。</b>縦並び・横並びのうち、より大きく置けるほうを自動で選びます。原寸より大きくすることはありません。</p></div>
         <div class="ctl"><label class="lbl">対象</label>
           <select id="printSection" style="width:100%"><option value="">すべての作品</option></select></div>
         <div class="ctl"><label class="lbl">用紙サイズ</label>
@@ -4605,44 +4605,23 @@ function buildSheets(){const p=proj();ensureLayout(p);
      縮めた倍率は、あとでプレビューに出すため lastBothScale に控える。 */
   if(both){
     const M=SAFE_EDGE, GAP=6;                  // 用紙端の安全余白と、2枚のあいだの間隔
-    const availW=SW-2*M, availH=SH-2*M;
-    let minScale=1;
     works.forEach(w=>{
       const cz=effectiveSize(w,p,"cap"), dz=effectiveSize(w,p,"desc");
-      /* 縦並び（上にキャプション・下に解説）と横並びで、それぞれ入る倍率を出す */
-      const vW=Math.max(cz.w,dz.w), vH=cz.h+GAP+dz.h;
-      const hW=cz.w+GAP+dz.w, hH=Math.max(cz.h,dz.h);
-      const vs=Math.min(availW/vW, availH/vH);
-      const hs=Math.min(availW/hW, availH/hH);
-      const vertical=vs>=hs;                   // 大きく置けるほうを採る
-      const scale=Math.min(1,Math.max(vertical?vs:hs,0.05));
-      if(scale<minScale)minScale=scale;
-      const boxW=(vertical?vW:hW), boxH=(vertical?vH:hH);
       const sheet=document.createElement("div");
       sheet.className="sheet"+(o.border?" cut-border":"");
       sheet.style.width=SW+"mm";sheet.style.height=SH+"mm";
       sheets.push(sheet);
       const wrap=document.createElement("div");
       wrap.className="pair-wrap";
-      wrap.style.width=boxW+"mm";wrap.style.height=boxH+"mm";
-      /* 縮めたぶんも含めて用紙の中央に置く */
-      wrap.style.left=round1((SW-boxW*scale)/2)+"mm";
-      wrap.style.top=round1((SH-boxH*scale)/2)+"mm";
-      if(scale!==1){wrap.style.transform=`scale(${scale.toFixed(4)})`;wrap.style.transformOrigin="top left";}
-      const cap=buildCard(w,st,cz,{plain:true,mode:"cap"});
-      const desc=buildCard(w,st,dz,{plain:true,mode:"desc"});
-      if(vertical){
-        cap.style.left=round1((boxW-cz.w)/2)+"mm";cap.style.top="0mm";
-        desc.style.left=round1((boxW-dz.w)/2)+"mm";desc.style.top=(cz.h+GAP)+"mm";
-      }else{
-        cap.style.left="0mm";cap.style.top=round1((boxH-cz.h)/2)+"mm";
-        desc.style.left=(cz.w+GAP)+"mm";desc.style.top=round1((boxH-dz.h)/2)+"mm";
-      }
-      wrap.appendChild(cap);wrap.appendChild(desc);
+      /* 組み直し（解説の枠を伸ばしたあとの置き直し）に必要な寸法を控えておく */
+      Object.assign(wrap.dataset,{capw:cz.w,caph:cz.h,descw:dz.w,desch:dz.h,
+        sw:SW,sh:SH,gap:GAP,m:M});
+      wrap.appendChild(buildCard(w,st,cz,{plain:true,mode:"cap"}));
+      wrap.appendChild(buildCard(w,st,dz,{plain:true,mode:"desc"}));
+      layoutPair(wrap,cz.h,dz.h);              // まずは元の寸法で置く
       sheet.appendChild(wrap);
     });
-    lastBothScale=minScale;
-    if(o.ruler&&minScale===1)sheets.forEach(s=>s.appendChild(makeScaleRuler()));
+    if(o.ruler)sheets.forEach(s=>s.appendChild(makeScaleRuler()));
     return sheets;
   }
   /* 寸法が混ざっているときは、幅の入るだけ横に並べ、入らなくなったら行の最大高さぶん下げる
@@ -4677,6 +4656,73 @@ function buildSheets(){const p=proj();ensureLayout(p);
     works.forEach((w,i)=>{const k=i%per;const sheet=(k===0)?newSheet():sheets[sheets.length-1];const x=M+(k%cols)*(size.w+G),y=M+Math.floor(k/cols)*(size.h+G);place(sheet,w,x,y);});}
   if(o.ruler)sheets.forEach(s=>s.appendChild(makeScaleRuler()));
   return sheets;}
+/* ===== キャプションと解説の2枚を、用紙の中に置く =====
+   縦並び・横並びのうち大きく置けるほうを選び、収まらないときだけ同じ比率で縮める。
+   解説の枠を伸ばしたあとにも同じ計算で置き直せるよう、関数にしてある。 */
+function layoutPair(wrap,capH,descH){
+  const d=wrap.dataset;
+  const cw=+d.capw, dw=+d.descw, SW=+d.sw, SH=+d.sh, GAP=+d.gap, M=+d.m;
+  const ch=capH, dh=descH;
+  const availW=SW-2*M, availH=SH-2*M;
+  const vW=Math.max(cw,dw), vH=ch+GAP+dh;      // 縦並び
+  const hW=cw+GAP+dw, hH=Math.max(ch,dh);      // 横並び
+  const vs=Math.min(availW/vW,availH/vH), hs=Math.min(availW/hW,availH/hH);
+  const vertical=vs>=hs;                        // 大きく置けるほうを採る
+  const scale=Math.min(1,Math.max(vertical?vs:hs,0.05));
+  const boxW=vertical?vW:hW, boxH=vertical?vH:hH;
+  const cards=$$(".cap-card",wrap), cap=cards[0], desc=cards[1];
+  if(desc)desc.style.height=dh+"mm";
+  wrap.style.width=boxW+"mm";wrap.style.height=boxH+"mm";
+  /* 縮めたぶんも含めて用紙の中央に置く */
+  wrap.style.left=round1((SW-boxW*scale)/2)+"mm";
+  wrap.style.top=round1((SH-boxH*scale)/2)+"mm";
+  wrap.style.transform=(scale!==1)?`scale(${scale.toFixed(4)})`:"";
+  wrap.style.transformOrigin="top left";
+  if(cap&&desc){
+    if(vertical){
+      cap.style.left=round1((boxW-cw)/2)+"mm";cap.style.top="0mm";
+      desc.style.left=round1((boxW-dw)/2)+"mm";desc.style.top=(ch+GAP)+"mm";
+    }else{
+      cap.style.left="0mm";cap.style.top=round1((boxH-ch)/2)+"mm";
+      desc.style.left=(cw+GAP)+"mm";desc.style.top=round1((boxH-dh)/2)+"mm";
+    }
+  }
+  return scale;
+}
+/* 用紙に置かれたあとで、解説文が枠からあふれていないか実測して直す。
+   用紙には余白が残っているのに文章の下が切り取られる、ということが起きないよう、
+   あふれたぶんだけ解説の枠を下へ伸ばしてから置き直す。 */
+function neededCardH(card,origH){
+  let low=0;
+  $$(".cap-item",card).forEach(el=>{
+    /* 解説文は「枠に収める」項目なので、まず文章が全部入る高さまで枠を広げてから測る */
+    if(el.classList.contains("fit-desc")){
+      const over=el.scrollHeight-el.clientHeight;
+      if(over>1)el.style.height=(el.clientHeight+over+1)+"px";
+    }
+    const sy=parseFloat(el.dataset.sy||"1")||1;
+    /* 高さを決め打ちした項目はその高さを尊重し、自動の項目は中身の高さで測る */
+    const h=(el.classList.contains("fixed-h")?el.clientHeight:el.scrollHeight)*sy;
+    low=Math.max(low,el.offsetTop+h);
+  });
+  if(!low)return origH;
+  const lowMM=low/MM2PX+2;                      // 下に2mmだけ余裕をもたせる
+  return (lowMM<=origH)?origH:Math.ceil(lowMM);
+}
+function fitBothIn(root){
+  const wraps=$$(".pair-wrap",root);
+  if(!wraps.length)return;
+  let minScale=1;
+  wraps.forEach(wrap=>{
+    const d=wrap.dataset, cards=$$(".cap-card",wrap);
+    const ch=cards[0]?neededCardH(cards[0],+d.caph):+d.caph;
+    const dh=cards[1]?neededCardH(cards[1],+d.desch):+d.desch;
+    if(cards[0])cards[0].style.height=ch+"mm";
+    const s=layoutPair(wrap,ch,dh);
+    if(s<minScale)minScale=s;
+  });
+  lastBothScale=minScale;
+}
 /* 原寸確認用の目盛り（100mm・10mm刻み）。印刷して定規で測れば実寸かどうか判定できる */
 function makeScaleRuler(){
   const r=document.createElement("div");r.className="scale-ruler";
@@ -4703,7 +4749,7 @@ function renderSheets(){if(!$("#tab-print").classList.contains("active"))return;
   sheets.forEach(s=>{const holder=document.createElement("div");holder.className="sheet-holder";
     holder.style.width=(dims.w*MM2PX*sheetZoom)+"px";holder.style.height=(dims.h*MM2PX*sheetZoom)+"px";
     s.style.transform=`scale(${sheetZoom})`;s.style.transformOrigin="top left";holder.appendChild(s);scroll.appendChild(holder);});
-  fitDescIn(scroll);fitRubyIn(scroll);
+  fitBothIn(scroll);fitDescIn(scroll);fitRubyIn(scroll);
   /* 「テキストを画像に変換して印刷」を選んでいるときは、プレビューも
      実際に出るのと同じ画像化した状態にする（時間がかかるので裏で1枚ずつ） */
   previewBakeId++;                        // 前回の変換は打ち切る
@@ -4858,7 +4904,7 @@ async function doPrint(){
   sheets.forEach(s=>{s.style.transform="";root.appendChild(s);});
   // 解説文の自動流し込み調整は寸法計測が必要なため、一時的に画面外で可視化して実行
   root.style.cssText=`display:block;position:absolute;left:-${Math.round(dims.w*3+2000)}px;top:0;width:${dims.w}mm`;
-  fitDescIn(root);fitRubyIn(root);
+  fitBothIn(root);fitDescIn(root);fitRubyIn(root);
   /* 文字の画像化は、組版（解説文の自動調整・ルビの収め）が済んだあとに、
      その結果をそのまま焼き付ける。だから画像化しても位置はずれない */
   const o=proj().printOpt||{};
