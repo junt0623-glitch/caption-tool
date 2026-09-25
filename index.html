@@ -668,6 +668,11 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
   #print-root{display:block !important;width:auto !important;margin:0 !important;padding:0 !important;position:static !important;left:auto !important;top:auto !important}
   .sheet{box-shadow:none;page-break-after:always;break-after:page;margin:0 !important;overflow:hidden}
   .sheet:last-child{page-break-after:auto;break-after:auto}
+  /* 1枚の用紙は、それだけで完結した箱として扱わせる。
+     「キャプション＋解説」では札を縮小して置くが、縮小前の高さは用紙より高い。
+     これを囲い込まないと、ブラウザが用紙の境目で札を分割してしまい、
+     地色・枠線・背景だけが途中で切れたまま印刷される（文字は最後まで出るので枠だけが崩れて見える）。 */
+  .sheet{contain:strict}
   .cap-card,.cap-img{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .cap-card{box-shadow:none}
   .scale-ruler{-webkit-print-color-adjust:exact;print-color-adjust:exact}
