@@ -415,6 +415,43 @@ async function run() {
     });
     t.eq(calm.cardH, 100, '文章が下の項目まで届かないときは札を伸ばさない');
     t.eq(calm.noTop, 88, '文章が下の項目まで届かないときは番号を動かさない');
+
+    /* ===== 12. 用紙が複数枚あっても、札が用紙の境目で分割されないこと =====
+       この面では札を縮小して置くので、縮める前の高さは用紙より高くなる。
+       用紙を「それだけで完結した箱」として囲い込まないと、ブラウザが札を
+       用紙の境目で分割し、地色・枠線・背景だけが途中で切れて印刷される
+       （文字は最後まで出るので、枠だけが崩れて見える）。 */
+    await page.evaluate((long) => {
+      const p = proj();
+      const w2 = JSON.parse(JSON.stringify(p.works[0]));
+      w2.id = 'w-dup-frag'; w2.no = '75';
+      p.works = [p.works[0], w2];
+      p.works[0].description = long; w2.description = long;
+      p.style.descLayout.description.h = 50;
+      save(); renderSheets();
+    }, LONG);
+    await page.waitForTimeout(900);
+    const frag = await page.evaluate(() => {
+      const s0 = document.querySelector('#sheetScroll .sheet');
+      const wrap = s0.querySelector('.pair-wrap');
+      return {
+        sheets: document.querySelectorAll('#sheetScroll .sheet').length,
+        // 縮める前の箱は用紙より高い（＝分割されうる状態であること自体を確かめる）
+        wrapTallerThanSheet: parseFloat(wrap.style.height) > parseFloat(s0.style.height),
+        scale: lastBothScale
+      };
+    });
+    t.eq(frag.sheets, 2, '2作品なら用紙も2枚');
+    t.eq(frag.wrapTallerThanSheet, true,
+      '縮める前の高さは用紙より高い（＝用紙の境目で分割されうる状態）');
+    await page.emulateMedia({ media: 'print' });
+    const guard = await page.evaluate(() => {
+      const s0 = document.querySelector('#sheetScroll .sheet');
+      return getComputedStyle(s0).contain;
+    });
+    await page.emulateMedia({ media: 'screen' });
+    t.eq(guard, 'strict', '印刷時は用紙を囲い込んで、札が次のページへ分割されないようにする');
+
     t.noErrors(errors);
     const r = t.finish();
     await browser.close();
