@@ -108,6 +108,8 @@ async function run() {
     t.ok(/縮小/.test(n.text) && /倍率/.test(n.text),
       '倍率や余白では直らないことを伝える');
     t.ok(/PDF/.test(n.text), '回避策（PDFに書き出して刷る）も伝える');
+    t.ok(/ロール紙/.test(n.text) && /幅/.test(n.text),
+      'ロール紙のときは幅をロール紙の幅に合わせればよいことを伝える');
 
     await page.selectOption('#sheetKind', 'custom');
     await page.fill('#sheetCustomW', '600');
