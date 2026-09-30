@@ -2444,7 +2444,7 @@ function fitDescEl(el){
   const fits=()=>el.scrollHeight<=el.clientHeight+1;
   if(fits())return true;
   for(let d=0.01;d<=0.051;d+=0.01){el.style.letterSpacing=(base-d)+"em";if(fits())return true;}
-  for(let s=0.99;s>=0.949;s-=0.01){put(s);if(fits())return true;}
+  for(let s=0.99;s>=0.899;s-=0.01){put(s);if(fits())return true;}
   return false;
 }
 function fitDescIn(root){let ok=true;$$(".fit-desc",root).forEach(el=>{if(!fitDescEl(el))ok=false;});return ok;}
@@ -4777,51 +4777,95 @@ function layoutPair(wrap,capH,descH){
   }
   return scale;
 }
-/* 用紙に置かれたあとで、解説文が枠からあふれていないか実測して直す。
-   用紙には余白が残っているのに文章の下が切り取られる、ということが起きないよう、
-   あふれたぶんだけ解説の枠を下へ伸ばしてから置き直す。 */
+/* 用紙に置かれたあとで、文字が枠や札からはみ出していないか実測して直す。
+   用紙には余白が残っているのに文章の下が切り取られる、ということが起きないようにする。
+   測るのは「枠の大きさ」ではなく「実際に文字が置かれている範囲」。枠は余裕をもって
+   広めに取ってあることが多いので、枠の重なりで判断すると、どこも切れていないのに
+   札が伸びてしまい、指定した寸法どおりに刷れなくなる。 */
 function neededCardH(card,origH){
   const items=$$(".cap-item",card);
   if(!items.length)return origH;
-  /* 高さを決め打ちした項目はその高さを尊重し、自動の項目は中身の高さで測る */
-  const heightOf=el=>{
-    const sy=parseFloat(el.dataset.sy||"1")||1;
-    return (el.classList.contains("fixed-h")?el.clientHeight:el.scrollHeight)*sy;
+  const cr=card.getBoundingClientRect();
+  const wmm=parseFloat(card.style.width)||0;
+  const k=(wmm&&cr.width)?cr.width/(wmm*MM2PX):1;    // 縮めて置かれているぶんを戻す
+  const PX=MM2PX*k;
+  const toMm=b=>({top:(b.top-cr.top)/PX,bottom:(b.bottom-cr.top)/PX,
+                  left:(b.left-cr.left)/PX,right:(b.right-cr.left)/PX});
+  const boxOf=el=>toMm(el.getBoundingClientRect());
+  /* 実際に文字（ルビも含む）が並んでいる範囲を、1行ずつ測る。
+     一かたまりの四角で測ると、最後の行が短くても「幅いっぱいの四角」として扱われ、
+     右下に置いた番号とぶつかっていることにされてしまう。
+     高さを決めた項目は枠で切り取られて出るので、その枠の中までに丸める */
+  const inkOf=el=>{
+    const rg=document.createRange();rg.selectNodeContents(el);
+    const clip=el.classList.contains("fixed-h")&&!el.classList.contains("fit-desc");
+    const x=clip?boxOf(el):null;
+    const lines=[];
+    [...rg.getClientRects()].forEach(b=>{
+      if(!b.width||!b.height)return;
+      const t=toMm(b);
+      if(x){
+        t.top=Math.max(t.top,x.top);t.bottom=Math.min(t.bottom,x.bottom);
+        t.left=Math.max(t.left,x.left);t.right=Math.min(t.right,x.right);
+      }
+      if(t.bottom>t.top+0.01&&t.right>t.left+0.01)lines.push(t);
+    });
+    if(!lines.length)return null;
+    const ink={top:Infinity,bottom:-Infinity,left:Infinity,right:-Infinity};
+    lines.forEach(t=>{ink.top=Math.min(ink.top,t.top);ink.bottom=Math.max(ink.bottom,t.bottom);
+      ink.left=Math.min(ink.left,t.left);ink.right=Math.max(ink.right,t.right);});
+    return {ink,lines};
   };
-  const rec=items.map(el=>{
-    const sx=parseFloat(el.dataset.sx||"1")||1;
-    return {el,top:el.offsetTop,left:el.offsetLeft,right:el.offsetLeft+el.offsetWidth*sx};
-  });
-  /* 解説文は「枠に収める」項目なので、文章が全部入る高さまで枠を広げる */
+  const shift=new Map();
+  const moveDown=(el,mm)=>{shift.set(el,(shift.get(el)||0)+mm);
+    el.style.top=round1(el.offsetTop/MM2PX+mm)+"mm";};
+  /* ① 「枠に収める」項目は、文章が全部入る高さまで枠を広げる。
+        広げた枠の下にあった項目は、広げたぶんだけ一緒に下げる（置き去りにしない） */
+  let grow=0,growFrom=Infinity;
   items.forEach(el=>{
     if(!el.classList.contains("fit-desc"))return;
     const over=el.scrollHeight-el.clientHeight;
-    if(over>1)el.style.height=(el.clientHeight+over+1)+"px";
+    if(over<=1)return;
+    const b0=boxOf(el).bottom;
+    el.style.height=(el.clientHeight+over+1)+"px";
+    const d=boxOf(el).bottom-b0;
+    if(d>grow){grow=d;growFrom=b0;}
   });
-  rec.forEach(r=>{r.bottom=r.top+heightOf(r.el);});
-  /* 横にずれて並んでいる項目どうしはぶつからない（英文を右半分に置く組みなど） */
-  const hits=(a,b)=>!(a.right<=b.left+0.5||b.right<=a.left+0.5);
-  const floor=(origH-2)*MM2PX;            // 札の下端に残しておきたい余白
-  /* いちばん下まで届いた項目が、その下にある項目（番号など）や
-     札の下端をどれだけ押し下げるかを測る */
+  if(grow>0.5)items.forEach(el=>{if(boxOf(el).top>=growFrom-0.5)moveDown(el,grow);});
+  /* ② 文字が下の項目の文字まで届いてしまうときは、その項目から下を押し下げる。
+        枠ではなく文字どうしで見るので、右下に小さく置いた番号の脇を文章が
+        通り抜けるような組みでは、無用に動かさない */
+  const rec=[];items.forEach(el=>{const t=inkOf(el);if(t)rec.push(Object.assign({el},t));});
+  let maxShift=0;shift.forEach(v=>{if(v>maxShift)maxShift=v;});
+  let low=0;rec.forEach(r=>{if(r.ink.bottom>low)low=r.ink.bottom;});
+  /* 指定した高さに文字が収まっているなら、ここで終わり。
+     項目どうしが多少重なっていても、それは組んだとおりの配置なので動かさない */
+  if(low<=origH+0.01&&maxShift<=0.01)return origH;
   let push=0,from=Infinity;
   rec.forEach(a=>{
-    let limit=floor;
-    rec.forEach(b=>{if(b!==a&&b.top>a.top+0.5&&hits(a,b)&&b.top<limit)limit=b.top;});
-    const need=a.bottom-limit+((limit<floor)?MM2PX:0);   // 下の項目とは1mmだけ離す
-    if(need>push){push=need;from=limit;}
-  });
-  /* 押し下げる。置き去りにすると文章と重なったり、札の下に空白ができたりする */
-  if(push>0.5){
-    rec.forEach(r=>{
-      if(r.top<from-0.5)return;
-      r.el.style.top=round1((r.top+push)/MM2PX)+"mm";
-      r.top+=push;r.bottom+=push;
+    rec.forEach(b=>{
+      if(b===a||b.ink.top<=a.ink.top+0.5)return;          // 下にあるものだけ
+      /* a の行のうち、b と横に重なっていて、b の文字の上端より下へ出ている分 */
+      let deep=0;
+      a.lines.forEach(L=>{
+        if(L.right<=b.ink.left+0.5||b.ink.right<=L.left+0.5)return;
+        const d=L.bottom-b.ink.top;
+        if(d>deep)deep=d;
+      });
+      /* 実際に重なったときだけ動かす。重なっていなければ、どれだけ近くても触らない */
+      if(deep>0.5&&deep+1>push){push=deep+1;from=b.ink.top;}   // 動かすときは1mmだけ離す
     });
-  }else push=0;
-  let low=0;rec.forEach(r=>{if(r.bottom>low)low=r.bottom;});
-  /* 下端の余白は元のまま保ちたいので、下げたぶんは札も同じだけ伸ばす */
-  const newH=Math.max(origH,origH+push/MM2PX,low/MM2PX+2);
+  });
+  if(push>0.5)rec.forEach(r=>{
+    if(r.ink.top<from-0.5)return;
+    moveDown(r.el,push);r.ink.top+=push;r.ink.bottom+=push;
+    r.lines.forEach(L=>{L.top+=push;L.bottom+=push;});
+  });
+  /* ③ 文字が全部おさまる高さにする。下げたぶんは札も同じだけ伸ばして、下端の余白を保つ */
+  low=0;maxShift=0;
+  rec.forEach(r=>{if(r.ink.bottom>low)low=r.ink.bottom;});
+  shift.forEach(v=>{if(v>maxShift)maxShift=v;});
+  const newH=Math.max(origH,origH+maxShift,low+2);
   return (newH<=origH+0.01)?origH:Math.ceil(newH);
 }
 function fitBothIn(root){
@@ -4866,7 +4910,9 @@ function renderSheets(){if(!$("#tab-print").classList.contains("active"))return;
   sheets.forEach(s=>{const holder=document.createElement("div");holder.className="sheet-holder";
     holder.style.width=(dims.w*MM2PX*sheetZoom)+"px";holder.style.height=(dims.h*MM2PX*sheetZoom)+"px";
     s.style.transform=`scale(${sheetZoom})`;s.style.transformOrigin="top left";holder.appendChild(s);scroll.appendChild(holder);});
-  fitBothIn(scroll);fitDescIn(scroll);fitRubyIn(scroll);
+  /* 先に「枠に収める」自動調整を済ませてから札の寸法を測る。順が逆だと、
+     ±5%の調整で収まる文章まで「あふれている」と見なされてしまう */
+  fitDescIn(scroll);fitBothIn(scroll);fitRubyIn(scroll);
   /* 「テキストを画像に変換して印刷」を選んでいるときは、プレビューも
      実際に出るのと同じ画像化した状態にする（時間がかかるので裏で1枚ずつ） */
   previewBakeId++;                        // 前回の変換は打ち切る
@@ -5027,7 +5073,7 @@ async function doPrint(){
   sheets.forEach(s=>{s.style.transform="";root.appendChild(s);});
   // 解説文の自動流し込み調整は寸法計測が必要なため、一時的に画面外で可視化して実行
   root.style.cssText=`display:block;position:absolute;left:-${Math.round(dims.w*3+2000)}px;top:0;width:${dims.w}mm`;
-  fitBothIn(root);fitDescIn(root);fitRubyIn(root);
+  fitDescIn(root);fitBothIn(root);fitRubyIn(root);
   /* 文字の画像化は、組版（解説文の自動調整・ルビの収め）が済んだあとに、
      その結果をそのまま焼き付ける。だから画像化しても位置はずれない */
   const o=proj().printOpt||{};

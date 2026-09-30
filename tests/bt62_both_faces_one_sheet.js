@@ -366,15 +366,10 @@ async function run() {
     t.ok(pushed.gapBelowNo >= 5 && pushed.gapBelowNo <= 9,
       `番号の下の余白が元のまま保たれる（${pushed.gapBelowNo}mm）`);
 
-    /* 高さを決めていない（枠に収めない）解説文でも同じこと。
-       この場合は文章がそのまま札の外へ流れ出てしまうので、札を伸ばして番号を下げる。 */
-    await page.evaluate(() => {
-      const p = proj();
-      p.style.descLayout.description.h = null;
-      save(); renderSheets();
-    });
-    await page.waitForTimeout(900);
-    const freeH = await page.evaluate(() => {
+    /* 高さを決めていない（枠に収めない）解説文でも、札からはみ出した分だけ札を伸ばす。
+       番号を動かすかどうかは「文字どうしがぶつかるか」で決める。
+       文章の行の右端より外に番号があるなら、脇を通り抜けるだけなので動かさない。 */
+    const descState = () => page.evaluate(() => {
       const s0 = document.querySelector('#sheetScroll .sheet');
       const S = s0.getBoundingClientRect().width / parseFloat(s0.style.width) * lastBothScale;
       const mm = v => +(v / S).toFixed(1);
@@ -385,16 +380,44 @@ async function run() {
       return {
         cardH: mm(dr.height), noTop: mm(nr.top - dr.top),
         textInside: ir.bottom <= dr.bottom + 1,
-        overlap: ir.bottom > nr.top + 1,
+        textBottom: mm(ir.bottom - dr.top),
+        // 文字どうしが重なっていないか（枠ではなく、実際に字がある範囲で見る）
+        overlap: (() => {
+          const inkRects = el => { const rg = document.createRange(); rg.selectNodeContents(el);
+            return [...rg.getClientRects()].filter(r => r.width && r.height); };
+          const nos = inkRects(desc.querySelector('[data-item="no"]'));
+          return inkRects(desc.querySelector('[data-item="description"]')).some(L =>
+            nos.some(n => L.bottom > n.top + 1 && L.top < n.bottom - 1 &&
+                          L.right > n.left + 1 && L.left < n.right - 1));
+        })(),
         gapBelowNo: mm(dr.bottom - nr.bottom)
       };
     });
+    await page.evaluate(() => {
+      const p = proj();
+      p.style.descLayout.description.h = null;
+      save(); renderSheets();
+    });
+    await page.waitForTimeout(900);
+    let freeH = await descState();
     t.eq(freeH.textInside, true, '高さを決めていない解説文も札からはみ出さない');
     t.ok(freeH.cardH > 100, `そのぶん札が伸びる（100mm → ${freeH.cardH}mm）`);
-    t.ok(freeH.noTop > 88, `番号も一緒に下がる（88mm → ${freeH.noTop}mm）`);
-    t.eq(freeH.overlap, false, '解説文が番号に重ならない');
+    t.eq(freeH.noTop, 88, '文章の行に当たらない位置の番号は動かさない（組んだとおりに置く）');
+
+    // 番号を文章の行の内側に置くと、こんどは文字どうしがぶつかるので下へ逃がす
+    await page.evaluate(() => {
+      const p = proj();
+      p.style.descLayout.no.x = 60;
+      save(); renderSheets();
+    });
+    await page.waitForTimeout(900);
+    freeH = await descState();
+    t.ok(freeH.noTop > 88, `文章の行に当たる位置の番号は下がる（88mm → ${freeH.noTop}mm）`);
+    t.eq(freeH.overlap, false, '下げたので解説文と番号が重ならない');
+    t.eq(freeH.textInside, true, '下げても解説文は札の中');
     t.ok(freeH.gapBelowNo >= 5 && freeH.gapBelowNo <= 9,
       `番号の下の余白が元のまま保たれる（${freeH.gapBelowNo}mm）`);
+    await page.evaluate(() => { proj().style.descLayout.no.x = 120; save(); });
 
     /* 逆に、文章が番号まで届かないときは何も動かさない（勝手に動くほうが困る） */
     await page.evaluate(() => {
@@ -415,6 +438,57 @@ async function run() {
     });
     t.eq(calm.cardH, 100, '文章が下の項目まで届かないときは札を伸ばさない');
     t.eq(calm.noTop, 88, '文章が下の項目まで届かないときは番号を動かさない');
+
+    /* ===== 11の2. 収まっている作品は、どれも指定した寸法どおりに刷られること =====
+       番号を右下に置き、英文の項目をその左隣まで伸ばした組み（よくある作り）では、
+       枠どうしは重なる。枠の重なりで判断すると、どこも切れていないのに札が伸びて
+       しまい、作品ごとに刷り上がりの寸法が変わってしまう。 */
+    await page.evaluate(() => {
+      const p = proj();
+      const base = p.works[0];
+      p.works = ['短い解説。', '少し長めの解説文をここに入れて、二行から三行くらいになるようにします。',
+        'さらに長い解説文。展示室でお客さまに読んでいただくことを想定した、五行ほどの分量の文章を入れています。作品の見どころと背景を説明します。']
+        .map((d, i) => {
+          const w = JSON.parse(JSON.stringify(base));
+          w.id = 'w-size-' + i; w.no = String(41 + i); w.description = d;
+          w.collectionEn = 'Gift of MOGI Keiichiro, on deposit with us';
+          return w;
+        });
+      p.size = { preset: 'custom', w: 158, h: 173 };
+      p.descSize = { w: 158, h: 173 };
+      p.style.show.collectionEn = true;
+      p.style.layout.no = { x: 142, y: 158, w: 12, h: 8, font: 'inherit', size: 12, ls: 0,
+        align: 'right', color: null, sx: 100, sy: 100, lh: null };
+      p.style.layout.collectionEn = { x: 10, y: 152, w: 135, h: 16, font: 'inherit', size: 9, ls: 0,
+        align: 'left', color: null, sx: 100, sy: 100, lh: null };
+      p.style.descLayout = {
+        no: { x: 142, y: 158, w: 12, h: 8, font: 'inherit', size: 12, ls: 0,
+              align: 'right', color: null, sx: 100, sy: 100, lh: null },
+        description: { x: 8, y: 21, w: 144, h: 144, font: 'inherit', size: 14, ls: 0,
+                       align: 'justify', color: null, sx: 100, sy: 100, lh: null }
+      };
+      p.printOpt = Object.assign({}, p.printOpt, { face: 'both', sheetKind: 'a4' });
+      save(); renderSheets();
+    });
+    await page.waitForTimeout(1200);
+    const sizes = await page.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('#sheetScroll .sheet').forEach(s => {
+        const wrap = s.querySelector('.pair-wrap');
+        const sc = wrap && wrap.style.transform
+          ? +(wrap.style.transform.match(/[\d.]+/) || [1])[0] : 1;
+        out.push({
+          cards: [...s.querySelectorAll('.cap-card')].map(c => c.style.width + 'x' + c.style.height),
+          scale: sc
+        });
+      });
+      return out;
+    });
+    t.eq(sizes.map(x => x.cards.join(' / ')),
+      ['158mmx173mm / 158mmx173mm', '158mmx173mm / 158mmx173mm', '158mmx173mm / 158mmx173mm'],
+      '収まっている作品は、解説文の長さが違っても指定した寸法どおりに刷られる');
+    t.eq(new Set(sizes.map(x => x.scale)).size, 1,
+      `どの用紙も同じ倍率で刷られる（${sizes.map(x => x.scale).join(', ')}）`);
 
     /* ===== 12. 用紙が複数枚あっても、札が用紙の境目で分割されないこと =====
        この面では札を縮小して置くので、縮める前の高さは用紙より高くなる。
