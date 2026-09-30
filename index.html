@@ -993,9 +993,27 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
         <div class="ctl"><label class="lbl">用紙サイズ</label>
           <select id="sheetKind" style="width:100%">
             <option value="a4">A4（210×297mm）</option>
+            <option value="roll">ロール紙（大判プリンター）</option>
             <option value="large">大型プリンター（幅1000×長さ800mm）</option>
             <option value="custom">カスタムサイズ</option>
           </select>
+          <div class="row" id="rollSheetRow" style="margin-top:6px;display:none;align-items:center">
+            <label style="font-size:12px;color:var(--sub)">ロール紙の幅
+              <select id="rollWidth">
+                <option value="610">610mm（24インチ）</option>
+                <option value="914">914mm（36インチ）</option>
+                <option value="1067">1067mm（42インチ）</option>
+                <option value="1118">1118mm（44インチ）</option>
+                <option value="841">841mm（A0幅）</option>
+                <option value="594">594mm（A1幅）</option>
+                <option value="420">420mm（A2幅）</option>
+                <option value="297">297mm（A3幅）</option>
+                <option value="other">その他（幅を入力）</option>
+              </select></label>
+            <label id="rollOtherW" style="display:none;font-size:12px;color:var(--sub)">幅 <input type="number" id="rollCustomW" min="100" max="3000" step="1"> mm</label>
+            <label style="font-size:12px;color:var(--sub)">1枚の長さ <input type="number" id="rollH" min="100" max="3000" step="10"> mm</label>
+          </div>
+          <p class="note" id="rollNote" style="display:none;margin-top:6px">用紙の幅をロール紙の幅と同じにしてあるので、プリンター側で「<b>ロール紙の幅に合わせる</b>」が働いても<b>等倍のまま</b>出ます。「1枚の長さ」は1ページぶんの送り量です。<br>それでも縮むときは、プリンターのプロパティで「<b>拡大／縮小印刷</b>」「<b>フチなし印刷</b>」をオフにしてください。「仕上げ」の<b>原寸確認用の目盛り</b>で確かめられます。</p>
           <div class="row" id="customSheetRow" style="margin-top:6px;display:none">
             <label style="font-size:12px;color:var(--sub)">幅 <input type="number" id="sheetCustomW" min="100" max="3000" step="10"> mm</label>
             <label style="font-size:12px;color:var(--sub)">長さ <input type="number" id="sheetCustomH" min="100" max="3000" step="10"> mm</label>
@@ -1196,7 +1214,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
         <li><b>用紙サイズがA4など実際の用紙と一致</b>しているか確認（違う用紙だと自動で縮小されます）。</li>
         <li>プリンター側にも「用紙に合わせる／フィット」設定があります。印刷ダイアログの「システムダイアログを使用して印刷」から<b>プリンターのプロパティ</b>を開き、<b>「実寸」「100%」「等倍」</b>を選んでください（ブラウザ側を100%にしても、ここが「用紙に合わせる」だと縮小されます）。</li>
         <li><b>A4・A3などの標準用紙でない寸法</b>（大型プリンター・カスタムサイズ）のときは、<b>同じ寸法の用紙がプリンターに登録されていないと必ず縮小されます</b>。プリンターのプロパティでその寸法の用紙（カスタム用紙・ロール紙）を作って選んでください。</li>
-        <li><b>ロール紙（大判プリンター）のとき</b>は、ドライバーの<b>「ロール紙の幅に合わせる」「拡大／縮小印刷」をオフ（等倍・100%）</b>にしてください。ここが効いていると、ブラウザ側を100%にしても縮みます。あわせて、印刷タブの<b>用紙サイズの「幅」をロール紙の幅と同じ数値</b>にすると、幅に合わせられてもそのまま等倍になります。</li>
+        <li><b>ロール紙（大判プリンター）のとき</b>は、印刷タブの用紙サイズで<b>「ロール紙（大判プリンター）」</b>を選び、<b>ロール紙の幅</b>（24インチ＝610mmなど）を指定してください。用紙の幅がロール紙の幅と同じになるので、ドライバーの「ロール紙の幅に合わせる」が働いてもそのまま等倍で出ます。それでも縮むときは、プリンターのプロパティで<b>「拡大／縮小印刷」「フチなし印刷」をオフ</b>に。</li>
         <li>それが難しいときは、送信先を<b>「PDFに保存」</b>にして書き出すと、指定した寸法どおりのPDFになります。そのPDFをAcrobatなどで開き、<b>「実際のサイズ」</b>で印刷してください（大きな用紙を複数枚に分けて刷る「ポスター印刷／分割」もPDFソフト側で行えます）。</li>
         <li>確認するには、印刷タブの<b>「原寸確認用の目盛り（100mm）を入れる」</b>にチェックして印刷し、定規で測ってください。</li>
       </ul>
@@ -1257,6 +1275,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <li><b>印刷・PDF</b>の「<b>対象</b>」で、刷る作品をしぼれます。作品に章（節）を付けていればその章を、付けていなくても<b>「選んだ作品だけ」</b>を選べば、番号と作品名の一覧から1点ずつチェックして刷れます。</li>
       <li>一覧の上の「<b>番号で選び直す</b>」に <b>74-80, 85</b> のように書いて「反映」すると、その番号の作品だけが選ばれます（刷り直しのときに便利です）。</li>
       <li>選んだ内容は展覧会ごとに保存され、台帳で並べ替えても選び直す必要はありません。</li>
+      <li><b>大判（ロール紙）プリンター</b>で刷るときは、用紙サイズで<b>「ロール紙（大判プリンター）」</b>を選び、ロール紙の幅（24インチ＝610mm など）と1枚の長さを指定してください。用紙の幅がロール紙の幅と同じになるので、プリンター側の「ロール紙の幅に合わせる」が働いても<b>等倍のまま</b>出ます。</li>
     </ul>
     <h4>データの保存</h4>
     <ul>
@@ -4533,7 +4552,11 @@ function checkOverflow(){const p=proj(),st=curStyleRead(),size=curSize();let ove
 
 /* ===== 印刷 ===== */
 let sheetZoom=.5;
-const SHEET_KINDS={a4:{w:210,h:297,fudge:1},large:{w:1000,h:800,fudge:2},custom:{w:1000,h:800,fudge:1}};
+const SHEET_KINDS={a4:{w:210,h:297,fudge:1},large:{w:1000,h:800,fudge:2},custom:{w:1000,h:800,fudge:1},
+  roll:{w:610,h:200,fudge:1}};
+/* ロール紙は「用紙の幅＝ロール紙の幅」にしておくのが肝心。
+   プリンター側の「ロール紙の幅に合わせる」が働いても、同じ幅なら等倍のまま出るため。 */
+const ROLL_WIDTHS=[610,914,1067,1118,841,594,420,297];
 /* 原寸印刷のための安全マージン：シートの実寸が用紙寸法と完全に同値だと、
    小数丸めでわずかに超えた瞬間にブラウザが「用紙に合わせる」判定でページ全体を
    縮小してしまう。幅にもごく僅かな余裕（0.5mm）を持たせて確実に収める。 */
@@ -4545,8 +4568,9 @@ const SAFE_EDGE=5;
 let lastBothScale=1;
 function sheetDims(o){
   const k=SHEET_KINDS[o.sheetKind]||SHEET_KINDS.a4;
-  const w=(o.sheetKind==="custom")?Math.max(100,+o.sheetCustomW||1000):k.w;
-  const h=(o.sheetKind==="custom")?Math.max(100,+o.sheetCustomH||800):k.h;
+  let w=k.w,h=k.h;
+  if(o.sheetKind==="custom"){w=Math.max(100,+o.sheetCustomW||1000);h=Math.max(100,+o.sheetCustomH||800);}
+  if(o.sheetKind==="roll"){w=Math.max(100,+o.rollW||610);h=Math.max(100,+o.rollH||200);}
   return {w,h,fudge:k.fudge,fudgeW:SHEET_FUDGE_W};
 }
 /* 用紙が標準サイズと一致するときは @page に用紙名（A4等）を使う。
@@ -4570,8 +4594,14 @@ function isStandardPaper(dims){
 }
 function refreshSheetPaperNote(){
   const el=$("#sheetPaperNote");if(!el)return;
-  const dims=sheetDims(proj().printOpt||{sheetKind:"a4"});
-  if(isStandardPaper(dims)){el.style.display="none";return;}
+  const o=proj().printOpt||{sheetKind:"a4"};
+  const dims=sheetDims(o);
+  /* ロール紙のときは、幅をロール紙に合わせてあるので縮小の心配は無い。
+     代わりにロール紙用の案内を出す */
+  const roll=(o.sheetKind==="roll");
+  $("#rollSheetRow").style.display=roll?"":"none";
+  $("#rollNote").style.display=roll?"":"none";
+  if(roll||isStandardPaper(dims)){el.style.display="none";return;}
   el.style.display="";
   el.innerHTML=`この寸法（${dims.w}×${dims.h}mm）は標準の用紙ではありません。`
     +`<b>同じ寸法の用紙がプリンター側に無いと、ブラウザが用紙に合わせて全体を縮小します</b>`
@@ -4590,6 +4620,11 @@ function refreshPrintControls(){const p=proj();ensureLayout(p);
   $$('input[name=printMode]').forEach(r=>r.checked=(r.value===o.mode));$("#prMarks").checked=o.marks;$("#prBorder").checked=o.border;
   $("#sheetKind").value=o.sheetKind;$("#customSheetRow").style.display=(o.sheetKind==="custom")?"":"none";
   $("#sheetCustomW").value=o.sheetCustomW;$("#sheetCustomH").value=o.sheetCustomH;
+  if(o.rollW==null)o.rollW=610;if(o.rollH==null)o.rollH=200;
+  const listed=ROLL_WIDTHS.includes(+o.rollW);
+  $("#rollWidth").value=listed?String(o.rollW):"other";
+  $("#rollOtherW").style.display=listed?"none":"";
+  $("#rollCustomW").value=o.rollW;$("#rollH").value=o.rollH;
   $("#prTight").checked=o.tight;$("#prRuler").checked=!!o.ruler;
   $("#prMarks").disabled=o.tight;$("#finishRow").style.opacity=o.tight?.45:1;
   refreshBothFaceRow();
@@ -4681,7 +4716,14 @@ $("#pickApplyRange").addEventListener("click",()=>{
   setPick(ids);
 });
 $("#pickRange").addEventListener("keydown",e=>{if(e.key==="Enter"&&!isComposingKey(e)){e.preventDefault();$("#pickApplyRange").click();}});
-$("#sheetKind").addEventListener("change",e=>{proj().printOpt.sheetKind=e.target.value;$("#customSheetRow").style.display=(e.target.value==="custom")?"":"none";save();refreshSheetPaperNote();renderSheets();});
+$("#sheetKind").addEventListener("change",e=>{proj().printOpt.sheetKind=e.target.value;$("#customSheetRow").style.display=(e.target.value==="custom")?"":"none";save();refreshPrintControls();renderSheets();});
+$("#rollWidth").addEventListener("change",e=>{
+  const o=proj().printOpt;
+  if(e.target.value==="other"){$("#rollOtherW").style.display="";$("#rollCustomW").focus();}
+  else{$("#rollOtherW").style.display="none";o.rollW=+e.target.value;$("#rollCustomW").value=o.rollW;}
+  save();refreshSheetPaperNote();renderSheets();});
+$("#rollCustomW").addEventListener("input",e=>{proj().printOpt.rollW=Math.max(100,+e.target.value||610);save();renderSheets();});
+$("#rollH").addEventListener("input",e=>{proj().printOpt.rollH=Math.max(100,+e.target.value||200);save();renderSheets();});
 $("#sheetCustomW").addEventListener("input",e=>{proj().printOpt.sheetCustomW=Math.max(100,+e.target.value||1000);save();refreshSheetPaperNote();renderSheets();});
 $("#sheetCustomH").addEventListener("input",e=>{proj().printOpt.sheetCustomH=Math.max(100,+e.target.value||800);save();refreshSheetPaperNote();renderSheets();});
 $("#prTight").addEventListener("change",e=>{proj().printOpt.tight=e.target.checked;
