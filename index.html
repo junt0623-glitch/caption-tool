@@ -1000,6 +1000,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
             <label style="font-size:12px;color:var(--sub)">幅 <input type="number" id="sheetCustomW" min="100" max="3000" step="10"> mm</label>
             <label style="font-size:12px;color:var(--sub)">長さ <input type="number" id="sheetCustomH" min="100" max="3000" step="10"> mm</label>
           </div>
+          <p class="note" id="sheetPaperNote" style="display:none;margin-top:6px;color:var(--shu)"></p>
         </div>
         <div class="ctl" id="printModeRow"><label class="lbl">配置</label>
           <label class="chk"><input type="radio" name="printMode" value="impose">用紙に面付け（複数枚まとめて）</label>
@@ -1193,7 +1194,9 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
         <li><b>倍率が「既定」のままだと縮小されます。</b>「カスタム」を選び <b>100</b> と入力してください（Chrome／Edge：詳細設定 → 拡大縮小 → カスタム＝100）。</li>
         <li><b>余白は「なし」</b>に。既定のままだと用紙に合わせて縮められます。</li>
         <li><b>用紙サイズがA4など実際の用紙と一致</b>しているか確認（違う用紙だと自動で縮小されます）。</li>
-        <li>プリンター側にも「用紙に合わせる／フィット」設定があります。<b>「実寸」「100%」「等倍」</b>を選んでください。</li>
+        <li>プリンター側にも「用紙に合わせる／フィット」設定があります。印刷ダイアログの「システムダイアログを使用して印刷」から<b>プリンターのプロパティ</b>を開き、<b>「実寸」「100%」「等倍」</b>を選んでください（ブラウザ側を100%にしても、ここが「用紙に合わせる」だと縮小されます）。</li>
+        <li><b>A4・A3などの標準用紙でない寸法</b>（大型プリンター・カスタムサイズ）のときは、<b>同じ寸法の用紙がプリンターに登録されていないと必ず縮小されます</b>。プリンターのプロパティでその寸法の用紙（カスタム用紙・ロール紙）を作って選んでください。</li>
+        <li>それが難しいときは、送信先を<b>「PDFに保存」</b>にして書き出すと、指定した寸法どおりのPDFになります。そのPDFをAcrobatなどで開き、<b>「実際のサイズ」</b>で印刷してください（大きな用紙を複数枚に分けて刷る「ポスター印刷／分割」もPDFソフト側で行えます）。</li>
         <li>確認するには、印刷タブの<b>「原寸確認用の目盛り（100mm）を入れる」</b>にチェックして印刷し、定規で測ってください。</li>
       </ul>
     </details>
@@ -4556,6 +4559,25 @@ function pageSizeRule(dims){
   if(land)return `@page{size:${land.n} landscape;margin:0}`;
   return `@page{size:${dims.w}mm ${dims.h}mm;margin:0}`;
 }
+/* 標準の用紙サイズでないときの案内。
+   同じ寸法の用紙がプリンター側に無いと、ブラウザは用紙に合わせて全体を縮小してしまう。
+   これは印刷ダイアログの倍率や余白では直らないので、先に知らせておく。 */
+function isStandardPaper(dims){
+  return PAPER_NAMES.some(p=>
+    (Math.abs(p.w-dims.w)<0.6&&Math.abs(p.h-dims.h)<0.6)||
+    (Math.abs(p.h-dims.w)<0.6&&Math.abs(p.w-dims.h)<0.6));
+}
+function refreshSheetPaperNote(){
+  const el=$("#sheetPaperNote");if(!el)return;
+  const dims=sheetDims(proj().printOpt||{sheetKind:"a4"});
+  if(isStandardPaper(dims)){el.style.display="none";return;}
+  el.style.display="";
+  el.innerHTML=`この寸法（${dims.w}×${dims.h}mm）は標準の用紙ではありません。`
+    +`<b>同じ寸法の用紙がプリンター側に無いと、ブラウザが用紙に合わせて全体を縮小します</b>`
+    +`（印刷ダイアログの倍率を100%・余白をなしにしても直りません）。`
+    +`プリンターのプロパティで同じ寸法の用紙（カスタム用紙・ロール紙）を登録して選ぶか、`
+    +`送信先を「PDFに保存」にしてこの寸法のPDFを書き出し、PDFソフトから「実際のサイズ」で印刷してください。`;
+}
 function refreshPrintControls(){const p=proj();ensureLayout(p);
   if(!p.printOpt)p.printOpt={mode:"impose",marks:false,border:true,section:"",face:"cap",sheetKind:"a4",sheetCustomW:1000,sheetCustomH:800,tight:false};
   const o=p.printOpt;if(!o.face)o.face="cap";if(!o.sheetKind)o.sheetKind="a4";
@@ -4568,6 +4590,7 @@ function refreshPrintControls(){const p=proj();ensureLayout(p);
   $("#prMarks").disabled=o.tight;$("#finishRow").style.opacity=o.tight?.45:1;
   refreshBothFaceRow();
   o.outlineDpi=clampDpi(o.outlineDpi);refreshOutlineRow();
+  refreshSheetPaperNote();
   const secs=sectionsOf(p),sel2=$("#printSection");
   sel2.innerHTML=`<option value="">すべての作品</option>`
     +secs.map(s=>`<option value="${esc(s)}" ${s===o.section?"selected":""}>${esc(s)}</option>`).join("")
@@ -4654,9 +4677,9 @@ $("#pickApplyRange").addEventListener("click",()=>{
   setPick(ids);
 });
 $("#pickRange").addEventListener("keydown",e=>{if(e.key==="Enter"&&!isComposingKey(e)){e.preventDefault();$("#pickApplyRange").click();}});
-$("#sheetKind").addEventListener("change",e=>{proj().printOpt.sheetKind=e.target.value;$("#customSheetRow").style.display=(e.target.value==="custom")?"":"none";save();renderSheets();});
-$("#sheetCustomW").addEventListener("input",e=>{proj().printOpt.sheetCustomW=Math.max(100,+e.target.value||1000);save();renderSheets();});
-$("#sheetCustomH").addEventListener("input",e=>{proj().printOpt.sheetCustomH=Math.max(100,+e.target.value||800);save();renderSheets();});
+$("#sheetKind").addEventListener("change",e=>{proj().printOpt.sheetKind=e.target.value;$("#customSheetRow").style.display=(e.target.value==="custom")?"":"none";save();refreshSheetPaperNote();renderSheets();});
+$("#sheetCustomW").addEventListener("input",e=>{proj().printOpt.sheetCustomW=Math.max(100,+e.target.value||1000);save();refreshSheetPaperNote();renderSheets();});
+$("#sheetCustomH").addEventListener("input",e=>{proj().printOpt.sheetCustomH=Math.max(100,+e.target.value||800);save();refreshSheetPaperNote();renderSheets();});
 $("#prTight").addEventListener("change",e=>{proj().printOpt.tight=e.target.checked;
   $("#prMarks").disabled=e.target.checked;$("#finishRow").style.opacity=e.target.checked?.45:1;
   save();renderSheets();});
