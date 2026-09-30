@@ -977,7 +977,19 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
           <label class="chk"><input type="radio" name="printFace" value="both">キャプション＋解説（1作品を1枚に）</label>
           <p class="note" id="bothFaceNote" style="margin:2px 0 0 24px;display:none">1作品につき用紙1枚に、キャプションと解説の両方を並べます。<b>用紙に収まらないときだけ、両方を同じ比率で自動的に縮めます</b>（縮めた場合は下のプレビューに倍率が出ます）。縦並び・横並びのうち、より大きく置けるほうを自動で選びます。原寸より大きくすることはありません。</p></div>
         <div class="ctl"><label class="lbl">対象</label>
-          <select id="printSection" style="width:100%"><option value="">すべての作品</option></select></div>
+          <select id="printSection" style="width:100%"><option value="">すべての作品</option></select>
+          <div id="printPick" style="display:none;margin-top:8px">
+            <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
+              <button class="btn small" id="pickAll">すべて選ぶ</button>
+              <button class="btn small" id="pickNone">すべて外す</button>
+              <label style="font-size:12px;color:var(--sub)">番号で選び直す
+                <input type="text" id="pickRange" placeholder="例：74-80, 85" style="width:132px"></label>
+              <button class="btn small" id="pickApplyRange">反映</button>
+            </div>
+            <p class="note" id="pickCount" style="margin:6px 0 4px"></p>
+            <div id="pickList" style="max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:6px 10px;background:var(--white)"></div>
+            <p class="note" style="margin-top:4px">チェックした作品だけを印刷します。選んだ内容はこの展覧会に保存され、並べ替えても崩れません。</p>
+          </div></div>
         <div class="ctl"><label class="lbl">用紙サイズ</label>
           <select id="sheetKind" style="width:100%">
             <option value="a4">A4（210×297mm）</option>
@@ -1235,6 +1247,12 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <li><b>整列</b>：上のツールで左右上下の揃え・均等配置。2つ以上で項目どうしを、1つだけなら札に対して揃えます。</li>
       <li><b>初期配置に戻す</b>：積み上げ配置にリセットします。</li>
       <li>ここで組んだ配置・書式は<b>全作品と印刷</b>に共通で反映されます。</li>
+    </ul>
+    <h4>刷る作品をしぼる</h4>
+    <ul>
+      <li><b>印刷・PDF</b>の「<b>対象</b>」で、刷る作品をしぼれます。作品に章（節）を付けていればその章を、付けていなくても<b>「選んだ作品だけ」</b>を選べば、番号と作品名の一覧から1点ずつチェックして刷れます。</li>
+      <li>一覧の上の「<b>番号で選び直す</b>」に <b>74-80, 85</b> のように書いて「反映」すると、その番号の作品だけが選ばれます（刷り直しのときに便利です）。</li>
+      <li>選んだ内容は展覧会ごとに保存され、台帳で並べ替えても選び直す必要はありません。</li>
     </ul>
     <h4>データの保存</h4>
     <ul>
@@ -4550,7 +4568,63 @@ function refreshPrintControls(){const p=proj();ensureLayout(p);
   $("#prMarks").disabled=o.tight;$("#finishRow").style.opacity=o.tight?.45:1;
   refreshBothFaceRow();
   o.outlineDpi=clampDpi(o.outlineDpi);refreshOutlineRow();
-  const secs=sectionsOf(p),sel2=$("#printSection");sel2.innerHTML=`<option value="">すべての作品</option>`+secs.map(s=>`<option value="${esc(s)}" ${s===o.section?"selected":""}>${esc(s)}</option>`).join("");}
+  const secs=sectionsOf(p),sel2=$("#printSection");
+  sel2.innerHTML=`<option value="">すべての作品</option>`
+    +secs.map(s=>`<option value="${esc(s)}" ${s===o.section?"selected":""}>${esc(s)}</option>`).join("")
+    +`<option value="${PICK_SECTION}" ${o.section===PICK_SECTION?"selected":""}>選んだ作品だけ（下で指定）</option>`;
+  renderPickList();}
+/* ===== 印刷する作品を1点ずつ選ぶ =====
+   章（節）を付けていない展覧会でも任意の作品だけ刷れるように、番号と作品名の一覧から選ぶ。
+   選択は作品のidで覚えるので、台帳で並べ替えても選び直さなくてよい。 */
+const PICK_SECTION="__pick";
+function pickSet(p){const o=p.printOpt||{};return new Set(Array.isArray(o.pick)?o.pick:[]);}
+/* いま印刷の対象になっている作品 */
+function worksForPrint(p){
+  const o=p.printOpt||{};
+  if(o.section===PICK_SECTION){const s=pickSet(p);return p.works.filter(w=>s.has(w.id));}
+  return p.works.filter(w=>!o.section||(w.section||"").trim()===o.section);
+}
+function setPick(ids){const p=proj();p.printOpt.pick=ids;save();renderPickList();renderSheets();}
+function pickCountNote(){
+  const p=proj(),n=worksForPrint(p).length;
+  $("#pickCount").innerHTML=n
+    ? `全${p.works.length}件のうち <b>${n}件</b> を印刷します。`
+    : `<b>1件も選ばれていません。</b>印刷する作品にチェックを入れてください。`;
+}
+function renderPickList(){
+  const p=proj(),o=p.printOpt||{},on=(o.section===PICK_SECTION);
+  const box=$("#printPick");if(!box)return;
+  box.style.display=on?"":"none";
+  if(!on)return;
+  const sel=pickSet(p);
+  $("#pickList").innerHTML=p.works.length
+    ? p.works.map(w=>`<label class="chk" style="display:block">`
+        +`<input type="checkbox" class="pickChk" data-id="${esc(w.id)}" ${sel.has(w.id)?"checked":""}>`
+        +`<b>${esc(w.no||"—")}</b>　${esc(oneLine(w.title))||"（作品名なし）"}</label>`).join("")
+    : `<p class="note">作品台帳に作品がありません。</p>`;
+  pickCountNote();
+  $$(".pickChk",$("#pickList")).forEach(c=>c.addEventListener("change",()=>{
+    const s=pickSet(proj());
+    if(c.checked)s.add(c.dataset.id);else s.delete(c.dataset.id);
+    proj().printOpt.pick=[...s];save();pickCountNote();renderSheets();}));
+}
+/* 「74-80, 85」のような番号の指定を作品に読み替える。
+   全角の読点・波ダッシュも受け取る。番号が数字でない作品は、書かれたとおりの一致で拾う */
+function worksByNoRange(text){
+  const p=proj();
+  const toks=String(text||"").replace(/[、，]/g,",").replace(/[〜～－ー–—―]/g,"-")
+    .split(/[,\s]+/).filter(Boolean);
+  if(!toks.length)return null;
+  const exact=new Set(),ranges=[];
+  toks.forEach(t=>{const m=t.match(/^(\d+)-(\d+)$/);
+    if(m)ranges.push([Math.min(+m[1],+m[2]),Math.max(+m[1],+m[2])]);else exact.add(t);});
+  return p.works.filter(w=>{
+    const no=String(w.no||"").trim();
+    if(exact.has(no))return true;
+    if(!/^\d+$/.test(no))return false;
+    const n=+no;return ranges.some(([a,b])=>n>=a&&n<=b);
+  }).map(w=>w.id);
+}
 $$('input[name=printMode]').forEach(r=>r.addEventListener("change",()=>{proj().printOpt.mode=r.value;save();renderSheets();}));
 $$('input[name=printFace]').forEach(r=>r.addEventListener("change",()=>{
   proj().printOpt.face=r.value;save();refreshBothFaceRow();renderSheets();}));
@@ -4570,7 +4644,16 @@ $("#prRuler").addEventListener("change",e=>{proj().printOpt.ruler=e.target.check
 /* 画像化の切り替えはプレビューにもそのまま出す（印刷前に見て確かめられるように） */
 $("#prOutline").addEventListener("change",e=>{proj().printOpt.outline=e.target.checked;save();refreshOutlineRow();renderSheets();});
 $("#prOutlineDpi").addEventListener("change",e=>{proj().printOpt.outlineDpi=clampDpi(e.target.value);save();refreshOutlineRow();renderSheets();});
-$("#printSection").addEventListener("change",e=>{proj().printOpt.section=e.target.value;save();renderSheets();});
+$("#printSection").addEventListener("change",e=>{proj().printOpt.section=e.target.value;save();renderPickList();renderSheets();});
+$("#pickAll").addEventListener("click",()=>setPick(proj().works.map(w=>w.id)));
+$("#pickNone").addEventListener("click",()=>setPick([]));
+$("#pickApplyRange").addEventListener("click",()=>{
+  const ids=worksByNoRange($("#pickRange").value);
+  if(ids===null){alert("番号を入力してください。例：74-80, 85");return;}
+  if(!ids.length){alert("あてはまる番号の作品がありませんでした。");return;}
+  setPick(ids);
+});
+$("#pickRange").addEventListener("keydown",e=>{if(e.key==="Enter"&&!isComposingKey(e)){e.preventDefault();$("#pickApplyRange").click();}});
 $("#sheetKind").addEventListener("change",e=>{proj().printOpt.sheetKind=e.target.value;$("#customSheetRow").style.display=(e.target.value==="custom")?"":"none";save();renderSheets();});
 $("#sheetCustomW").addEventListener("input",e=>{proj().printOpt.sheetCustomW=Math.max(100,+e.target.value||1000);save();renderSheets();});
 $("#sheetCustomH").addEventListener("input",e=>{proj().printOpt.sheetCustomH=Math.max(100,+e.target.value||800);save();renderSheets();});
@@ -4582,7 +4665,7 @@ function buildSheets(){const p=proj();ensureLayout(p);
   const o=p.printOpt||{mode:"impose",marks:false,border:true,section:"",face:"cap",sheetKind:"a4",tight:false};
   const both=(o.face==="both");
   const face=(o.face==="desc")?"desc":"cap";
-  const works=p.works.filter(w=>!o.section||(w.section||"").trim()===o.section);
+  const works=worksForPrint(p);
   const size=(face==="desc")?p.descSize:p.size,st=p.style,sheets=[];
   const dims=sheetDims(o);const SW=dims.w-dims.fudgeW,SH=dims.h-dims.fudge;
   const tight=!!o.tight;
@@ -4766,8 +4849,10 @@ function makeScaleRuler(){
 function renderSheets(){if(!$("#tab-print").classList.contains("active"))return;ensureProjectFonts();const scroll=$("#sheetScroll");scroll.innerHTML="";
   const p=proj(),o=p.printOpt||{sheetKind:"a4"};const dims=sheetDims(o);
   const sheets=buildSheets();
-  const perSheetCount=sheets.length?Math.round(proj().works.filter(w=>!o.section||(w.section||"").trim()===o.section).length/sheets.length):0;
-  $("#sheetCount").textContent=sheets.length?`用紙(${dims.w}×${dims.h}mm) ${sheets.length}枚`:"印刷できる作品がありません";
+  const target=worksForPrint(p);
+  $("#sheetCount").textContent=sheets.length
+    ? `用紙(${dims.w}×${dims.h}mm) ${sheets.length}枚（${target.length}件）`
+    : (p.works.length?"「対象」で作品が1点も選ばれていません":"印刷できる作品がありません");
   /* 「キャプション＋解説」で縮めて収めたときは、その倍率を知らせる（原寸でない旨） */
   const fitNote=$("#bothFitNote");
   if(fitNote){
@@ -4928,9 +5013,15 @@ function refreshOutlineRow(){
   $("#outlineGfWarn").style.display=(on&&usesOnlineFont())?"":"none";
 }
 /* 実際にブラウザの印刷ダイアログ（＝プリンターの詳細設定への入口）を開く */
+/* 刷るものが無いときの案内。原因（台帳が空か、「対象」で絞りきったか）で言い分ける */
+function printEmptyMsg(){
+  return proj().works.length
+    ? "印刷する作品が1点も選ばれていません。「対象」で作品を選んでください。"
+    : "印刷できる作品がありません。作品台帳に登録してください。";
+}
 async function doPrint(){
   const root=$("#print-root");root.innerHTML="";const sheets=buildSheets();
-  if(!sheets.length){alert("印刷できる作品がありません。作品台帳に登録してください。");return false;}
+  if(!sheets.length){alert(printEmptyMsg());return false;}
   const dims=sheetDims(proj().printOpt||{sheetKind:"a4"});
   $("#dynPageSize").textContent=pageSizeRule(dims);
   sheets.forEach(s=>{s.style.transform="";root.appendChild(s);});
@@ -4955,7 +5046,7 @@ async function doPrint(){
 /* 印刷ボタン：まず原寸印刷の設定案内を出し、そこからプリンターの詳細設定（印刷ダイアログ）へ進む。
    「次回から表示しない」を選ぶと以後は案内を飛ばして直接ダイアログを開く。 */
 $("#btnPrint").addEventListener("click",()=>{
-  if(!buildSheets().length){alert("印刷できる作品がありません。作品台帳に登録してください。");return;}
+  if(!buildSheets().length){alert(printEmptyMsg());return;}
   if(store.printGuideHide){doPrint();return;}
   $("#printGuideHide").checked=false;
   $("#printGuideDialog").showModal();
