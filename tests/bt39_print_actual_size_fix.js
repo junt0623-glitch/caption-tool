@@ -89,6 +89,116 @@ async function run() {
     });
     t.eq(off, false, '目盛りOFFのときは印刷物に入らない');
 
+    /* ---- 標準用紙でない寸法のときは、縮小されうることを先に知らせる ----
+       同じ寸法の用紙がプリンター側に無いと、ブラウザが用紙に合わせて全体を縮小する。
+       印刷ダイアログの倍率や余白では直らないので、設定した時点で案内を出す。 */
+    const note = () => page.evaluate(() => {
+      const el = document.getElementById('sheetPaperNote');
+      return { shown: getComputedStyle(el).display !== 'none', text: el.textContent };
+    });
+    await page.selectOption('#sheetKind', 'a4');
+    await page.waitForTimeout(300);
+    t.eq((await note()).shown, false, 'A4のときは案内を出さない');
+
+    await page.selectOption('#sheetKind', 'large');
+    await page.waitForTimeout(300);
+    let n = await note();
+    t.eq(n.shown, true, '大型プリンターの寸法では案内を出す');
+    t.ok(/1000×800mm/.test(n.text), '選んでいる寸法を示す');
+    t.ok(/縮小/.test(n.text) && /倍率/.test(n.text),
+      '倍率や余白では直らないことを伝える');
+    t.ok(/PDF/.test(n.text), '回避策（PDFに書き出して刷る）も伝える');
+    t.ok(/ロール紙/.test(n.text) && /幅/.test(n.text),
+      'ロール紙のときは幅をロール紙の幅に合わせればよいことを伝える');
+
+    await page.selectOption('#sheetKind', 'custom');
+    await page.fill('#sheetCustomW', '600');
+    await page.fill('#sheetCustomH', '200');
+    await page.waitForTimeout(400);
+    n = await note();
+    t.eq(n.shown, true, 'カスタムサイズでも案内を出す');
+    t.ok(/600×200mm/.test(n.text), '入力した寸法を示す');
+
+    // 標準用紙と同じ寸法を入れたときは出さない（A3・横長A4）
+    await page.fill('#sheetCustomW', '297');
+    await page.fill('#sheetCustomH', '420');
+    await page.waitForTimeout(400);
+    t.eq((await note()).shown, false, 'A3と同じ寸法なら案内は出さない');
+    await page.fill('#sheetCustomW', '297');
+    await page.fill('#sheetCustomH', '210');
+    await page.waitForTimeout(400);
+    t.eq((await note()).shown, false, '横長A4と同じ寸法でも案内は出さない');
+
+    /* ---- ロール紙：用紙の幅をロール紙の幅と同じにして等倍で出す ----
+       プリンター側で「ロール紙の幅に合わせる」が働いても、同じ幅なら等倍のまま出る。 */
+    await page.selectOption('#sheetKind', 'roll');
+    await page.waitForTimeout(500);
+    const roll = () => page.evaluate(() => {
+      const s = document.querySelector('#sheetScroll .sheet');
+      return {
+        row: getComputedStyle(document.getElementById('rollSheetRow')).display !== 'none',
+        note: getComputedStyle(document.getElementById('rollNote')).display !== 'none',
+        warn: getComputedStyle(document.getElementById('sheetPaperNote')).display !== 'none',
+        noteText: document.getElementById('rollNote').textContent,
+        sheet: s ? s.style.width + ' x ' + s.style.height : null,
+        page: pageSizeRule(sheetDims(proj().printOpt)),
+        saved: { kind: proj().printOpt.sheetKind, w: proj().printOpt.rollW, h: proj().printOpt.rollH },
+        otherW: getComputedStyle(document.getElementById('rollOtherW')).display !== 'none'
+      };
+    });
+    let rl = await roll();
+    t.eq(rl.row, true, 'ロール紙を選ぶと幅と長さの欄が出る');
+    t.eq(rl.note, true, 'ロール紙のときは専用の案内を出す');
+    t.eq(rl.warn, false, 'ロール紙のときは「縮小される」の警告は出さない（幅を合わせてあるため）');
+    t.ok(/等倍/.test(rl.noteText) && /ロール紙の幅に合わせる/.test(rl.noteText),
+      '幅を合わせてあるので等倍で出ることを伝える');
+    t.eq(rl.saved.w, 610, 'はじめは24インチ（610mm）幅');
+    t.eq(rl.sheet, '609.5mm x 199mm', '用紙はロール紙の幅いっぱい（端の安全余白ぶんだけ内側）');
+    t.eq(rl.page, '@page{size:610mm 200mm;margin:0}', '@pageもロール紙の幅と長さで指定される');
+
+    await page.selectOption('#rollWidth', '914');
+    await page.waitForTimeout(500);
+    rl = await roll();
+    t.eq(rl.saved.w, 914, 'ロール紙の幅を選び直せる（36インチ）');
+    t.eq(rl.sheet, '913.5mm x 199mm', '選んだ幅がそのまま用紙の幅になる');
+
+    await page.fill('#rollH', '300');
+    await page.waitForTimeout(500);
+    rl = await roll();
+    t.eq(rl.sheet, '913.5mm x 299mm', '1枚の長さを変えられる');
+
+    await page.selectOption('#rollWidth', 'other');
+    await page.fill('#rollCustomW', '500');
+    await page.waitForTimeout(500);
+    rl = await roll();
+    t.eq(rl.otherW, true, '「その他」を選ぶと幅を直接入力できる');
+    t.eq(rl.sheet, '499.5mm x 299mm', '入力した幅が用紙の幅になる');
+
+    await page.reload();
+    await page.waitForTimeout(500);
+    await page.click('nav.tabs button[data-tab="print"]');
+    await page.waitForTimeout(500);
+    rl = await roll();
+    t.eq([rl.saved.kind, rl.saved.w, rl.saved.h], ['roll', 500, 300],
+      '読み直してもロール紙の設定が残る');
+    t.eq(rl.otherW, true, '一覧に無い幅なら、読み直しても入力欄を出したまま');
+
+    await page.selectOption('#sheetKind', 'custom');
+    await page.fill('#sheetCustomW', '600');
+    await page.fill('#sheetCustomH', '200');
+    await page.waitForTimeout(500);
+
+    // 読み直しても、保存された寸法に合わせて案内が出る
+    await page.fill('#sheetCustomW', '600');
+    await page.waitForTimeout(400);
+    await page.reload();
+    await page.waitForTimeout(500);
+    await page.click('nav.tabs button[data-tab="print"]');
+    await page.waitForTimeout(400);
+    t.eq((await note()).shown, true, '読み直しても案内が出る');
+    await page.selectOption('#sheetKind', 'a4');
+    await page.waitForTimeout(300);
+
     // ---- 印刷CSSにページ超過を防ぐ指定がある ----
     const css = await page.evaluate(() => [...document.styleSheets]
       .flatMap(ss => { try { return [...ss.cssRules]; } catch (e) { return []; } })
