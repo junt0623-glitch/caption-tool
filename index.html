@@ -810,11 +810,13 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
         <div class="prow"><label></label><button type="button" class="btn small" id="ipScaleReset" style="flex:1">縦横幅を100%に戻す</button></div>
         <div class="prow"><label>行揃え</label>
           <select id="ipAlign"><option value="inherit">全体に従う</option><option value="left">左</option><option value="center">中央</option><option value="right">右</option><option value="justify">両端揃え</option></select></div>
+        <div class="prow"><label>左から</label><input type="number" id="ipX" min="-200" max="1000" step="0.5"><span style="font-size:11px;color:var(--sub)">mm</span></div>
+        <div class="prow"><label>上から</label><input type="number" id="ipY" min="-200" max="1000" step="0.5"><span style="font-size:11px;color:var(--sub)">mm</span></div>
         <div class="prow"><label id="ipWLabel">幅</label><input type="number" id="ipW" min="8" max="300" step="1"><span style="font-size:11px;color:var(--sub)">mm</span></div>
         <div class="prow"><label id="ipHLabel">高さ</label><input type="number" id="ipH" min="4" max="400" step="1" disabled><span style="font-size:11px;color:var(--sub)">mm</span></div>
         <div class="prow"><label></label><label class="chk" style="margin:0"><input type="checkbox" id="ipAutoH"><span id="ipAutoHLabel">高さを自動（内容に合わせる）</span></label></div>
         <div class="prow"><label>文字色</label><button type="button" class="swatch-sw small" id="ipColorSw"><span class="sw-chip"></span><span class="sw-txt">全体に従う</span></button></div>
-        <p class="note" style="margin-top:2px">四隅・辺のハンドルをドラッグしても拡大・縮小できます。</p>
+        <p class="note" style="margin-top:2px">「左から」「上から」は<b>札の左上の角からの距離（mm）</b>です。ドラッグで動かすと、この数値も変わります。複数選んでいるときに入力すると、<b>全部が同じ値にそろいます</b>。四隅・辺のハンドルをドラッグしても拡大・縮小できます。</p>
       </div>
     </div>
     <p class="note" style="margin-top:8px">「キャプション／解説」ボタンで編集する面を切り替えます。<b>ダブルクリックでその場で文字を編集</b>（Enterで改行、Escか外側クリックで確定）。編集中に<b>一部の文字だけをマウスで選択</b>すると字間調整の小さなパネルが出て、選んだ文字だけの字間を個別に調整できます。クリックで選択→小パネルでフォント・サイズ・文字間・<b>文字の縦横幅（長体・平体）</b>・枠の幅と高さを調整。ドラッグで移動、ハンドルで拡大・縮小。Shift＋クリックで複数選択、余白ドラッグで範囲選択。ここで組んだ配置が全作品と印刷に反映されます。</p>
@@ -1263,7 +1265,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     <h4>レイアウトの操作</h4>
     <ul>
       <li><b>選択</b>：項目をクリック。Shift＋クリックで複数選択。余白をドラッグで範囲選択。</li>
-      <li><b>移動</b>：項目をドラッグ。</li>
+      <li><b>移動</b>：項目をドラッグ。小パネルの「<b>左から</b>」「<b>上から</b>」に数値（mm）を入れても置けます（札の左上の角からの距離）。複数選んで入力すると、その座標にそろいます。</li>
       <li><b>個別調整</b>：選択すると小パネルが開き、フォント・サイズ・文字間・行揃え・幅を設定できます（複数選択時は全てに適用）。</li>
       <li><b>文字単位の字間調整</b>：ダブルクリックで編集状態にしてから、一部の文字だけをマウスでドラッグ選択すると、その文字だけの字間を調整する小さなスライダーが出ます。特定の文字だけ詰めたい・空けたい場合に使います（項目全体の字間は小パネル側で設定します）。</li>
       <li><b>整列</b>：上のツールで左右上下の揃え・均等配置。2つ以上で項目どうしを、1つだけなら札に対して揃えます。</li>
@@ -4441,6 +4443,9 @@ function showPanel(){const p=proj();
   const sx=commonVal(k=>curLayoutRead()[k].sx==null?100:curLayoutRead()[k].sx); $("#ipSx").value=sx==null?"":sx;
   const sy=commonVal(k=>curLayoutRead()[k].sy==null?100:curLayoutRead()[k].sy); $("#ipSy").value=sy==null?"":sy;
   const al=commonVal(k=>curLayoutRead()[k].align); $("#ipAlign").value=al==null?"inherit":al;
+  /* 位置は札の左上の角からの距離（mm）。選んだものでばらばらなら空にする */
+  const xv=commonVal(k=>curLayoutRead()[k].x); $("#ipX").value=xv==null?"":round1(xv);
+  const yv=commonVal(k=>curLayoutRead()[k].y); $("#ipY").value=yv==null?"":round1(yv);
   const wv=commonVal(k=>curLayoutRead()[k].w); $("#ipW").value=wv==null?"":wv;
   const hv=commonVal(k=>curLayoutRead()[k].h);
   const allAuto=keys.every(k=>curLayoutRead()[k].h==null);
@@ -4527,6 +4532,9 @@ $("#ipSx").addEventListener("change",e=>{const v=clampScale(e.target.value);e.ta
 $("#ipSy").addEventListener("change",e=>{const v=clampScale(e.target.value);e.target.value=v;applyToSel(L=>L.sy=v);});
 $("#ipScaleReset").addEventListener("click",()=>{$("#ipSx").value=100;$("#ipSy").value=100;applyToSel(L=>{L.sx=100;L.sy=100;});showPanel();});
 $("#ipAlign").addEventListener("change",e=>applyToSel(L=>L.align=e.target.value));
+/* 位置を数値で指定する。ドラッグと同じ0.1mm刻みに丸めて入れる */
+$("#ipX").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.x=round1(v));});
+$("#ipY").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.y=round1(v));});
 $("#ipW").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.w=Math.max(8,v));});
 $("#ipH").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.h=Math.max(4,v));});
 $("#ipAutoH").addEventListener("change",e=>{
