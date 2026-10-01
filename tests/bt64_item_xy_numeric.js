@@ -52,14 +52,55 @@ async function run() {
     await page.waitForTimeout(250);
     t.eq((await lay('title')).x, 20.5, '0.1mm刻みへの丸めは四捨五入');
 
+    /* ===== 2の2. 1文字ずつ打っても、小数点以下が打てる =====
+       入力のたびにパネルを描き直していると「12.」の途中状態が消えてしまい、
+       小数点が打てなくなる（打った数字が頭に回り込む）。 */
+    await page.click('#ipX');
+    await page.keyboard.press('Control+a');
+    for (const ch of '34.6') { await page.keyboard.type(ch); await page.waitForTimeout(120); }
+    t.eq(await page.inputValue('#ipX'), '34.6', '1文字ずつ打っても入力欄が崩れない');
+    t.eq((await lay('title')).x, 34.6, '打った小数がそのまま座標に入る');
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(200);
+
+    // 文字サイズなど、ほかの数値欄も同じように打てる
+    await selectKeys(['title']);
+    await page.click('#ipSize');
+    await page.keyboard.press('Control+a');
+    for (const ch of '13.5') { await page.keyboard.type(ch); await page.waitForTimeout(100); }
+    t.eq(await page.evaluate(() => curLayoutRead().title.size), 13.5,
+      'ほかの数値欄（文字サイズ）でも小数点以下を打てる');
+
+    /* ===== 2の3. ▲▼ボタンで0.1mmずつ動かせる ===== */
+    const bump = async (id, dir, times) => {
+      for (let i = 0; i < times; i++) {
+        await page.evaluate(({ id, dir }) => {
+          let n = document.getElementById(id).nextElementSibling;
+          while (n && !n.classList.contains('spin')) n = n.nextElementSibling;
+          n.querySelectorAll('button')[dir === 'up' ? 0 : 1].click();
+        }, { id, dir });
+        await page.waitForTimeout(130);
+      }
+    };
+    await page.evaluate(() => { const L = proj().style.layout.title; L.x = 20; L.y = 20; save(); renderEditor(); });
+    await page.waitForTimeout(250);
+    await selectKeys(['title']);
+    await bump('ipX', 'up', 3);
+    t.eq((await lay('title')).x, 20.3, '▲ボタン3回で0.1mmずつ増える');
+    t.eq(await page.inputValue('#ipX'), '20.3', '▲で入力欄の表示も変わる');
+    await bump('ipX', 'down', 5);
+    t.eq((await lay('title')).x, 19.8, '▼ボタンで0.1mmずつ減る');
+    await bump('ipY', 'down', 2);
+    t.eq((await lay('title')).y, 19.8, '「上から」も▼2回で0.2mm減る（0.1mm刻み）');
+
     /* ===== 3. 保存され、読み直しても残る ===== */
     await page.reload();
     await page.waitForTimeout(500);
     await page.click('nav.tabs button[data-tab="layout"]');
     await page.waitForTimeout(400);
-    t.eq((await lay('title')).x, 20.5, '読み直しても入力した座標のまま');
-    await select('title');
-    t.eq((await panel()).x, '20.5', '読み直してもパネルに同じ値が出る');
+    t.eq((await lay('title')).x, 19.8, '読み直しても入力した座標のまま');
+    await selectKeys(['title']);
+    t.eq((await panel()).x, '19.8', '読み直してもパネルに同じ値が出る');
 
     /* ===== 4. ドラッグした結果も、その数値に出る ===== */
     const box = await page.locator('#editHolder [data-item="title"]').boundingBox();
@@ -70,7 +111,7 @@ async function run() {
     await page.waitForTimeout(300);
     const dragged = await lay('title');
     const shown = await panel();
-    t.ok(dragged.x > 20.5, 'ドラッグで右へ動く');
+    t.ok(dragged.x > 19.8, 'ドラッグで右へ動く');
     t.eq([shown.x, shown.y], [String(dragged.x), String(dragged.y)],
       'ドラッグしたあとの座標がパネルの数値に出る');
 
