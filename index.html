@@ -810,8 +810,8 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
         <div class="prow"><label></label><button type="button" class="btn small" id="ipScaleReset" style="flex:1">縦横幅を100%に戻す</button></div>
         <div class="prow"><label>行揃え</label>
           <select id="ipAlign"><option value="inherit">全体に従う</option><option value="left">左</option><option value="center">中央</option><option value="right">右</option><option value="justify">両端揃え</option></select></div>
-        <div class="prow"><label>左から</label><input type="number" id="ipX" min="-200" max="1000" step="0.5"><span style="font-size:11px;color:var(--sub)">mm</span></div>
-        <div class="prow"><label>上から</label><input type="number" id="ipY" min="-200" max="1000" step="0.5"><span style="font-size:11px;color:var(--sub)">mm</span></div>
+        <div class="prow"><label>左から</label><input type="number" id="ipX" min="-200" max="1000" step="0.1"><span style="font-size:11px;color:var(--sub)">mm</span></div>
+        <div class="prow"><label>上から</label><input type="number" id="ipY" min="-200" max="1000" step="0.1"><span style="font-size:11px;color:var(--sub)">mm</span></div>
         <div class="prow"><label id="ipWLabel">幅</label><input type="number" id="ipW" min="8" max="300" step="1"><span style="font-size:11px;color:var(--sub)">mm</span></div>
         <div class="prow"><label id="ipHLabel">高さ</label><input type="number" id="ipH" min="4" max="400" step="1" disabled><span style="font-size:11px;color:var(--sub)">mm</span></div>
         <div class="prow"><label></label><label class="chk" style="margin:0"><input type="checkbox" id="ipAutoH"><span id="ipAutoHLabel">高さを自動（内容に合わせる）</span></label></div>
@@ -4427,6 +4427,10 @@ function doAlign(mode){const p=proj();if(!sel.size)return;const keys=[...sel];co
 
 /* 小パネル */
 function commonVal(getter){const keys=[...sel];const first=getter(keys[0]);return keys.every(k=>getter(k)===first)?first:null;}
+/* 小パネルの数値欄に値を入れる。いま打ち込んでいる欄だけは書き換えない。
+   1文字打つたびに書き換えると「12.」のような途中の状態が消えてしまい、
+   小数点以下が打てなくなるため */
+function setPanelNum(id,v){const el=$("#"+id);if(!el||document.activeElement===el)return;el.value=v;}
 function showPanel(){const p=proj();
   /* いまの面（キャプション／解説）に無い項目が選ばれたままのことがある。
      そのまま読むと落ちるので、いまの面にある項目だけに絞ってから開く */
@@ -4436,25 +4440,25 @@ function showPanel(){const p=proj();
   $("#ipTitle").textContent = keys.length===1?ITEM_BY_KEY[keys[0]].label:keys.length+"項目を編集";
   updateItemPanelLabels(keys.length===1?isItemVertical(keys[0]):(proj().style.vertical&&keys.every(k=>isItemVertical(k))));
   const font=commonVal(k=>curLayoutRead()[k].font); $("#ipFont").value=font==null?"inherit":font;
-  const size=commonVal(k=>curLayoutRead()[k].size); $("#ipSize").value=size==null?"":size;
+  const size=commonVal(k=>curLayoutRead()[k].size); setPanelNum("ipSize",size==null?"":size);
   const ls=commonVal(k=>curLayoutRead()[k].ls); $("#ipLs").value=ls==null?0:ls; $("#ipLsO").textContent=(ls==null?"—":(ls.toFixed(2)+"em")); syncNumBoxes();
   const lh=commonVal(k=>{const v=curLayoutRead()[k].lh;return v==null?"__inherit__":v;});
-  $("#ipLh").value=(lh==null||lh==="__inherit__")?"":lh;
-  const sx=commonVal(k=>curLayoutRead()[k].sx==null?100:curLayoutRead()[k].sx); $("#ipSx").value=sx==null?"":sx;
-  const sy=commonVal(k=>curLayoutRead()[k].sy==null?100:curLayoutRead()[k].sy); $("#ipSy").value=sy==null?"":sy;
+  setPanelNum("ipLh",(lh==null||lh==="__inherit__")?"":lh);
+  const sx=commonVal(k=>curLayoutRead()[k].sx==null?100:curLayoutRead()[k].sx); setPanelNum("ipSx",sx==null?"":sx);
+  const sy=commonVal(k=>curLayoutRead()[k].sy==null?100:curLayoutRead()[k].sy); setPanelNum("ipSy",sy==null?"":sy);
   const al=commonVal(k=>curLayoutRead()[k].align); $("#ipAlign").value=al==null?"inherit":al;
   /* 位置は札の左上の角からの距離（mm）。選んだものでばらばらなら空にする */
-  const xv=commonVal(k=>curLayoutRead()[k].x); $("#ipX").value=xv==null?"":round1(xv);
-  const yv=commonVal(k=>curLayoutRead()[k].y); $("#ipY").value=yv==null?"":round1(yv);
-  const wv=commonVal(k=>curLayoutRead()[k].w); $("#ipW").value=wv==null?"":wv;
+  const xv=commonVal(k=>curLayoutRead()[k].x); setPanelNum("ipX",xv==null?"":round1(xv));
+  const yv=commonVal(k=>curLayoutRead()[k].y); setPanelNum("ipY",yv==null?"":round1(yv));
+  const wv=commonVal(k=>curLayoutRead()[k].w); setPanelNum("ipW",wv==null?"":wv);
   const hv=commonVal(k=>curLayoutRead()[k].h);
   const allAuto=keys.every(k=>curLayoutRead()[k].h==null);
   const allFixed=keys.every(k=>curLayoutRead()[k].h!=null);
   $("#ipAutoH").checked = allAuto;
   $("#ipAutoH").indeterminate = !allAuto && !allFixed;
   $("#ipH").disabled = allAuto;
-  $("#ipH").value = (hv==null)?"":hv;
-  if(!allFixed && !allAuto){$("#ipH").value="";}
+  setPanelNum("ipH",(hv==null)?"":hv);
+  if(!allFixed && !allAuto){setPanelNum("ipH","");}
   const colorCommon=commonVal(k=>{const c=curLayout()[k].color;return c?`${c.c},${c.m},${c.y},${c.k}`:"__inherit__";});
   if(colorCommon==null){setSwatchUI("ipColorSw",null,"（複数の色）");}
   else if(colorCommon==="__inherit__"){setSwatchUI("ipColorSw",null,"全体に従う");}
@@ -4535,6 +4539,9 @@ $("#ipAlign").addEventListener("change",e=>applyToSel(L=>L.align=e.target.value)
 /* 位置を数値で指定する。ドラッグと同じ0.1mm刻みに丸めて入れる */
 $("#ipX").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.x=round1(v));});
 $("#ipY").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.y=round1(v));});
+["ipX","ipY"].forEach(id=>$("#"+id).addEventListener("change",e=>{
+  const v=parseFloat(e.target.value);if(!isNaN(v))e.target.value=round1(v);
+}));
 $("#ipW").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.w=Math.max(8,v));});
 $("#ipH").addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v))applyToSel(L=>L.h=Math.max(4,v));});
 $("#ipAutoH").addEventListener("change",e=>{
