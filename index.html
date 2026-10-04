@@ -699,6 +699,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     <button class="btn small" id="btnNewProject">＋ 新規展覧会</button>
     <button class="btn small" id="btnRenameProject">名称変更</button>
     <button class="btn small" id="btnDeleteProject">削除</button>
+    <button class="btn small ghost" id="btnWipeAll" title="このブラウザに保存されている展覧会をすべて消して、まっさらな状態に戻します">全データ削除</button>
     <span style="width:6px"></span>
     <button class="btn small" id="btnExport">書き出し</button>
     <span id="backupBadge" class="note" style="display:none;color:var(--shu);font-weight:600;margin-left:2px;cursor:help"></span>
@@ -725,6 +726,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <button class="btn" id="btnCopyTsv" title="作品リストの表をクリップボードにコピーします。ExcelやGoogleスプレッドシートのセルにそのまま貼り付けられます">表をコピー（シート貼り付け用）</button>
       <input type="search" id="searchBox" placeholder="検索（産地・作品名など）">
       <select id="sectionFilter"><option value="">すべての章</option></select>
+      <label class="chk" style="margin-left:auto" title="保存してあるすべての展覧会の作品を、1つの表にまとめて表示します。印刷の対象も全展覧会にまたがります"><input type="checkbox" id="allWorksToggle">すべての展覧会をまとめて扱う</label>
     </div>
     <div id="bulkBar" style="display:none">
       <span id="bulkCount" class="note" style="font-weight:600;color:var(--ink)"></span>
@@ -738,7 +740,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <input type="file" id="bulkImageInputOv" accept="image/png,image/jpeg,image/gif,image/webp,image/*" hidden>
     </div>
     <div id="worksListArea"></div>
-    <p class="note" style="margin-top:10px">行の「▲▼」で並べ替え、「編集」で内容と画像の修正ができます。並び順がそのまま印刷順になります。</p>
+    <p class="note" id="listOpsNote" style="margin-top:10px">行の「▲▼」で並べ替え、「編集」で内容と画像の修正ができます。並び順がそのまま印刷順になります。</p>
   </section>
 
   <!-- レイアウト -->
@@ -979,6 +981,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
           <label class="chk"><input type="radio" name="printFace" value="both">キャプション＋解説（1作品を1枚に）</label>
           <p class="note" id="bothFaceNote" style="margin:2px 0 0 24px;display:none">1作品につき用紙1枚に、キャプションと解説の両方を並べます。<b>用紙に収まらないときだけ、両方を同じ比率で自動的に縮めます</b>（縮めた場合は下のプレビューに倍率が出ます）。縦並び・横並びのうち、より大きく置けるほうを自動で選びます。原寸より大きくすることはありません。</p></div>
         <div class="ctl"><label class="lbl">対象</label>
+          <p class="note" id="printAllNote" style="display:none;margin-bottom:4px;color:var(--shu)"></p>
           <select id="printSection" style="width:100%"><option value="">すべての作品</option></select>
           <div id="printPick" style="display:none;margin-top:8px">
             <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
@@ -1272,6 +1275,13 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <li><b>初期配置に戻す</b>：積み上げ配置にリセットします。</li>
       <li>ここで組んだ配置・書式は<b>全作品と印刷</b>に共通で反映されます。</li>
     </ul>
+    <h4>複数の展覧会をまとめて扱う</h4>
+    <ul>
+      <li>作品台帳の<b>「すべての展覧会をまとめて扱う」</b>にチェックを入れると、保存してある<b>すべての展覧会の作品が1つの表</b>にならびます（どの展覧会の作品かは列で分かります）。検索も展覧会をまたいで効きます。</li>
+      <li>このとき<b>印刷も展覧会をまたいで一度にできます</b>。作品はそれぞれ<b>元の展覧会の寸法・配置・体裁のまま</b>組まれるので、寸法の違う札が混ざっていても、そのまま面付けされます。</li>
+      <li>「対象」の<b>「選んだ作品だけ」</b>も展覧会をまたいで選べます（一覧に展覧会名が付きます）。</li>
+      <li>並べ替え（▲▼）や一括操作は展覧会ごとの操作なので、まとめて扱っている間は使えません。「編集」を押すと、その作品の展覧会に切り替わります。</li>
+    </ul>
     <h4>刷る作品をしぼる</h4>
     <ul>
       <li><b>印刷・PDF</b>の「<b>対象</b>」で、刷る作品をしぼれます。作品に章（節）を付けていればその章を、付けていなくても<b>「選んだ作品だけ」</b>を選べば、番号と作品名の一覧から1点ずつチェックして刷れます。</li>
@@ -1283,6 +1293,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
     <ul>
       <li>作業内容は<b>このブラウザの中に自動保存</b>されます。別のPCやiPadには自動で移りません。</li>
       <li>移動・バックアップは「書き出し」でJSON保存し、移動先で「読み込み」。画像もJSONに含まれます。</li>
+      <li>ヘッダーの<b>「全データ削除」</b>で、このブラウザに保存されている<b>すべての展覧会</b>をまとめて消せます（まっさらな状態に戻します）。押すと先に書き出し（バックアップ）が走り、二段階の確認のあとで削除します。<b>直後であれば「↺ 戻す」（Ctrl+Z）で元に戻せます</b>。</li>
       <li>作品台帳の<b>「CSVで書き出し（Excel）」でExcelファイルとして保存</b>、<b>「表をコピー」でGoogleスプレッドシートやExcelに直接貼り付け</b>できます。見出しは取り込みと同じ形式なので、編集後に<b>「Excel・スプレッドシートから取り込む」でExcelファイル（.xlsx）やCSVファイルをそのまま開いて戻せます</b>（画像・ルビは表に含まれません）。Excelで番号「1-01」などが日付に変わる場合は、貼り付け方式（表をコピー→貼り付け先の列を「文字列」に設定）をお使いください。</li>
     </ul>
     <h4>うまくいかないとき</h4>
@@ -2015,6 +2026,9 @@ function proj(){return store.projects.find(p=>p.id===store.currentId);}
 /* ===== 確認ダイアログ（ブラウザ標準confirm()は抑制・非表示になることがあるため使わない） ===== */
 function askConfirm(message,okLabel){
   return new Promise(resolve=>{
+   /* 確認を続けて出すとき、前のダイアログを閉じた合図（closeイベント）が
+      あとから届いて次のダイアログを即座に閉じてしまう。合図が流れ切ってから開く */
+   setTimeout(()=>{
     const dlg=document.getElementById("confirmDialog");
     document.getElementById("confirmMsg").textContent=message;
     const okBtn=document.getElementById("confirmOk");
@@ -2030,6 +2044,7 @@ function askConfirm(message,okLabel){
     okBtn.addEventListener("click",onOk);
     dlg.addEventListener("close",onClose);
     dlg.showModal();
+   },0);
   });
 }
 
@@ -2599,6 +2614,32 @@ $("#btnDeleteProject").addEventListener("click",async()=>{const p=proj();
   store.projects=store.projects.filter(x=>x.id!==p.id);if(!store.projects.length)store.projects.push(newProject());
   store.currentId=store.projects[0].id;save();renderAll();});
 
+/* 保存してあるものを全部まとめて消す。取り返しがつかないので、
+   書き出し（バックアップ）を挟めるようにして、二段階で確かめる */
+$("#btnWipeAll").addEventListener("click",async()=>{
+  const n=store.projects.length, m=store.projects.reduce((a,p)=>a+(p.works||[]).length,0);
+  const ok=await askConfirm(
+    `このブラウザに保存されている展覧会を すべて 削除します。\n`
+    +`展覧会 ${n}件 ／ 作品 ${m}件 が消え、元に戻せません。\n\n`
+    +`先に「書き出し」でJSONに保存しておくことを強くおすすめします。\n`
+    +`このまま進めると、書き出していないデータは失われます。`,"書き出してから削除する");
+  if(!ok)return;
+  $("#btnExport").click();                       // まずバックアップを取る
+  const ok2=await askConfirm(
+    `書き出したJSONファイルが保存されたことを確認してください。\n\n`
+    +`確認できたら「すべて削除」を押すと、展覧会 ${n}件 ／ 作品 ${m}件 をすべて消します。`,"すべて削除");
+  if(!ok2)return;
+  wipeAllData();
+});
+function wipeAllData(){
+  const p=newProject();p.works=[];
+  /* 「戻す」で取り消せるよう、消す前の状態は履歴に残す（flushSaveが積む） */
+  store={projects:[p],currentId:p.id,backupMeta:{editsSinceExport:0},allWorks:false};
+  bulkSel.clear();sel.clear();
+  save();flushSave();renderAll();
+  alert("保存されていた展覧会をすべて削除しました。\n直後であれば「↺ 戻す」（Ctrl+Z）で元に戻せます。");
+}
+
 /* ===== JSON ===== */
 $("#btnExport").addEventListener("click",()=>{
   // ファイル名には現在選択中の展覧会名を自動で入れる（中身は全展覧会のバックアップ）
@@ -2737,14 +2778,73 @@ $("#driveSave").addEventListener("click",()=>{
 let searchQuery="",sectionQuery="";
 $("#searchBox").addEventListener("input",e=>{searchQuery=e.target.value.trim();renderList();});
 $("#sectionFilter").addEventListener("change",e=>{sectionQuery=e.target.value;renderList();});
-function sectionsOf(p){const s=[];p.works.forEach(w=>{const x=(w.section||"").trim();if(x&&!s.includes(x))s.push(x);});return s;}
+$("#allWorksToggle").addEventListener("change",e=>{
+  store.allWorks=e.target.checked;bulkSel.clear();
+  save();renderSectionFilter();renderList();updateBulkBar();
+  refreshPrintControls();renderSheets();
+});
+function sectionsOf(p){const s=[];
+  const ws=(p===proj()&&allWorksOn())?scopeWorks():(p.works||[]);
+  ws.forEach(w=>{const x=(w.section||"").trim();if(x&&!s.includes(x))s.push(x);});return s;}
 function renderSectionFilter(){const secs=sectionsOf(proj()),sel=$("#sectionFilter"),cur=sel.value;
   sel.innerHTML=`<option value="">すべての章</option>`+secs.map(s=>`<option value="${esc(s)}" ${s===cur?"selected":""}>${esc(s)}</option>`).join("");
   $("#sectionList").innerHTML=secs.map(s=>`<option value="${esc(s)}">`).join("");}
+/* ===== すべての展覧会をまとめて扱う =====
+   保存してあるすべての展覧会の作品を、台帳では1つの表に、印刷では1回の出力にまとめる。
+   作品はそれぞれ元の展覧会の体裁（寸法・配置・書体・背景）のまま組まれる。 */
+function allWorksOn(){return !!(store&&store.allWorks);}
+let ownerMap=null;
+function rebuildOwnerMap(){
+  ownerMap=new Map();
+  (store.projects||[]).forEach(p=>(p.works||[]).forEach(w=>ownerMap.set(w,p)));
+}
+/* その作品が属する展覧会。まとめて扱っていないときは、いまの展覧会 */
+function ownerOf(w){
+  if(!allWorksOn())return proj();
+  if(!ownerMap||!ownerMap.has(w))rebuildOwnerMap();
+  return ownerMap.get(w)||proj();
+}
+/* 台帳・印刷が対象にする作品（まとめて扱うなら全展覧会ぶん） */
+function scopeWorks(){
+  if(!allWorksOn())return (proj().works||[]).slice();
+  rebuildOwnerMap();
+  const out=[];(store.projects||[]).forEach(p=>(p.works||[]).forEach(w=>out.push(w)));
+  return out;
+}
 function matches(w){if(sectionQuery&&(w.section||"").trim()!==sectionQuery)return false;if(!searchQuery)return true;
   const q=searchQuery.toLowerCase();return FIELDS.some(f=>String(w[f.key]||"").toLowerCase().includes(q));}
 let bulkSel=new Set();
-function renderList(){const p=proj(),area=$("#worksListArea");const list=p.works.map((w,i)=>({w,i})).filter(x=>matches(x.w));
+/* すべての展覧会をまとめて表示するとき。並べ替え・一括操作は展覧会ごとの操作なので
+   ここでは使わず、「編集」はその展覧会に切り替えてから開く */
+function renderAllList(area){
+  rebuildOwnerMap();
+  const rows=[];
+  (store.projects||[]).forEach(p=>(p.works||[]).forEach((w,i)=>{if(matches(w))rows.push({w,i,p});}));
+  const total=(store.projects||[]).reduce((a,p)=>a+(p.works||[]).length,0);
+  if(!total){area.innerHTML=`<div class="empty-box"><b>まだ作品がありません</b>どの展覧会にも作品が登録されていません。</div>`;updateBulkBar();return;}
+  if(!rows.length){area.innerHTML=`<div class="empty-box"><b>該当する作品がありません</b>検索語や章の絞り込みを見直してください。</div>`;updateBulkBar();return;}
+  let html=`<p class="note" style="margin-bottom:6px">保存してある<b>${store.projects.length}件の展覧会</b>の作品 <b>${rows.length}件</b>を表示しています。`
+    +`並べ替え・一括操作は展覧会ごとの操作のため、このモードでは使えません（「編集」を押すとその展覧会に切り替わります）。</p>`
+    +`<table class="works"><thead><tr><th style="width:150px">展覧会</th><th style="width:64px">番号</th><th>産地（作者）</th><th>作品名</th><th style="width:110px">時代</th><th style="width:70px">操作</th></tr></thead><tbody>`;
+  let lastKey=null;
+  rows.forEach(({w,i,p})=>{
+    const sec=(w.section||"").trim(), key=p.id+"/"+sec;
+    if(key!==lastKey){if(sec)html+=`<tr class="sec-row"><td colspan="6">${esc(p.name)}　${esc(sec)}</td></tr>`;lastKey=key;}
+    html+=`<tr class="work-row"><td class="note" style="color:var(--sub)">${esc(p.name)}</td><td>${esc(w.no)}</td><td>${esc(oneLine(w.origin))}</td>
+      <td class="t-title">${esc(oneLine(w.title))}${(w.image||(w.images||[]).length||(w.descImages||[]).length)?'<span class="imgmark">🖼</span>':""}</td><td>${esc(oneLine(w.period))}</td>
+      <td class="ops"><button data-pid="${esc(p.id)}" data-edit="${i}">編集</button></td></tr>`;});
+  html+="</tbody></table>";area.innerHTML=html;
+  $$("button[data-edit]",area).forEach(b=>b.addEventListener("click",()=>{
+    const pid=b.dataset.pid;
+    if(pid!==store.currentId){store.currentId=pid;bulkSel.clear();save();renderAll();}
+    openWorkDialog(+b.dataset.edit);
+  }));
+  updateBulkBar();
+}
+function renderList(){const p=proj(),area=$("#worksListArea");
+  const ops=$("#listOpsNote");if(ops)ops.style.display=allWorksOn()?"none":"";
+  if(allWorksOn()){renderAllList(area);return;}
+  const list=p.works.map((w,i)=>({w,i})).filter(x=>matches(x.w));
   if(!p.works.length){area.innerHTML=`<div class="empty-box"><b>まだ作品がありません</b>「＋ 作品を追加」で1件ずつ、または「スプレッドシートから貼り付け」でまとめて登録できます。</div>`;updateBulkBar();return;}
   if(!list.length){area.innerHTML=`<div class="empty-box"><b>該当する作品がありません</b>検索語や章の絞り込みを見直してください。</div>`;updateBulkBar();return;}
   // 表示中の作品に絞ってbulkSelを掃除
@@ -3378,7 +3478,11 @@ function ensureFontLoaded(key){
 }
 /* プロジェクト内で使われている全フォントキー（全体・ルビ・項目ごと・作品ごとの上書き）を集めて読み込む */
 function ensureProjectFonts(){
-  const p=proj();if(!p||!p.style)return;
+  if(allWorksOn()){(store.projects||[]).forEach(p=>fontsOfProject(p));return;}
+  fontsOfProject(proj());
+}
+function fontsOfProject(p){
+  if(!p||!p.style)return;
   const keys=new Set([p.style.font,p.style.rubyFont]);
   [p.style.layout,p.style.descLayout].forEach(L=>{if(L)Object.values(L).forEach(it=>{if(it&&it.font)keys.add(it.font);});});
   (p.works||[]).forEach(w=>{
@@ -4607,6 +4711,16 @@ function isStandardPaper(dims){
     (Math.abs(p.w-dims.w)<0.6&&Math.abs(p.h-dims.h)<0.6)||
     (Math.abs(p.h-dims.w)<0.6&&Math.abs(p.w-dims.h)<0.6));
 }
+/* 「すべての展覧会をまとめて扱う」ときは、印刷の対象も全展覧会にまたがることを知らせる */
+function refreshPrintAllNote(){
+  const el=$("#printAllNote");if(!el)return;
+  if(!allWorksOn()){el.style.display="none";return;}
+  el.style.display="";
+  const n=(store.projects||[]).length, m=scopeWorks().length;
+  el.innerHTML=`<b>すべての展覧会をまとめて扱う</b>が入っています。`
+    +`${n}件の展覧会・作品${m}件が対象です（作品ごとに、元の展覧会の寸法・配置・体裁のまま刷られます）。`
+    +`1つの展覧会だけにするときは、作品台帳でこの設定を外してください。`;
+}
 function refreshSheetPaperNote(){
   const el=$("#sheetPaperNote");if(!el)return;
   const o=proj().printOpt||{sheetKind:"a4"};
@@ -4644,7 +4758,7 @@ function refreshPrintControls(){const p=proj();ensureLayout(p);
   $("#prMarks").disabled=o.tight;$("#finishRow").style.opacity=o.tight?.45:1;
   refreshBothFaceRow();
   o.outlineDpi=clampDpi(o.outlineDpi);refreshOutlineRow();
-  refreshSheetPaperNote();
+  refreshSheetPaperNote();refreshPrintAllNote();
   const secs=sectionsOf(p),sel2=$("#printSection");
   sel2.innerHTML=`<option value="">すべての作品</option>`
     +secs.map(s=>`<option value="${esc(s)}" ${s===o.section?"selected":""}>${esc(s)}</option>`).join("")
@@ -4658,14 +4772,15 @@ function pickSet(p){const o=p.printOpt||{};return new Set(Array.isArray(o.pick)?
 /* いま印刷の対象になっている作品 */
 function worksForPrint(p){
   const o=p.printOpt||{};
-  if(o.section===PICK_SECTION){const s=pickSet(p);return p.works.filter(w=>s.has(w.id));}
-  return p.works.filter(w=>!o.section||(w.section||"").trim()===o.section);
+  const base=scopeWorks();          // 「すべての展覧会をまとめて扱う」ときは全展覧会ぶん
+  if(o.section===PICK_SECTION){const s=pickSet(p);return base.filter(w=>s.has(w.id));}
+  return base.filter(w=>!o.section||(w.section||"").trim()===o.section);
 }
 function setPick(ids){const p=proj();p.printOpt.pick=ids;save();renderPickList();renderSheets();}
 function pickCountNote(){
-  const p=proj(),n=worksForPrint(p).length;
+  const p=proj(),n=worksForPrint(p).length,total=scopeWorks().length;
   $("#pickCount").innerHTML=n
-    ? `全${p.works.length}件のうち <b>${n}件</b> を印刷します。`
+    ? `全${total}件のうち <b>${n}件</b> を印刷します。`
     : `<b>1件も選ばれていません。</b>印刷する作品にチェックを入れてください。`;
 }
 function renderPickList(){
@@ -4674,9 +4789,11 @@ function renderPickList(){
   box.style.display=on?"":"none";
   if(!on)return;
   const sel=pickSet(p);
-  $("#pickList").innerHTML=p.works.length
-    ? p.works.map(w=>`<label class="chk" style="display:block">`
+  const ws=scopeWorks(), multi=allWorksOn();
+  $("#pickList").innerHTML=ws.length
+    ? ws.map(w=>`<label class="chk" style="display:block">`
         +`<input type="checkbox" class="pickChk" data-id="${esc(w.id)}" ${sel.has(w.id)?"checked":""}>`
+        +(multi?`<span class="note" style="color:var(--sub)">${esc(ownerOf(w).name)}　</span>`:"")
         +`<b>${esc(w.no||"—")}</b>　${esc(oneLine(w.title))||"（作品名なし）"}</label>`).join("")
     : `<p class="note">作品台帳に作品がありません。</p>`;
   pickCountNote();
@@ -4688,14 +4805,17 @@ function renderPickList(){
 /* 「74-80, 85」のような番号の指定を作品に読み替える。
    全角の読点・波ダッシュも受け取る。番号が数字でない作品は、書かれたとおりの一致で拾う */
 function worksByNoRange(text){
-  const p=proj();
   const toks=String(text||"").replace(/[、，]/g,",").replace(/[〜～－ー–—―]/g,"-")
     .split(/[,\s]+/).filter(Boolean);
   if(!toks.length)return null;
+  const ws=scopeWorks();
   const exact=new Set(),ranges=[];
   toks.forEach(t=>{const m=t.match(/^(\d+)-(\d+)$/);
-    if(m)ranges.push([Math.min(+m[1],+m[2]),Math.max(+m[1],+m[2])]);else exact.add(t);});
-  return p.works.filter(w=>{
+    /* 「1-01」のように番号そのものに「-」を使う台帳もある。
+       その番号の作品が実際にあるなら、範囲ではなく番号そのものとして扱う */
+    if(m&&!ws.some(w=>String(w.no||"").trim()===t))ranges.push([Math.min(+m[1],+m[2]),Math.max(+m[1],+m[2])]);
+    else exact.add(t);});
+  return ws.filter(w=>{
     const no=String(w.no||"").trim();
     if(exact.has(no))return true;
     if(!/^\d+$/.test(no))return false;
@@ -4722,7 +4842,7 @@ $("#prRuler").addEventListener("change",e=>{proj().printOpt.ruler=e.target.check
 $("#prOutline").addEventListener("change",e=>{proj().printOpt.outline=e.target.checked;save();refreshOutlineRow();renderSheets();});
 $("#prOutlineDpi").addEventListener("change",e=>{proj().printOpt.outlineDpi=clampDpi(e.target.value);save();refreshOutlineRow();renderSheets();});
 $("#printSection").addEventListener("change",e=>{proj().printOpt.section=e.target.value;save();renderPickList();renderSheets();});
-$("#pickAll").addEventListener("click",()=>setPick(proj().works.map(w=>w.id)));
+$("#pickAll").addEventListener("click",()=>setPick(scopeWorks().map(w=>w.id)));
 $("#pickNone").addEventListener("click",()=>setPick([]));
 $("#pickApplyRange").addEventListener("click",()=>{
   const ids=worksByNoRange($("#pickRange").value);
@@ -4750,6 +4870,9 @@ function buildSheets(){const p=proj();ensureLayout(p);
   const both=(o.face==="both");
   const face=(o.face==="desc")?"desc":"cap";
   const works=worksForPrint(p);
+  /* 作品はそれぞれ元の展覧会の体裁で組む（展覧会をまたいで刷るときのため） */
+  const projOf=w=>{const op=ownerOf(w);ensureLayout(op);return op;};
+  const styleOf=w=>projOf(w).style;
   const size=(face==="desc")?p.descSize:p.size,st=p.style,sheets=[];
   const dims=sheetDims(o);const SW=dims.w-dims.fudgeW,SH=dims.h-dims.fudge;
   const tight=!!o.tight;
@@ -4763,10 +4886,10 @@ function buildSheets(){const p=proj();ensureLayout(p);
     tick(sheet,x-g-len,y,"h");tick(sheet,x,y-g-len,"v");tick(sheet,x2+g,y,"h");tick(sheet,x2,y-g-len,"v");
     tick(sheet,x-g-len,y2,"h");tick(sheet,x,y2+g,"v");tick(sheet,x2+g,y2,"h");tick(sheet,x2,y2+g,"v");}
   /* 作品ごとの独自寸法。指定が無ければマスターの寸法 */
-  const sizeOf=w=>effectiveSize(w,p,face);
+  const sizeOf=w=>effectiveSize(w,projOf(w),face);
   const uniform=works.every(w=>{const z=sizeOf(w);return z.w===size.w&&z.h===size.h;});
   function place(sheet,work,x,y,edgeL,edgeT){const z=sizeOf(work);
-    const card=buildCard(work,st,z,{plain:true,mode:face});
+    const card=buildCard(work,styleOf(work),z,{plain:true,mode:face});
     card.style.left=x+"mm";card.style.top=y+"mm";
     if(tight){if(edgeL)card.classList.add("edge-l");if(edgeT)card.classList.add("edge-t");}
     sheet.appendChild(card);if(!tight&&o.marks)marksFor(sheet,x,y,z.w,z.h);}
@@ -4778,7 +4901,8 @@ function buildSheets(){const p=proj();ensureLayout(p);
   if(both){
     const M=SAFE_EDGE, GAP=6;                  // 用紙端の安全余白と、2枚のあいだの間隔
     works.forEach(w=>{
-      const cz=effectiveSize(w,p,"cap"), dz=effectiveSize(w,p,"desc");
+      const wp=projOf(w);
+      const cz=effectiveSize(w,wp,"cap"), dz=effectiveSize(w,wp,"desc");
       const sheet=document.createElement("div");
       sheet.className="sheet"+(o.border?" cut-border":"");
       sheet.style.width=SW+"mm";sheet.style.height=SH+"mm";
@@ -4788,8 +4912,8 @@ function buildSheets(){const p=proj();ensureLayout(p);
       /* 組み直し（解説の枠を伸ばしたあとの置き直し）に必要な寸法を控えておく */
       Object.assign(wrap.dataset,{capw:cz.w,caph:cz.h,descw:dz.w,desch:dz.h,
         sw:SW,sh:SH,gap:GAP,m:M});
-      wrap.appendChild(buildCard(w,st,cz,{plain:true,mode:"cap"}));
-      wrap.appendChild(buildCard(w,st,dz,{plain:true,mode:"desc"}));
+      wrap.appendChild(buildCard(w,wp.style,cz,{plain:true,mode:"cap"}));
+      wrap.appendChild(buildCard(w,wp.style,dz,{plain:true,mode:"desc"}));
       layoutPair(wrap,cz.h,dz.h);              // まずは元の寸法で置く
       sheet.appendChild(wrap);
     });
@@ -5246,7 +5370,8 @@ $("#ipColorSw").addEventListener("click",e=>{
     ()=>{sel.forEach(k=>curLayout()[k].color=null);save();renderEditor();showPanel();});
 });
 
-function renderAll(){renderProjectSelect();renderSectionFilter();renderList();renderPreviewSelect();
+function renderAll(){$("#allWorksToggle").checked=allWorksOn();
+  renderProjectSelect();renderSectionFilter();renderList();renderPreviewSelect();
   if($("#tab-layout").classList.contains("active")){refreshLayoutControls();renderEditor();}
   if($("#tab-print").classList.contains("active")){refreshPrintControls();renderSheets();}
   updateBackupBadge();}
