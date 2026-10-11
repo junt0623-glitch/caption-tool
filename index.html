@@ -1280,6 +1280,7 @@ table.map th{background:var(--paper);color:var(--sub);font-weight:normal}
       <li>作品台帳の<b>「すべての展覧会をまとめて扱う」</b>にチェックを入れると、保存してある<b>すべての展覧会の作品が1つの表</b>にならびます（どの展覧会の作品かは列で分かります）。検索も展覧会をまたいで効きます。</li>
       <li>このとき<b>印刷も展覧会をまたいで一度にできます</b>。作品はそれぞれ<b>元の展覧会の寸法・配置・体裁のまま</b>組まれるので、寸法の違う札が混ざっていても、そのまま面付けされます。</li>
       <li>「対象」の<b>「選んだ作品だけ」</b>も展覧会をまたいで選べます（一覧に展覧会名が付きます）。</li>
+      <li><b>「CSVで書き出し（Excel）」「表をコピー」も全展覧会ぶん</b>がまとめて出ます。先頭に<b>展覧会の列</b>が付くので、Excel側で展覧会ごとに並べ替え・絞り込みができます（この列は、書き出した表を取り込み直すときには「取り込まない」扱いになります）。</li>
       <li>並べ替え（▲▼）や一括操作は展覧会ごとの操作なので、まとめて扱っている間は使えません。「編集」を押すと、その作品の展覧会に切り替わります。</li>
     </ul>
     <h4>刷る作品をしぼる</h4>
@@ -3167,23 +3168,28 @@ function delimEscape(v,delim){
   return s;
 }
 function worksToDelimited(delim){
-  const rows=[FIELDS.map(f=>f.label)];
-  proj().works.forEach(w=>rows.push(FIELDS.map(f=>w[f.key]||"")));
+  /* 「すべての展覧会をまとめて扱う」ときは全展覧会ぶんを書き出し、
+     どの展覧会の作品か分かるよう先頭に展覧会の列を足す
+     （取り込みのときは「取り込まない」列として扱われるので、戻すときも邪魔にならない） */
+  const multi=allWorksOn();
+  const rows=[(multi?["展覧会"]:[]).concat(FIELDS.map(f=>f.label))];
+  scopeWorks().forEach(w=>rows.push((multi?[ownerOf(w).name]:[]).concat(FIELDS.map(f=>w[f.key]||""))));
   return rows.map(r=>r.map(v=>delimEscape(v,delim)).join(delim)).join("\r\n");
 }
 function safeFilename(s){return String(s||"").replace(/[\\/:*?"<>|]/g,"_").trim()||"無題";}
 function stampYMD(){const d=new Date(),pad=n=>String(n).padStart(2,"0");
   return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;}
 $("#btnExportCsv").addEventListener("click",()=>{
-  const p=proj();
-  if(!p.works.length){alert("書き出せる作品がありません。先に作品を登録してください。");return;}
+  const ws=scopeWorks();
+  if(!ws.length){alert("書き出せる作品がありません。先に作品を登録してください。");return;}
+  const who=allWorksOn()?"すべての展覧会":safeFilename(proj().name);
   // 先頭のBOMはExcelでの文字化け防止（UTF-8として認識させる）
-  download(`作品リスト_${safeFilename(p.name)}_${stampYMD()}.csv`,
+  download(`作品リスト_${who}_${stampYMD()}.csv`,
     "\uFEFF"+worksToDelimited(","),"text/csv");
 });
 $("#btnCopyTsv").addEventListener("click",async()=>{
-  const p=proj();
-  if(!p.works.length){alert("コピーできる作品がありません。先に作品を登録してください。");return;}
+  const ws=scopeWorks();
+  if(!ws.length){alert("コピーできる作品がありません。先に作品を登録してください。");return;}
   const tsv=worksToDelimited("\t");
   let ok=false;
   try{await navigator.clipboard.writeText(tsv);ok=true;}
@@ -3191,7 +3197,7 @@ $("#btnCopyTsv").addEventListener("click",async()=>{
     try{const ta=document.createElement("textarea");ta.value=tsv;ta.style.position="fixed";ta.style.opacity="0";
       document.body.appendChild(ta);ta.select();ok=document.execCommand("copy");ta.remove();}catch(_){}
   }
-  alert(ok?`${p.works.length}件の作品リストをコピーしました。\nExcelやGoogleスプレッドシートのA1セルを選んで貼り付けてください。`
+  alert(ok?`${ws.length}件の作品リストをコピーしました。\nExcelやGoogleスプレッドシートのA1セルを選んで貼り付けてください。`
          :"コピーできませんでした。「CSVで書き出し」をお使いください。");
 });
 
