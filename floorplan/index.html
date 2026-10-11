@@ -143,6 +143,14 @@
   }
   #layerBar label{display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--ink)}
 
+  /* 表示設定バー(図面上の文字を出す/出さない)。レイヤーバーと同じ見た目で縦に並べる */
+  #dispBar{
+    display:flex;flex-direction:column;gap:6px;padding:8px 14px;
+    border-bottom:1px solid var(--line);font-size:12px;
+  }
+  #dispBar label{display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--ink)}
+  #dispBar input[type=number]{width:62px;margin-left:auto}
+
   /* 作品リスト */
   #workListWrap{flex:1;overflow-y:auto}
   #workList{list-style:none}
@@ -345,7 +353,7 @@
 <header>
   <!-- 版数。修正を出したのに直っていないという話のとき、
        利用者の画面が古いままかどうかをここで見分ける。修正を公開するたびに上げる -->
-  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v20</span></small></h1>
+  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v21</span></small></h1>
   <label>印刷範囲(A3)の回転
     <select id="sheetSel" title="印刷範囲(A3)を90度きざみで回転します。展示室図面もこの回転に合わせて一緒に回転し、縦横比も印刷範囲に対応します">
       <option value="0" selected>0°(横)</option>
@@ -402,6 +410,18 @@
       <label><input type="checkbox" data-layer="furniture" checked>ケース・展示台</label>
       <label><input type="checkbox" data-layer="work" checked>作品</label>
       <label><input type="checkbox" data-layer="text" checked>テキスト</label>
+    </div>
+    <h2>表示</h2>
+    <div id="dispBar">
+      <label title="ケース・展示台に重ねて出している名前(寸法)の文字を、出す/出さないを切り替えます">
+        <input type="checkbox" id="dispFurnLabel" checked>ケース・展示台の名前(寸法)
+      </label>
+      <label title="作品の画像を出さず、番号だけで図面を作ります。枠は残ります">
+        <input type="checkbox" id="dispWorkNoOnly">作品は番号のみ(画像を出さない)
+      </label>
+      <label title="作品番号の文字の大きさ(50〜400%)">作品番号の大きさ
+        <input id="dispWorkNoPct" type="number" min="50" max="400" step="10" value="100"> %
+      </label>
     </div>
     <h2>プロパティ</h2>
     <div id="props"><div class="empty">オブジェクトを選択すると編集できます</div></div>
@@ -569,6 +589,11 @@ let state = {
   meta: {title:"", venue:"", author:"", date: today()}, // JSONファイル名等で使用。図面上には表示しない
   sheet: {rot:0}, // 印刷範囲(A3)の回転角(0/90/180/270)
   scalePct: 100,           // ケース・展示台の表示縮尺(0〜150%)
+  // 図面上の表示設定。印刷にもそのまま効くので、ビュー状態(layerVis)ではなく
+  // 図面データとして保存する(開き直しても同じ見た目で刷れるように)
+  showFurnitureLabel: true,// ケース・展示台の名前(寸法)を図面上に出すか
+  workNoOnly: false,       // 作品を「番号のみ」で描くか(trueなら作品画像を出さない)
+  workNoPct: 100,          // 作品番号の表記サイズ(50〜400%。100%が既定の大きさ)
   rooms: defaultRooms(),
   workList: [],            // 作品リスト(CSV) [{no,title,artist}]
   workStartNo: "",         // 作品ツールの開始番号。この番号以降を順番に配置する(空なら最初から)
@@ -667,7 +692,14 @@ function applySheet(){
 function syncSheetUI(){
   document.getElementById("sheetSel").value = String(normRot(state.sheet?.rot));
   document.getElementById("scalePct").value = state.scalePct ?? 100;
+  syncDispUI();
   applySheet();
+}
+/* 表示設定の欄を state の値に合わせる(読み込み・Undo/Redoのあとに呼ぶ) */
+function syncDispUI(){
+  document.getElementById("dispFurnLabel").checked = showFurnitureLabel();
+  document.getElementById("dispWorkNoOnly").checked = workNoOnly();
+  document.getElementById("dispWorkNoPct").value = Math.round(workNoScale() * 100);
 }
 /* 0/90/180/270度限定の厳密なcos/sin(Math.cos/sinの浮動小数誤差を避け、
    回転の往復で座標がわずかにずれるのを防ぐ) */
@@ -714,6 +746,19 @@ function rotateContentWithSheet(fromRot, toRot){
 }
 /* 縮尺(0〜150%): 可動ケース・展示台の図面に対する表示サイズ倍率 */
 function fsc(){ return Math.min(150, Math.max(0, state.scalePct ?? 100)) / 100; }
+
+/* ---- 図面上の表示設定 ----
+   いずれも render() から参照する。印刷も同じ render() の結果を刷るので、
+   ここを切り替えると画面と印刷の両方に効く */
+/* ケース・展示台の名前(寸法)を出すか */
+function showFurnitureLabel(){ return state.showFurnitureLabel !== false; }
+/* 作品を「番号のみ」で描くか(trueなら作品画像を出さない) */
+function workNoOnly(){ return !!state.workNoOnly; }
+/* 作品番号の表記サイズ倍率。50〜400%を1.0基準の倍率で返す */
+function workNoScale(){
+  const p = +state.workNoPct;
+  return (isFinite(p) ? Math.min(400, Math.max(50, p)) : 100) / 100;
+}
 
 /* ---- ビュー(ズーム/パン) ---- */
 /* 初期表示はシート+左右の在庫列(印刷範囲外)が見える範囲 */
@@ -968,18 +1013,21 @@ function render(){
 
     if (o.type === "work"){
       el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"#fff",stroke:"var(--ink)","stroke-width":20}, grp);
-      const img = workImage(o);
+      const img = workNoOnly() ? null : workImage(o);
       if (img)
         el("image",{href:img,x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,
           preserveAspectRatio:"xMidYMid meet","pointer-events":"none"}, grp);
-      else
+      // 「番号のみ」のときは画像のかわりの斜線も引かない(画像が無いのではなく、
+      // 意図して出していないので、枠だけにしておく)
+      else if (!workNoOnly())
         el("line",{x1:-o.w/2,y1:o.h/2,x2:o.w/2,y2:-o.h/2,stroke:"#bbb","stroke-width":10}, grp);
-      // 図面上は「番号」のみ表示(作品名等は出さない)
-      const b = el("g",{class:"badge",transform:`translate(0,${-o.h/2-260})`}, grp);
-      const bw = Math.max(400, String(o.no??"").length*130 + 160);
-      el("rect",{x:-bw/2,y:-200,width:bw,height:400,rx:200,fill:"var(--accent)"}, b);
+      // 図面上は「番号」のみ表示(作品名等は出さない)。大きさは表示設定で変えられる
+      const k = workNoScale();
+      const b = el("g",{class:"badge",transform:`translate(0,${-o.h/2-260*k})`}, grp);
+      const bw = Math.max(400, String(o.no??"").length*130 + 160) * k;
+      el("rect",{x:-bw/2,y:-200*k,width:bw,height:400*k,rx:200*k,fill:"var(--accent)"}, b);
       const t = el("text",{}, b); t.textContent = o.no ?? "";
-      t.setAttribute("font-size", 220);
+      t.setAttribute("font-size", 220*k);
     }
     else if (o.type === "case" || o.type === "fixture"){
       const [w,h] = dispSize(o); // 縮尺(0〜150%)を反映。0%近くでも最小表示サイズ(MIN_DISP)は保証する
@@ -987,8 +1035,10 @@ function render(){
       el("rect",{class:"body",x:-w/2,y:-h/2,width:w,height:h,fill:col,
         "fill-opacity":o.type==="case"?.18:.25,stroke:col,"stroke-width":o.type==="case"?25:20}, grp);
       if (isBackCase(o)) drawBackEdge(grp, w, h, col); // 背景つきケースは長辺の1本を太線で
-      const lbl = el("text",{class:"lbl","font-size":Math.max(120, 240*f)}, grp);
-      lbl.textContent = o.label || (o.type==="case"?"ケース":"展示台");
+      if (showFurnitureLabel()){
+        const lbl = el("text",{class:"lbl","font-size":Math.max(120, 240*f)}, grp);
+        lbl.textContent = o.label || (o.type==="case"?"ケース":"展示台");
+      }
     }
     else if (o.type === "text"){
       const t = el("text",{class:"lbl body","font-size":320,"font-weight":600}, grp);
@@ -1895,6 +1945,11 @@ function applyPlanText(text){
     // 旧形式(rot:0/90/180/270を個別に持つ展示室図面)を読み込んでも、回転は
     // 印刷範囲(state.sheet.rot)側に一本化したため r.rot の値は無視してよい
     if (state.scalePct == null) state.scalePct = 100; // 0%も有効な値なので !state.scalePct にしない
+    // 図面上の表示設定。これを持たない古い保存ファイルは、これまでどおりの見た目
+    // (名前あり・画像あり・番号100%)で開く
+    if (typeof state.showFurnitureLabel !== "boolean") state.showFurnitureLabel = true;
+    state.workNoOnly = !!state.workNoOnly;
+    if (!(+state.workNoPct >= 50 && +state.workNoPct <= 400)) state.workNoPct = 100;
     if (!state.workList) state.workList = [];
     if (state.workStartNo == null) state.workStartNo = "";
     // 線の向きを持たない古い保存ファイルも、いまの既定(45度きざみ)で描けるようにする
@@ -1997,6 +2052,28 @@ document.getElementById("scalePct").onchange = ev=>{
   const v = +ev.target.value;
   state.scalePct = Math.min(150, Math.max(0, Math.round(isNaN(v) ? 100 : v)));
   ev.target.value = state.scalePct;
+  render();
+};
+
+/* 図面上の表示設定(ケース・展示台の名前 / 作品を番号のみ / 作品番号の大きさ)。
+   いずれもUndoで戻せるようにし、変更したら描き直す */
+document.getElementById("dispFurnLabel").onchange = ev=>{
+  pushUndo();
+  state.showFurnitureLabel = ev.target.checked;
+  render();
+};
+document.getElementById("dispWorkNoOnly").onchange = ev=>{
+  pushUndo();
+  state.workNoOnly = ev.target.checked;
+  render();
+};
+document.getElementById("dispWorkNoPct").onchange = ev=>{
+  const v = Math.round(+ev.target.value);
+  const next = isFinite(v) ? Math.min(400, Math.max(50, v)) : 100;
+  ev.target.value = next;
+  if (next === Math.round(workNoScale() * 100)) return; // 同じ値なら履歴を増やさない
+  pushUndo();
+  state.workNoPct = next;
   render();
 };
 
