@@ -176,7 +176,9 @@
      font-size等はここに書かず属性側で指定する */
   .wall-line{stroke:var(--wall);stroke-linecap:square}
   .obj.selected .body{stroke:var(--accent);stroke-width:45}
-  .badge circle{fill:var(--accent)}
+  /* 「番号のみ」の作品には枠(.body)が無いので、番号バッジ側にも選択の印をつける */
+  .obj.selected .badge rect{stroke:var(--ink);stroke-width:40}
+  .badge rect{fill:var(--accent)}
   .badge text{fill:#fff;font-weight:600;text-anchor:middle;dominant-baseline:central}
   .obj text.lbl{fill:var(--ink);text-anchor:middle;pointer-events:none}
   .obj{cursor:move}
@@ -353,7 +355,7 @@
 <header>
   <!-- 版数。修正を出したのに直っていないという話のとき、
        利用者の画面が古いままかどうかをここで見分ける。修正を公開するたびに上げる -->
-  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v21</span></small></h1>
+  <h1>展覧会図面作成<small>プロトタイプ <span id="verLabel">v22</span></small></h1>
   <label>印刷範囲(A3)の回転
     <select id="sheetSel" title="印刷範囲(A3)を90度きざみで回転します。展示室図面もこの回転に合わせて一緒に回転し、縦横比も印刷範囲に対応します">
       <option value="0" selected>0°(横)</option>
@@ -416,11 +418,11 @@
       <label title="ケース・展示台に重ねて出している名前(寸法)の文字を、出す/出さないを切り替えます">
         <input type="checkbox" id="dispFurnLabel" checked>ケース・展示台の名前(寸法)
       </label>
-      <label title="作品の画像を出さず、番号だけで図面を作ります。枠は残ります">
-        <input type="checkbox" id="dispWorkNoOnly">作品は番号のみ(画像を出さない)
+      <label title="作品の画像も枠も出さず、番号だけで図面を作ります">
+        <input type="checkbox" id="dispWorkNoOnly">作品は番号のみ(画像・枠を出さない)
       </label>
-      <label title="作品番号の文字の大きさ(50〜400%)">作品番号の大きさ
-        <input id="dispWorkNoPct" type="number" min="50" max="400" step="10" value="100"> %
+      <label title="作品番号の文字の大きさ(20〜1000%)">作品番号の大きさ
+        <input id="dispWorkNoPct" type="number" min="20" max="1000" step="10" value="100"> %
       </label>
     </div>
     <h2>プロパティ</h2>
@@ -592,8 +594,8 @@ let state = {
   // 図面上の表示設定。印刷にもそのまま効くので、ビュー状態(layerVis)ではなく
   // 図面データとして保存する(開き直しても同じ見た目で刷れるように)
   showFurnitureLabel: true,// ケース・展示台の名前(寸法)を図面上に出すか
-  workNoOnly: false,       // 作品を「番号のみ」で描くか(trueなら作品画像を出さない)
-  workNoPct: 100,          // 作品番号の表記サイズ(50〜400%。100%が既定の大きさ)
+  workNoOnly: false,       // 作品を「番号のみ」で描くか(trueなら作品画像も枠も出さない)
+  workNoPct: 100,          // 作品番号の表記サイズ(20〜1000%。100%が既定の大きさ)
   rooms: defaultRooms(),
   workList: [],            // 作品リスト(CSV) [{no,title,artist}]
   workStartNo: "",         // 作品ツールの開始番号。この番号以降を順番に配置する(空なら最初から)
@@ -752,12 +754,17 @@ function fsc(){ return Math.min(150, Math.max(0, state.scalePct ?? 100)) / 100; 
    ここを切り替えると画面と印刷の両方に効く */
 /* ケース・展示台の名前(寸法)を出すか */
 function showFurnitureLabel(){ return state.showFurnitureLabel !== false; }
-/* 作品を「番号のみ」で描くか(trueなら作品画像を出さない) */
+/* 作品を「番号のみ」で描くか(trueなら作品画像も枠も出さず、番号だけを置く) */
 function workNoOnly(){ return !!state.workNoOnly; }
-/* 作品番号の表記サイズ倍率。50〜400%を1.0基準の倍率で返す */
+/* 作品番号の表記サイズ倍率。20〜1000%を1.0基準の倍率で返す */
 function workNoScale(){
   const p = +state.workNoPct;
-  return (isFinite(p) ? Math.min(400, Math.max(50, p)) : 100) / 100;
+  return (isFinite(p) ? Math.min(1000, Math.max(20, p)) : 100) / 100;
+}
+/* 作品番号バッジの表示サイズ[幅,高さ]。描画と当たり判定で同じ値を使う */
+function workBadgeSize(o){
+  const k = workNoScale();
+  return [Math.max(400, String(o?.no ?? "").length*130 + 160) * k, 400 * k];
 }
 
 /* ---- ビュー(ズーム/パン) ---- */
@@ -801,7 +808,11 @@ function dispSize(o){
 /* オブジェクトの表示上の半幅・半高(縮尺を考慮)。整列・範囲選択の当たり判定に使う */
 function halfExtent(o){
   if (o.type==="case" || o.type==="fixture"){ const [w,h] = dispSize(o); return [w/2, h/2]; }
-  if (o.type==="work"){ return [o.w/2, o.h/2]; }
+  if (o.type==="work"){
+    // 「番号のみ」のときは枠を描かないので、見えている番号バッジを範囲とする
+    if (workNoOnly()){ const [bw,bh] = workBadgeSize(o); return [bw/2, bh/2]; }
+    return [o.w/2, o.h/2];
+  }
   return [0,0]; // text は点として扱う
 }
 /* 選択中のオブジェクトを整列/等間隔配置する。基準は選択全体のバウンディング */
@@ -1012,20 +1023,23 @@ function render(){
       transform:`translate(${o.x},${o.y}) rotate(${o.rot||0})`}, root);
 
     if (o.type === "work"){
-      el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"#fff",stroke:"var(--ink)","stroke-width":20}, grp);
-      const img = workNoOnly() ? null : workImage(o);
-      if (img)
-        el("image",{href:img,x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,
-          preserveAspectRatio:"xMidYMid meet","pointer-events":"none"}, grp);
-      // 「番号のみ」のときは画像のかわりの斜線も引かない(画像が無いのではなく、
-      // 意図して出していないので、枠だけにしておく)
-      else if (!workNoOnly())
-        el("line",{x1:-o.w/2,y1:o.h/2,x2:o.w/2,y2:-o.h/2,stroke:"#bbb","stroke-width":10}, grp);
-      // 図面上は「番号」のみ表示(作品名等は出さない)。大きさは表示設定で変えられる
+      const noOnly = workNoOnly();
+      // 「番号のみ」のときは枠も画像も描かない(番号だけの図面にするための表示)
+      if (!noOnly){
+        el("rect",{class:"body",x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:"#fff",stroke:"var(--ink)","stroke-width":20}, grp);
+        const img = workImage(o);
+        if (img)
+          el("image",{href:img,x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,
+            preserveAspectRatio:"xMidYMid meet","pointer-events":"none"}, grp);
+        else
+          el("line",{x1:-o.w/2,y1:o.h/2,x2:o.w/2,y2:-o.h/2,stroke:"#bbb","stroke-width":10}, grp);
+      }
+      // 図面上は「番号」のみ表示(作品名等は出さない)。大きさは表示設定で変えられる。
+      // 枠があるときは枠の上に、「番号のみ」のときは枠が無いので作品の位置そのものに置く
       const k = workNoScale();
-      const b = el("g",{class:"badge",transform:`translate(0,${-o.h/2-260*k})`}, grp);
-      const bw = Math.max(400, String(o.no??"").length*130 + 160) * k;
-      el("rect",{x:-bw/2,y:-200*k,width:bw,height:400*k,rx:200*k,fill:"var(--accent)"}, b);
+      const [bw, bh] = workBadgeSize(o);
+      const b = el("g",{class:"badge",transform:`translate(0,${noOnly ? 0 : -o.h/2-260*k})`}, grp);
+      el("rect",{x:-bw/2,y:-bh/2,width:bw,height:bh,rx:bh/2,fill:"var(--accent)"}, b);
       const t = el("text",{}, b); t.textContent = o.no ?? "";
       t.setAttribute("font-size", 220*k);
     }
@@ -1949,7 +1963,7 @@ function applyPlanText(text){
     // (名前あり・画像あり・番号100%)で開く
     if (typeof state.showFurnitureLabel !== "boolean") state.showFurnitureLabel = true;
     state.workNoOnly = !!state.workNoOnly;
-    if (!(+state.workNoPct >= 50 && +state.workNoPct <= 400)) state.workNoPct = 100;
+    if (!(+state.workNoPct >= 20 && +state.workNoPct <= 1000)) state.workNoPct = 100;
     if (!state.workList) state.workList = [];
     if (state.workStartNo == null) state.workStartNo = "";
     // 線の向きを持たない古い保存ファイルも、いまの既定(45度きざみ)で描けるようにする
@@ -1998,7 +2012,7 @@ document.getElementById("pngBtn").onclick = ()=>{
   const styleTag = document.createElementNS(SVG_NS, "style");
   styleTag.textContent = `
     .wall-line{stroke:${v("--wall")};stroke-linecap:square}
-    .badge circle{fill:${v("--accent")}}
+    .badge rect{fill:${v("--accent")}}
     .badge text{fill:#fff;font-weight:600;text-anchor:middle;dominant-baseline:central}
     .obj text.lbl{fill:${v("--ink")};text-anchor:middle}
     text{font-family:sans-serif}`;
@@ -2069,7 +2083,7 @@ document.getElementById("dispWorkNoOnly").onchange = ev=>{
 };
 document.getElementById("dispWorkNoPct").onchange = ev=>{
   const v = Math.round(+ev.target.value);
-  const next = isFinite(v) ? Math.min(400, Math.max(50, v)) : 100;
+  const next = isFinite(v) ? Math.min(1000, Math.max(20, v)) : 100;
   ev.target.value = next;
   if (next === Math.round(workNoScale() * 100)) return; // 同じ値なら履歴を増やさない
   pushUndo();
